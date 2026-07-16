@@ -1,0 +1,782 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>CostFlow — E&I Cost Management (CBS)</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-auth-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
+<script src="firebase-config.js"></script>
+<style>
+:root{--sidebar:#111a2e;--sidebar2:#0b1424;--muted:#64748b;--ink:#0f172a;--line:#e6eaf0;--soft:#f6f8fb;
+--brand:#4f46e5;--brand2:#6366f1;--emerald:#10b981;--amber:#f59e0b;--rose:#ef4444;--sky:#0ea5e9;--navy:#203864;
+--shadow:0 1px 3px rgba(16,24,40,.08),0 1px 2px rgba(16,24,40,.04);--shadow2:0 8px 24px rgba(16,24,40,.10);}
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:'Segoe UI',system-ui,-apple-system,Roboto,Arial,sans-serif;background:#eef1f6;color:var(--ink);font-size:14px}
+button{font-family:inherit;cursor:pointer;border:none;background:none}
+input,select{font-family:inherit;font-size:14px}
+.app{display:flex;min-height:100vh}
+.side{width:230px;background:linear-gradient(180deg,var(--sidebar),var(--sidebar2));color:#cbd5e1;display:flex;flex-direction:column;position:fixed;height:100vh;z-index:20}
+.brand{padding:20px 20px 16px;display:flex;align-items:center;gap:11px;border-bottom:1px solid rgba(255,255,255,.07)}
+.brand .logo{width:34px;height:34px;border-radius:9px;background:linear-gradient(135deg,var(--brand),var(--sky));display:flex;align-items:center;justify-content:center;font-weight:800;color:#fff;font-size:17px}
+.brand h1{font-size:16px;color:#fff;font-weight:700}
+.brand span{font-size:10.5px;color:#7c8aa5;letter-spacing:.5px;text-transform:uppercase}
+.nav{padding:14px 12px;flex:1}
+.nav .lbl{font-size:10.5px;text-transform:uppercase;letter-spacing:.7px;color:#5b6b88;padding:8px 12px 6px}
+.nav a{display:flex;align-items:center;gap:11px;padding:10px 12px;border-radius:9px;color:#c3cee0;font-weight:500;margin-bottom:2px;font-size:13.5px;cursor:pointer}
+.nav a:hover{background:rgba(255,255,255,.06);color:#fff}
+.nav a.active{background:linear-gradient(135deg,var(--brand),var(--brand2));color:#fff}
+.nav a svg{width:18px;height:18px;flex:none}
+.side-foot{padding:14px 16px;border-top:1px solid rgba(255,255,255,.07);font-size:11px;color:#5b6b88}
+.side-foot b{color:#94a3b8}
+.main{margin-left:230px;flex:1;min-width:0}
+.topbar{background:#fff;border-bottom:1px solid var(--line);padding:12px 26px;display:flex;align-items:center;gap:16px;position:sticky;top:0;z-index:15;box-shadow:var(--shadow)}
+.topbar select.projsel{font-weight:700;font-size:15px;border:1px solid var(--line);border-radius:9px;padding:8px 12px;background:var(--soft);color:var(--ink);cursor:pointer;min-width:250px}
+.spacer{flex:1}
+.btn{display:inline-flex;align-items:center;gap:7px;padding:8px 14px;border-radius:9px;font-weight:600;font-size:13px;border:1px solid var(--line);background:#fff;color:var(--ink)}
+.btn:hover{background:var(--soft);border-color:#cfd6e2}
+.btn svg{width:15px;height:15px}
+.btn.primary{background:linear-gradient(135deg,var(--brand),var(--brand2));color:#fff;border:none}
+.btn.ghost{border:none;background:transparent}
+.menu{position:relative}
+.menu-pop{position:absolute;right:0;top:calc(100% + 6px);background:#fff;border:1px solid var(--line);border-radius:11px;box-shadow:var(--shadow2);padding:6px;min-width:240px;display:none;z-index:30}
+.menu-pop.open{display:block}
+.menu-pop button{display:flex;align-items:center;gap:9px;width:100%;text-align:left;padding:9px 11px;border-radius:8px;font-size:13px;color:var(--ink);font-weight:500}
+.menu-pop button:hover{background:var(--soft)}
+.menu-pop .sep{height:1px;background:var(--line);margin:5px 4px}
+.content{padding:26px}
+.saved{font-size:11.5px;color:var(--emerald);display:flex;align-items:center;gap:5px;font-weight:600}
+.dot{width:7px;height:7px;border-radius:50%;background:var(--emerald)}
+.kpis{display:grid;grid-template-columns:repeat(auto-fit,minmax(185px,1fr));gap:16px;margin-bottom:22px}
+.kpi{background:#fff;border:1px solid var(--line);border-radius:14px;padding:17px 18px;box-shadow:var(--shadow);position:relative;overflow:hidden}
+.kpi .ic{position:absolute;right:14px;top:14px;width:36px;height:36px;border-radius:10px;display:flex;align-items:center;justify-content:center}
+.kpi .t{font-size:11.5px;color:var(--muted);font-weight:600;text-transform:uppercase;letter-spacing:.4px}
+.kpi .v{font-size:22px;font-weight:800;margin-top:9px;letter-spacing:-.5px}
+.kpi .s{font-size:12px;margin-top:5px;color:var(--muted);font-weight:500}
+.kpi .s.up{color:var(--emerald)}.kpi .s.down{color:var(--rose)}
+.tag{display:inline-flex;align-items:center;gap:4px;padding:2px 8px;border-radius:20px;font-size:11px;font-weight:700}
+.tag.r{background:#fee2e2;color:#b91c1c}.tag.a{background:#fef3c7;color:#b45309}
+.grid{display:grid;gap:16px}.g2{grid-template-columns:1.35fr 1fr}.g3{grid-template-columns:1fr 1fr 1fr}
+@media(max-width:1050px){.g2,.g3{grid-template-columns:1fr}}
+.card{background:#fff;border:1px solid var(--line);border-radius:14px;box-shadow:var(--shadow);overflow:hidden}
+.card h3{font-size:14px;font-weight:700;padding:15px 18px 0;display:flex;align-items:center;justify-content:space-between}
+.card h3 .hint{font-size:11.5px;color:var(--muted);font-weight:500}
+.card .body{padding:14px 18px 18px}
+.chart-wrap{position:relative;height:300px}
+.alert-row{display:flex;align-items:center;gap:12px;padding:11px 12px;border-radius:10px;margin-bottom:8px;background:var(--soft);border:1px solid var(--line)}
+.alert-row .bar{width:5px;align-self:stretch;border-radius:4px}
+.alert-row .nm{font-weight:600;flex:1}.alert-row .amt{font-weight:700}
+.alert-row .pct{font-size:12px;font-weight:700;padding:2px 8px;border-radius:20px}
+.mini{font-size:12px;color:var(--muted)}.empty{text-align:center;color:var(--muted);padding:26px;font-size:13px}
+.pagehead{margin-bottom:20px;display:flex;align-items:flex-end;justify-content:space-between;gap:16px;flex-wrap:wrap}
+.pagehead h2{font-size:22px;font-weight:800;letter-spacing:-.5px}
+.pagehead p{color:var(--muted);margin-top:4px;font-size:13px}
+.tbl-card{background:#fff;border:1px solid var(--line);border-radius:14px;box-shadow:var(--shadow);overflow:hidden}
+table.ct{border-collapse:collapse;width:100%}
+table.ct th,table.ct td{border-bottom:1px solid var(--line);padding:0;text-align:right;white-space:nowrap}
+table.ct thead th{background:#f4f6fb;color:#475569;font-weight:700;padding:10px 12px;font-size:11px;text-transform:uppercase;letter-spacing:.3px}
+table.ct th.l,table.ct td.l{text-align:left}
+table.ct td.num input{width:100%;border:none;padding:9px 12px;text-align:right;outline:none;background:none;font-variant-numeric:tabular-nums;font-size:13.5px;font-weight:600;color:var(--ink)}
+table.ct td.num input:focus{background:#eef2ff;box-shadow:inset 0 0 0 2px var(--brand2)}
+table.ct td.name input{width:100%;border:none;padding:9px 12px;outline:none;background:none;color:var(--ink)}
+table.ct td.name input:focus{background:#eef2ff;box-shadow:inset 0 0 0 2px var(--brand2)}
+table.ct td.calc{padding:9px 12px;font-variant-numeric:tabular-nums;font-weight:700}
+table.ct td.ty{text-align:center;font-size:11px;font-weight:700;color:#64748b}
+table.ct td.tog{text-align:center;width:30px;cursor:pointer;color:#64748b;font-size:12px;user-select:none}
+table.ct td.act{text-align:center;width:36px}
+table.ct td.act button{color:var(--rose);opacity:.4;font-size:15px;padding:5px}
+table.ct td.act button:hover{opacity:1}
+tr.grp td{background:#0f172a;color:#fff;font-weight:800;padding:10px 12px;font-variant-numeric:tabular-nums;font-size:12px;letter-spacing:.3px}
+tr.grp td.l{text-align:left}
+tr.cat td{background:#eef2ff;font-weight:700;padding:8px 12px;font-variant-numeric:tabular-nums}
+tr.cat td.l{text-align:left}
+tr.cat:hover td{background:#e5eafd}
+tr.itm td{padding:0 0 0 0;font-variant-numeric:tabular-nums;background:#fff}
+tr.itm td.calc{padding:9px 12px}
+tr.itm td.l{padding-left:8px}
+tr.addi td{padding:7px 12px 7px 40px;background:#fbfcfe}
+tr.addi button{color:var(--brand);font-weight:600;font-size:12.5px}
+table.ct tfoot td{background:#1f2937;color:#fff;font-weight:800;padding:12px;font-variant-numeric:tabular-nums;border:none}
+table.ct tfoot td.l{text-align:left}
+.pos{color:var(--emerald)}.neg{color:var(--rose)}
+.addrow{padding:11px 18px;border-top:1px solid var(--line)}
+.addrow button{color:var(--brand);font-weight:700;font-size:13px}
+.settings{max-width:680px}
+.sec{background:#fff;border:1px solid var(--line);border-radius:14px;box-shadow:var(--shadow);margin-bottom:18px;overflow:hidden}
+.sec h3{padding:15px 18px;border-bottom:1px solid var(--line);font-size:14px;font-weight:700}
+.sec .body{padding:18px}
+.field{margin-bottom:14px}.field label{display:block;font-size:12px;font-weight:600;color:var(--muted);margin-bottom:6px}
+.field input{width:100%;border:1px solid var(--line);border-radius:9px;padding:9px 11px;background:var(--soft);color:var(--ink)}
+.field.row{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+.danger{border-color:#fecaca}.danger h3{color:var(--rose)}
+.btn.danger-b{border-color:#fecaca;color:var(--rose)}.btn.danger-b:hover{background:#fef2f2}
+.overlay{position:fixed;inset:0;background:rgba(15,23,42,.5);display:none;align-items:center;justify-content:center;z-index:50}
+.overlay.open{display:flex}
+.modal{background:#fff;border-radius:16px;box-shadow:var(--shadow2);width:440px;max-width:92vw;overflow:hidden}
+.modal h4{padding:18px 20px;font-size:16px;border-bottom:1px solid var(--line)}
+.modal .mbody{padding:20px}.modal .mfoot{padding:14px 20px;border-top:1px solid var(--line);display:flex;justify-content:flex-end;gap:10px}
+.toast{position:fixed;bottom:24px;left:50%;transform:translateX(-50%);background:#0f172a;color:#fff;padding:11px 20px;border-radius:11px;font-size:13px;font-weight:600;box-shadow:var(--shadow2);opacity:0;transition:.3s;z-index:80;pointer-events:none}
+.toast.show{opacity:1;bottom:34px}
+.hide{display:none!important}
+tr.act2 td{padding:7px 12px;background:#fff;font-variant-numeric:tabular-nums}
+tr.act2 td.l{padding-left:8px}
+.gtrack{position:relative;width:150px;height:12px;background:#eef1f6;border-radius:6px;overflow:hidden;display:inline-block;vertical-align:middle}
+.gplan{position:absolute;height:100%;background:#c7d2fe;border-radius:6px}
+.gact{position:absolute;height:100%;background:#4f46e5;border-radius:6px}
+tr.act2 td.pin input{width:70px;border:1px solid var(--line);border-radius:7px;padding:5px 7px;text-align:right;font-weight:600}
+.wz label{display:block;font-size:12px;font-weight:600;color:var(--muted);margin:10px 0 5px}
+.wz input,.wz select{width:100%;border:1px solid var(--line);border-radius:9px;padding:9px 11px;background:var(--soft)}
+</style>
+</head>
+<body>
+<div id="authScreen" style="display:none;position:fixed;inset:0;z-index:300;background:linear-gradient(135deg,#0b1424,#1b2b4d);align-items:center;justify-content:center;font-family:'Segoe UI',system-ui,sans-serif">
+  <div style="background:#fff;border-radius:18px;padding:32px 30px;width:392px;max-width:92vw;box-shadow:0 20px 60px rgba(0,0,0,.4)">
+    <div style="display:flex;align-items:center;gap:12px;margin-bottom:18px">
+      <div style="width:40px;height:40px;border-radius:10px;background:linear-gradient(135deg,#4f46e5,#0ea5e9);display:flex;align-items:center;justify-content:center;color:#fff;font-weight:800;font-size:20px">&#8373;</div>
+      <div><div style="font-weight:800;font-size:18px;color:#0f172a">CostFlow</div><div style="font-size:11px;color:#64748b;letter-spacing:.5px">E&amp;I COST CONTROL</div></div>
+    </div>
+    <div style="font-weight:700;font-size:15px;margin-bottom:4px">Sign in to your account</div>
+    <div style="font-size:12.5px;color:#64748b;margin-bottom:16px">Your projects sync securely to your account.</div>
+    <input id="authEmail" type="email" placeholder="Email" style="width:100%;border:1px solid #e6eaf0;border-radius:10px;padding:11px 12px;margin-bottom:10px;font-size:14px">
+    <input id="authPass" type="password" placeholder="Password (min 6 characters)" style="width:100%;border:1px solid #e6eaf0;border-radius:10px;padding:11px 12px;font-size:14px">
+    <div id="authErr" style="display:none;color:#ef4444;font-size:12px;margin:8px 0 0"></div>
+    <button onclick="authLogin()" style="width:100%;background:linear-gradient(135deg,#4f46e5,#6366f1);color:#fff;border:none;border-radius:10px;padding:12px;font-weight:700;font-size:14px;margin-top:12px;cursor:pointer">Sign in</button>
+    <button onclick="authSignup()" style="width:100%;background:#fff;color:#4f46e5;border:1px solid #c7d2fe;border-radius:10px;padding:11px;font-weight:700;font-size:13px;margin-top:8px;cursor:pointer">Create new account</button>
+    <div style="text-align:center;color:#94a3b8;font-size:12px;margin:14px 0">&mdash; or &mdash;</div>
+    <button onclick="authGoogle()" style="width:100%;background:#fff;color:#0f172a;border:1px solid #e6eaf0;border-radius:10px;padding:11px;font-weight:600;font-size:13px;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:8px">
+      <svg width="17" height="17" viewBox="0 0 48 48"><path fill="#FFC107" d="M43.6 20.5H42V20H24v8h11.3c-1.6 4.7-6.1 8-11.3 8-6.6 0-12-5.4-12-12s5.4-12 12-12c3.1 0 5.9 1.2 8 3.1l5.7-5.7C34.6 6.1 29.6 4 24 4 12.9 4 4 12.9 4 24s8.9 20 20 20 20-8.9 20-20c0-1.3-.1-2.3-.4-3.5z"/><path fill="#FF3D00" d="M6.3 14.7l6.6 4.8C14.7 16 19 13 24 13c3.1 0 5.9 1.2 8 3.1l5.7-5.7C34.6 6.1 29.6 4 24 4 16.3 4 9.7 8.3 6.3 14.7z"/><path fill="#4CAF50" d="M24 44c5.5 0 10.5-2.1 14.3-5.5l-6.6-5.6C29.7 34.6 27 35.5 24 35.5c-5.2 0-9.6-3.3-11.2-8l-6.5 5C9.6 39.6 16.2 44 24 44z"/><path fill="#1976D2" d="M43.6 20.5H42V20H24v8h11.3c-.8 2.2-2.2 4.1-4 5.5l6.6 5.6c-.5.4 7.1-5.2 7.1-15.1 0-1.3-.1-2.3-.4-3.5z"/></svg>
+      Sign in with Google</button>
+    <div style="font-size:11px;color:#94a3b8;margin-top:16px;text-align:center">Protected by Firebase Authentication</div>
+  </div>
+</div>
+<div class="app" id="appRoot" style="display:none">
+  <aside class="side">
+    <div class="brand"><div class="logo">₵</div><div><h1>CostFlow</h1><span>E&I · CBS</span></div></div>
+    <nav class="nav">
+      <div class="lbl">Workspace</div>
+      <a data-view="dashboard" class="active"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="9"/><rect x="14" y="3" width="7" height="5"/><rect x="14" y="12" width="7" height="9"/><rect x="3" y="16" width="7" height="5"/></svg>Dashboard</a>
+      <a data-view="cost"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 3h18v18H3z"/><path d="M3 9h18M3 15h18M12 3v18"/></svg>CBS Cost</a>
+      <a data-view="cashflow"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 3v18h18"/><path d="M7 14l4-4 4 3 5-6"/></svg>Cash Flow &amp; S-Curve</a>
+      <a data-view="schedule"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="4" width="18" height="16" rx="2"/><path d="M8 4v16M3 10h5M8 8h4M8 13h7M8 16h9"/></svg>L4 Weighted Schedule</a>
+      <a data-view="settings"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1Z"/></svg>Settings</a>
+    </nav>
+    <div class="side-foot">CBS: 23 categories · 3 groups.<br>Saved <b>on this device</b>.</div>
+  </aside>
+  <div class="main">
+    <div class="topbar">
+      <select class="projsel" id="projSel" onchange="app.switchProject(this.value)"></select>
+      <button class="btn ghost" title="New project" onclick="app.newProjectModal()"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg></button>
+      <div class="spacer"></div>
+      <span id="userChip" style="font-size:12px;color:#64748b;font-weight:600;margin-right:2px"></span>
+      <button class="btn ghost" title="Sign out" onclick="authLogout()" id="signOutBtn" style="display:none"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:16px;height:16px"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg></button>
+      <span class="saved" id="savedInd"><span class="dot"></span>Saved</span>
+      <div class="menu">
+        <button class="btn" onclick="app.toggleMenu(event)"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>Data</button>
+        <div class="menu-pop" id="dataMenu">
+          <button onclick="app.exportExcel()">📊 Export CBS to Excel (.xlsx)</button>
+          <button onclick="app.downloadTemplate()">🧾 Blank CBS upload template (.xlsx)</button>
+          <button onclick="app.importExcel()">⬆️ Upload CBS (.xlsx)</button>
+          <div class="sep"></div>
+          <button onclick="app.importSchedule()">📅 Upload Project Schedule (Excel)</button>
+          <button onclick="app.scheduleTemplate()">🧾 Schedule import template (.xlsx)</button>
+          <button onclick="app.scheduleWizard()">🗓️ Auto-generate from BOQ (rough)</button>
+          <button onclick="app.cashflowTemplate()">🧾 Cash Flow template (.xlsx)</button>
+          <button onclick="app.uploadCashflow()">⬆️ Upload Cash Flow plan (.xlsx)</button>
+          <div class="sep"></div>
+          <button onclick="app.exportJSON()">💾 Backup all data (.json)</button>
+          <button onclick="app.importJSON()">📂 Restore from backup</button>
+          <div class="sep"></div>
+          <button onclick="app.printReport()">🖨️ Print / PDF</button>
+          <button onclick="app.reseed()">✨ Reload MAP2 + GMTP samples</button>
+        </div>
+      </div>
+    </div>
+    <div class="content" id="content"></div>
+  </div>
+</div>
+<div class="overlay" id="overlay"><div class="modal" id="modal"></div></div>
+<div class="toast" id="toast"></div>
+<input type="file" id="fileInput" accept="application/json" class="hide">
+<input type="file" id="xlsxInput" accept=".xlsx,.xls" class="hide">
+<input type="file" id="cfInput" accept=".xlsx,.xls" class="hide">
+<input type="file" id="schedInput" accept=".xlsx,.xls" class="hide">
+<script>
+const SEEDS={"cbs": [["A", "1", "Engineering & Design", "L"], ["A", "2", "Electrical Material Supply", "M"], ["A", "3", "Instrument Material Supply", "M"], ["A", "4", "Bulk & Consumable Material", "M"], ["A", "5", "Installation / Construction Labor", "L"], ["A", "6", "Testing, Pre-comm. & Commissioning", "L"], ["A", "7", "Calibration Work", "L/E"], ["B", "8", "Site Management & Supervision (Staff)", "L"], ["B", "9", "Temporary Construction Facilities (TCF)", "E"], ["B", "10", "Construction Tools & Small Equipment", "E"], ["B", "11", "Scaffolding", "E"], ["B", "12", "Transportation & Logistics", "E"], ["B", "13", "Safety Equipment / HSE", "M"], ["B", "14", "Environment", "M"], ["B", "15", "Utilities & Welfare (UT)", "O"], ["B", "16", "Document & IT", "O"], ["B", "17", "Rental — Heavy Equipment", "E"], ["B", "18", "General / Special Work", "L"], ["B", "19", "Entertainment / Client Relations", "O"], ["C", "20", "Overhead & Profit", "O"], ["C", "21", "Contingency / Risk", "O"], ["C", "22", "Insurance & Bonds", "O"], ["C", "23", "Tax & Duties", "O"]], "groups": {"A": "DIRECT COST", "B": "INDIRECT COST (Site Overhead)", "C": "MARGIN, RISK & STATUTORY"}, "projects": [{"name": "MAP2 LNG ASU Project", "code": "MAP2-EI", "client": "MAP Ta Phut Air Products", "currency": "THB", "cats": [{"grp": "A", "no": "1", "name": "Engineering & Design", "type": "L", "items": [{"name": "Electrical Engineering (4,800 hr)", "budget": 1440000, "actual": 0}, {"name": "Instrument Engineering (4,800 hr)", "budget": 1440000, "actual": 0}, {"name": "Software License (AutoCAD/3D)", "budget": 700000, "actual": 0}, {"name": "Professional Engineer License", "budget": 960000, "actual": 0}, {"name": "3D Modelling (5,760 hr)", "budget": 2016000, "actual": 0}]}, {"grp": "A", "no": "2", "name": "Electrical Material Supply", "type": "M", "items": [{"name": "High Voltage Cable", "budget": 12128484, "actual": 0}, {"name": "Low Voltage Cable", "budget": 16176808, "actual": 0}, {"name": "Lighting System", "budget": 8028870, "actual": 0}, {"name": "Cable Tray, Ladder & Accessories", "budget": 5671476, "actual": 0}, {"name": "Fire Alarm System", "budget": 2968350, "actual": 0}, {"name": "Grounding System", "budget": 2849450, "actual": 0}, {"name": "UPS (Plant)", "budget": 2400000, "actual": 0}, {"name": "Steel Support", "budget": 1663440, "actual": 0}, {"name": "Battery & Charger (DC Panel)", "budget": 1455000, "actual": 0}, {"name": "Cable Gland & Plug", "budget": 1054262, "actual": 0}, {"name": "Push Button & E-Stop Stations", "budget": 985000, "actual": 0}, {"name": "Lightning Protection", "budget": 694098, "actual": 0}, {"name": "Public Address System", "budget": 665400, "actual": 0}, {"name": "Lighting Pole", "budget": 421500, "actual": 0}, {"name": "Conduit & Accessories", "budget": 358500, "actual": 0}, {"name": "Underground Conduit & Hand-hole", "budget": 333500, "actual": 0}, {"name": "Utility Panel", "budget": 320000, "actual": 0}, {"name": "Lighting Panel", "budget": 240000, "actual": 0}, {"name": "Power Distribution Boards", "budget": 185000, "actual": 0}, {"name": "Remote Control Panel (Plant)", "budget": 85000, "actual": 0}, {"name": "Receptacle", "budget": 65000, "actual": 0}, {"name": "Remote Control Panel (115kV Sub)", "budget": 60000, "actual": 0}]}, {"grp": "A", "no": "3", "name": "Instrument Material Supply", "type": "M", "items": [{"name": "Tube, Fitting & Instrument Valves", "budget": 6689701, "actual": 0}, {"name": "Instrument Cable", "budget": 6631000, "actual": 0}, {"name": "Cable Tray & Accessories", "budget": 3392617, "actual": 0}, {"name": "Junction Box", "budget": 1782000, "actual": 0}, {"name": "Steel Support & Structure", "budget": 1023000, "actual": 0}, {"name": "CCTV System", "budget": 844570, "actual": 0}, {"name": "Instrument Power Distribution Panel", "budget": 600000, "actual": 0}, {"name": "Cable Gland & Plug", "budget": 474350, "actual": 0}, {"name": "Analyser Gas Cylinder Rack", "budget": 420000, "actual": 0}, {"name": "Conduit & Accessories", "budget": 252500, "actual": 0}, {"name": "Stanchion", "budget": 152700, "actual": 0}, {"name": "Sunshade (HDG)", "budget": 111600, "actual": 0}, {"name": "Alarm Sounder & Beacon", "budget": 35000, "actual": 0}]}, {"grp": "A", "no": "4", "name": "Bulk & Consumable Material", "type": "M", "items": []}, {"grp": "A", "no": "5", "name": "Installation / Construction Labor", "type": "L", "items": [{"name": "Electrical Installation (C-EL)", "budget": 14004094, "actual": 0}, {"name": "Instrument Installation (C-IN)", "budget": 7376590, "actual": 0}]}, {"grp": "A", "no": "6", "name": "Testing, Pre-comm. & Commissioning", "type": "L", "items": [{"name": "Electrical Inspection & Test", "budget": 1640000, "actual": 0}, {"name": "Instrument Inspection & Test", "budget": 234750, "actual": 0}, {"name": "Loop & Function Test", "budget": 525600, "actual": 0}, {"name": "Tube Cleaning for O2 Service", "budget": 301500, "actual": 0}, {"name": "Material Unloading & Receipt", "budget": 300000, "actual": 0}]}, {"grp": "A", "no": "7", "name": "Calibration Work", "type": "L/E", "items": [{"name": "Instrument Calibration", "budget": 502000, "actual": 0}]}, {"grp": "B", "no": "8", "name": "Site Management & Supervision (Staff)", "type": "L", "items": []}, {"grp": "B", "no": "9", "name": "Temporary Construction Facilities (TCF)", "type": "E", "items": [{"name": "Site Office & Store", "budget": 400000, "actual": 0}, {"name": "Temp Power / Space Heater / HVAC", "budget": 655000, "actual": 0}]}, {"grp": "B", "no": "10", "name": "Construction Tools & Small Equipment", "type": "E", "items": []}, {"grp": "B", "no": "11", "name": "Scaffolding", "type": "E", "items": [{"name": "Scaffolding Erection & Dismantle", "budget": 3120000, "actual": 0}]}, {"grp": "B", "no": "12", "name": "Transportation & Logistics", "type": "E", "items": [{"name": "Transportation", "budget": 550000, "actual": 0}, {"name": "Hiab", "budget": 430000, "actual": 0}, {"name": "Crane (25T/50T)", "budget": 110000, "actual": 0}]}, {"grp": "B", "no": "13", "name": "Safety Equipment / HSE", "type": "M", "items": [{"name": "Safety Cost", "budget": 510000, "actual": 0}, {"name": "Safety Promotion", "budget": 80000, "actual": 0}]}, {"grp": "B", "no": "14", "name": "Environment", "type": "M", "items": []}, {"grp": "B", "no": "15", "name": "Utilities & Welfare (UT)", "type": "O", "items": []}, {"grp": "B", "no": "16", "name": "Document & IT", "type": "O", "items": []}, {"grp": "B", "no": "17", "name": "Rental — Heavy Equipment", "type": "E", "items": [{"name": "Generators", "budget": 870000, "actual": 0}]}, {"grp": "B", "no": "18", "name": "General / Special Work", "type": "L", "items": [{"name": "Field Expenses", "budget": 700000, "actual": 0}, {"name": "N2 Cylinder for Loop Test", "budget": 32000, "actual": 0}]}, {"grp": "B", "no": "19", "name": "Entertainment / Client Relations", "type": "O", "items": []}, {"grp": "C", "no": "20", "name": "Overhead & Profit", "type": "O", "items": [{"name": "Overhead & Profit (2%)", "budget": 2402314.2, "actual": 0}]}, {"grp": "C", "no": "21", "name": "Contingency / Risk", "type": "O", "items": []}, {"grp": "C", "no": "22", "name": "Insurance & Bonds", "type": "O", "items": []}, {"grp": "C", "no": "23", "name": "Tax & Duties", "type": "O", "items": []}], "cashflow": {"months": ["Jul'26", "Aug'26", "Sep'26", "Oct'26", "Nov'26", "Dec'26", "Jan'27", "Feb'27", "Mar'27", "Apr'27", "May'27", "Jun'27", "Jul'27", "Aug'27", "Sep'27", "Oct'27", "Nov'27", "Dec'27", "Jan'28", "Feb'28", "Mar'28", "Apr'28", "May'28", "Jun'28", "Jul'28", "Aug'28", "Sep'28", "Oct'28", "Nov'28", "Dec'28", "Jan'29", "Feb'29", "Mar'29", "Apr'29", "May'29", "Jun'29", "Jul'29", "Aug'29", "Sep'29", "Oct'29", "Nov'29", "Dec'29"], "revenue": [1182591, 5590679, 11807474, 10152348, 10152348, 9096284, 8541791, 4692859, 17009679, 541429, 177973, 177973, 3240924, 177973, 0, 0, 0, 92280, 1010160, 2049256, 3393658, 3767038, 4627948, 4654655, 4276586, 4187504, 3332237, 2865253, 1543115, 1123567, 938642, 276029, 0, 0, 0, 0, 0, 0, 1837770, 0, 0, 0], "cost": [2793955, 7938269, 11307504, 13986201, 13986201, 12586056, 11850899, 6747924, 5245896, 1280025, 798150, 798150, 798150, 347688, 234726, 234726, 234726, 293297, 875891, 1535421, 2388736, 2625726, 3172159, 3189111, 2993235, 2936693, 2393841, 2097439, 1273256, 1006963, 895988, 316286, 141086, 141086, 141086, 75595, 75595, 75595, 75595, 75595, 75595, 75595]}}, {"name": "Gulf MTP LNG Terminal (Instrument)", "code": "GMTP-INS", "client": "Gulf MTP", "currency": "THB", "cats": [{"grp": "A", "no": "1", "name": "Engineering & Design", "type": "L", "items": []}, {"grp": "A", "no": "2", "name": "Electrical Material Supply", "type": "M", "items": []}, {"grp": "A", "no": "3", "name": "Instrument Material Supply", "type": "M", "items": [{"name": "Direct Material (Instrument BOM)", "budget": 39190810, "actual": 0}]}, {"grp": "A", "no": "4", "name": "Bulk & Consumable Material", "type": "M", "items": []}, {"grp": "A", "no": "5", "name": "Installation / Construction Labor", "type": "L", "items": [{"name": "Direct Labor", "budget": 93909774.5, "actual": 0}]}, {"grp": "A", "no": "6", "name": "Testing, Pre-comm. & Commissioning", "type": "L", "items": []}, {"grp": "A", "no": "7", "name": "Calibration Work", "type": "L/E", "items": []}, {"grp": "B", "no": "8", "name": "Site Management & Supervision (Staff)", "type": "L", "items": [{"name": "Indirect Labor", "budget": 9000000, "actual": 0}]}, {"grp": "B", "no": "9", "name": "Temporary Construction Facilities (TCF)", "type": "E", "items": [{"name": "Temporary Facilities", "budget": 1500000, "actual": 0}, {"name": "Storage Container", "budget": 400000, "actual": 0}]}, {"grp": "B", "no": "10", "name": "Construction Tools & Small Equipment", "type": "E", "items": [{"name": "Tool & Consumable", "budget": 4000000, "actual": 0}]}, {"grp": "B", "no": "11", "name": "Scaffolding", "type": "E", "items": []}, {"grp": "B", "no": "12", "name": "Transportation & Logistics", "type": "E", "items": []}, {"grp": "B", "no": "13", "name": "Safety Equipment / HSE", "type": "M", "items": [{"name": "Safety, Health & Environment", "budget": 2500000, "actual": 0}]}, {"grp": "B", "no": "14", "name": "Environment", "type": "M", "items": []}, {"grp": "B", "no": "15", "name": "Utilities & Welfare (UT)", "type": "O", "items": []}, {"grp": "B", "no": "16", "name": "Document & IT", "type": "O", "items": []}, {"grp": "B", "no": "17", "name": "Rental — Heavy Equipment", "type": "E", "items": [{"name": "Construction Equipment", "budget": 15920839, "actual": 0}]}, {"grp": "B", "no": "18", "name": "General / Special Work", "type": "L", "items": [{"name": "General Field Expenses", "budget": 2000000, "actual": 0}]}, {"grp": "B", "no": "19", "name": "Entertainment / Client Relations", "type": "O", "items": []}, {"grp": "C", "no": "20", "name": "Overhead & Profit", "type": "O", "items": [{"name": "Overhead & Profit", "budget": 7451071.17, "actual": 0}]}, {"grp": "C", "no": "21", "name": "Contingency / Risk", "type": "O", "items": []}, {"grp": "C", "no": "22", "name": "Insurance & Bonds", "type": "O", "items": [{"name": "Insurance", "budget": 1500000, "actual": 0}]}, {"grp": "C", "no": "23", "name": "Tax & Duties", "type": "O", "items": [{"name": "Tax & Duties (VAT excl.)", "budget": 1490214.24, "actual": 0}]}]}]};
+const CBS=SEEDS.cbs, GROUPS=SEEDS.groups;
+const KEY='costflow_state_v3';
+const uid=()=>Math.random().toString(36).slice(2,9);
+const L4SEED={"months":["Jan-27","Feb-27","Mar-27","Apr-27","May-27","Jun-27","Jul-27","Aug-27","Sep-27","Oct-27","Nov-27","Dec-27","Jan-28","Feb-28","Mar-28","Apr-28","May-28","Jun-28","Jul-28","Aug-28","Sep-28","Oct-28","Nov-28","Dec-28","Jan-29","Feb-29","Mar-29","Apr-29"],"contract":178862708.91,"acts":[["1.1","Material approval (bulk & main)",0.7001,0,0,"Engineering","Material approval (bulk & main)"],["1.2","Construction procedures & method statements",0.6001,0,0,"Engineering","Construction procedures & method statements"],["1.3","ITP & test procedures",0.4001,0,0,"Engineering","ITP & test procedures"],["1.4","Safety documents",0.3001,0,1,"Engineering","Safety documents"],["2.1","Purchase order placement",0.6001,1,1,"Procurement & Receiving","Purchase order placement"],["2.2","Manufacturing & delivery (bulk)",1.3503,1,2,"Procurement & Receiving","Manufacturing & delivery (bulk)"],["2.3","Material receiving & inspection",1.0502,2,3,"Procurement & Receiving","Material receiving & inspection"],["3.1","Site clearing",0.18,3,3,"Site Preparation","Site clearing"],["3.2","Install fence & gate",0.16,3,3,"Site Preparation","Install fence & gate"],["3.3","Container office mobilization",0.18,3,3,"Site Preparation","Container office mobilization"],["3.4","Toilet & welfare mobilization",0.14,3,3,"Site Preparation","Toilet & welfare mobilization"],["3.5","Install site utilities",0.18,3,3,"Site Preparation","Install site utilities"],["3.6","Lay-down & storage set-up",0.16,3,4,"Site Preparation","Lay-down & storage set-up"],["4.1.1","Survey & marking",0.22,3,3,"CONSTRUCTION — BERTH & TRESTLE","Cable Tray / Duct"],["4.1.2","Support fabrication & installation",0.6601,3,5,"CONSTRUCTION — BERTH & TRESTLE","Cable Tray / Duct"],["4.1.3","Tray / duct laying",0.7702,5,7,"CONSTRUCTION — BERTH & TRESTLE","Cable Tray / Duct"],["4.1.4","Fittings & accessories",0.3301,7,8,"CONSTRUCTION — BERTH & TRESTLE","Cable Tray / Duct"],["4.1.5","Cover, earthing & bonding",0.22,8,8,"CONSTRUCTION — BERTH & TRESTLE","Cable Tray / Duct"],["4.2.1","Support installation",0.3001,3,5,"CONSTRUCTION — BERTH & TRESTLE","Junction Box"],["4.2.2","JB mounting & fixing",0.3401,5,7,"CONSTRUCTION — BERTH & TRESTLE","Junction Box"],["4.2.3","Earthing & inspection",0.21,7,8,"CONSTRUCTION — BERTH & TRESTLE","Junction Box"],["4.3.1","Cable receiving & drum set-up",0.4201,3,3,"CONSTRUCTION — BERTH & TRESTLE","Cable Pulling & Termination"],["4.3.2","Cable pulling / laying",1.4803,3,5,"CONSTRUCTION — BERTH & TRESTLE","Cable Pulling & Termination"],["4.3.3","Glanding",0.6301,5,6,"CONSTRUCTION — BERTH & TRESTLE","Cable Pulling & Termination"],["4.3.4","Termination",1.0602,6,7,"CONSTRUCTION — BERTH & TRESTLE","Cable Pulling & Termination"],["4.3.5","Megger / continuity test",0.4201,7,8,"CONSTRUCTION — BERTH & TRESTLE","Cable Pulling & Termination"],["4.3.6","Tagging & dressing",0.21,8,8,"CONSTRUCTION — BERTH & TRESTLE","Cable Pulling & Termination"],["4.4.1","Cable receiving & drum set-up",0.4201,8,8,"CONSTRUCTION — BERTH & TRESTLE","Cable Pulling & Termination"],["4.4.2","Cable pulling / laying",1.4803,8,10,"CONSTRUCTION — BERTH & TRESTLE","Cable Pulling & Termination"],["4.4.3","Glanding",0.6301,10,10,"CONSTRUCTION — BERTH & TRESTLE","Cable Pulling & Termination"],["4.4.4","Termination",1.0602,10,12,"CONSTRUCTION — BERTH & TRESTLE","Cable Pulling & Termination"],["4.4.5","Megger / continuity test",0.4201,12,12,"CONSTRUCTION — BERTH & TRESTLE","Cable Pulling & Termination"],["4.4.6","Tagging & dressing",0.21,12,12,"CONSTRUCTION — BERTH & TRESTLE","Cable Pulling & Termination"],["4.5.1","Stanchion / support installation",0.6301,8,9,"CONSTRUCTION — BERTH & TRESTLE","Field Instrument Installation"],["4.5.2","Instrument mounting",0.8902,9,10,"CONSTRUCTION — BERTH & TRESTLE","Field Instrument Installation"],["4.5.3","Impulse / air tubing hook-up",0.5101,10,10,"CONSTRUCTION — BERTH & TRESTLE","Field Instrument Installation"],["4.5.4","Calibration",0.3801,10,11,"CONSTRUCTION — BERTH & TRESTLE","Field Instrument Installation"],["4.5.5","Inspection & punch",0.13,11,11,"CONSTRUCTION — BERTH & TRESTLE","Field Instrument Installation"],["4.6.1","Support installation",0.3001,8,9,"CONSTRUCTION — BERTH & TRESTLE","Instrument Air Piping"],["4.6.2","Header / manifold installation",0.2501,9,10,"CONSTRUCTION — BERTH & TRESTLE","Instrument Air Piping"],["4.6.3","Tube / pipe routing",0.3001,10,10,"CONSTRUCTION — BERTH & TRESTLE","Instrument Air Piping"],["4.6.4","Leak test & restoration",0.15,10,11,"CONSTRUCTION — BERTH & TRESTLE","Instrument Air Piping"],["4.7.1","Material prefabrication",0.3001,8,9,"CONSTRUCTION — BERTH & TRESTLE","Instrument Hook-up"],["4.7.2","Impulse hook-up installation",0.4701,9,10,"CONSTRUCTION — BERTH & TRESTLE","Instrument Hook-up"],["4.7.3","Fittings & valves",0.24,10,10,"CONSTRUCTION — BERTH & TRESTLE","Instrument Hook-up"],["4.7.4","Leak test",0.18,10,11,"CONSTRUCTION — BERTH & TRESTLE","Instrument Hook-up"],["5.1.1","Survey & marking",0.23,4,4,"CONSTRUCTION — BUILDING AREA","Cable Tray / Duct"],["5.1.2","Support fabrication & installation",0.6901,4,6,"CONSTRUCTION — BUILDING AREA","Cable Tray / Duct"],["5.1.3","Tray / duct laying",0.8102,6,8,"CONSTRUCTION — BUILDING AREA","Cable Tray / Duct"],["5.1.4","Fittings & accessories",0.3501,8,9,"CONSTRUCTION — BUILDING AREA","Cable Tray / Duct"],["5.1.5","Cover, earthing & bonding",0.23,9,10,"CONSTRUCTION — BUILDING AREA","Cable Tray / Duct"],["5.2.1","Support installation",0.3101,5,7,"CONSTRUCTION — BUILDING AREA","Junction Box"],["5.2.2","JB mounting & fixing",0.3601,7,9,"CONSTRUCTION — BUILDING AREA","Junction Box"],["5.2.3","Earthing & inspection",0.22,9,11,"CONSTRUCTION — BUILDING AREA","Junction Box"],["5.3.1","Cable receiving & drum set-up",0.4501,7,7,"CONSTRUCTION — BUILDING AREA","Cable Pulling & Termination"],["5.3.2","Cable pulling / laying",1.5603,7,10,"CONSTRUCTION — BUILDING AREA","Cable Pulling & Termination"],["5.3.3","Glanding",0.6701,10,10,"CONSTRUCTION — BUILDING AREA","Cable Pulling & Termination"],["5.3.4","Termination",1.1102,10,12,"CONSTRUCTION — BUILDING AREA","Cable Pulling & Termination"],["5.3.5","Megger / continuity test",0.4501,12,13,"CONSTRUCTION — BUILDING AREA","Cable Pulling & Termination"],["5.3.6","Tagging & dressing",0.22,13,13,"CONSTRUCTION — BUILDING AREA","Cable Pulling & Termination"],["5.4.1","Cabinet / panel placement",0.4301,10,10,"CONSTRUCTION — BUILDING AREA","Control System Installation"],["5.4.2","Internal cabling & termination",0.5701,10,11,"CONSTRUCTION — BUILDING AREA","Control System Installation"],["5.4.3","Power-up & I/O check",0.2901,11,12,"CONSTRUCTION — BUILDING AREA","Control System Installation"],["5.4.4","Inspection & punch",0.14,12,12,"CONSTRUCTION — BUILDING AREA","Control System Installation"],["6.1.1","Survey & marking",0.24,7,7,"CONSTRUCTION — UTILITY AREA","Cable Tray / Duct"],["6.1.2","Support fabrication & installation",0.7301,7,9,"CONSTRUCTION — UTILITY AREA","Cable Tray / Duct"],["6.1.3","Tray / duct laying",0.8502,9,11,"CONSTRUCTION — UTILITY AREA","Cable Tray / Duct"],["6.1.4","Fittings & accessories",0.3601,11,12,"CONSTRUCTION — UTILITY AREA","Cable Tray / Duct"],["6.1.5","Cover, earthing & bonding",0.24,12,12,"CONSTRUCTION — UTILITY AREA","Cable Tray / Duct"],["6.2.1","Support installation",0.3301,7,9,"CONSTRUCTION — UTILITY AREA","Junction Box"],["6.2.2","JB mounting & fixing",0.3701,9,11,"CONSTRUCTION — UTILITY AREA","Junction Box"],["6.2.3","Earthing & inspection",0.23,11,12,"CONSTRUCTION — UTILITY AREA","Junction Box"],["6.3.1","Cable receiving & drum set-up",0.4701,10,11,"CONSTRUCTION — UTILITY AREA","Cable Pulling & Termination"],["6.3.2","Cable pulling / laying",1.6403,11,12,"CONSTRUCTION — UTILITY AREA","Cable Pulling & Termination"],["6.3.3","Glanding",0.7001,12,13,"CONSTRUCTION — UTILITY AREA","Cable Pulling & Termination"],["6.3.4","Termination",1.1702,13,14,"CONSTRUCTION — UTILITY AREA","Cable Pulling & Termination"],["6.3.5","Megger / continuity test",0.4701,14,15,"CONSTRUCTION — UTILITY AREA","Cable Pulling & Termination"],["6.3.6","Tagging & dressing",0.23,15,15,"CONSTRUCTION — UTILITY AREA","Cable Pulling & Termination"],["6.4.1","Cabinet / panel placement",0.4501,11,12,"CONSTRUCTION — UTILITY AREA","Control System Installation"],["6.4.2","Internal cabling & termination",0.6001,12,12,"CONSTRUCTION — UTILITY AREA","Control System Installation"],["6.4.3","Power-up & I/O check",0.3001,12,13,"CONSTRUCTION — UTILITY AREA","Control System Installation"],["6.4.4","Inspection & punch",0.15,13,13,"CONSTRUCTION — UTILITY AREA","Control System Installation"],["6.5.1","Stanchion / support installation",0.7001,11,12,"CONSTRUCTION — UTILITY AREA","Field Instrument Installation"],["6.5.2","Instrument mounting",0.9802,12,12,"CONSTRUCTION — UTILITY AREA","Field Instrument Installation"],["6.5.3","Impulse / air tubing hook-up",0.5601,12,13,"CONSTRUCTION — UTILITY AREA","Field Instrument Installation"],["6.5.4","Calibration",0.4201,13,13,"CONSTRUCTION — UTILITY AREA","Field Instrument Installation"],["6.5.5","Inspection & punch",0.14,13,13,"CONSTRUCTION — UTILITY AREA","Field Instrument Installation"],["6.6.1","Support installation",0.3401,14,14,"CONSTRUCTION — UTILITY AREA","Instrument Air Piping"],["6.6.2","Header / manifold installation",0.2801,14,15,"CONSTRUCTION — UTILITY AREA","Instrument Air Piping"],["6.6.3","Tube / pipe routing",0.3401,15,16,"CONSTRUCTION — UTILITY AREA","Instrument Air Piping"],["6.6.4","Leak test & restoration",0.17,16,16,"CONSTRUCTION — UTILITY AREA","Instrument Air Piping"],["6.7.1","Material prefabrication",0.3301,14,14,"CONSTRUCTION — UTILITY AREA","Instrument Hook-up"],["6.7.2","Impulse hook-up installation",0.5201,14,15,"CONSTRUCTION — UTILITY AREA","Instrument Hook-up"],["6.7.3","Fittings & valves",0.2601,15,16,"CONSTRUCTION — UTILITY AREA","Instrument Hook-up"],["6.7.4","Leak test",0.2,16,16,"CONSTRUCTION — UTILITY AREA","Instrument Hook-up"],["7.1.1","Cabinet / panel placement",0.5601,3,4,"CONSTRUCTION — TANKAGE AREA","Control System Installation"],["7.1.2","Internal cabling & termination",0.7401,4,5,"CONSTRUCTION — TANKAGE AREA","Control System Installation"],["7.1.3","Power-up & I/O check",0.3701,5,5,"CONSTRUCTION — TANKAGE AREA","Control System Installation"],["7.1.4","Inspection & punch",0.19,5,6,"CONSTRUCTION — TANKAGE AREA","Control System Installation"],["7.2.1","Survey & marking",0.3001,11,11,"CONSTRUCTION — TANKAGE AREA","Cable Tray / Duct"],["7.2.2","Support fabrication & installation",0.9002,11,12,"CONSTRUCTION — TANKAGE AREA","Cable Tray / Duct"],["7.2.3","Tray / duct laying",1.0502,12,13,"CONSTRUCTION — TANKAGE AREA","Cable Tray / Duct"],["7.2.4","Fittings & accessories",0.4501,13,14,"CONSTRUCTION — TANKAGE AREA","Cable Tray / Duct"],["7.2.5","Cover, earthing & bonding",0.3001,14,14,"CONSTRUCTION — TANKAGE AREA","Cable Tray / Duct"],["7.3.1","Support installation",0.4101,12,13,"CONSTRUCTION — TANKAGE AREA","Junction Box"],["7.3.2","JB mounting & fixing",0.4601,13,14,"CONSTRUCTION — TANKAGE AREA","Junction Box"],["7.3.3","Earthing & inspection",0.2901,14,14,"CONSTRUCTION — TANKAGE AREA","Junction Box"],["7.4.1","Cable receiving & drum set-up",0.5801,14,15,"CONSTRUCTION — TANKAGE AREA","Cable Pulling & Termination"],["7.4.2","Cable pulling / laying",2.0304,15,16,"CONSTRUCTION — TANKAGE AREA","Cable Pulling & Termination"],["7.4.3","Glanding",0.8702,16,17,"CONSTRUCTION — TANKAGE AREA","Cable Pulling & Termination"],["7.4.4","Termination",1.4503,17,18,"CONSTRUCTION — TANKAGE AREA","Cable Pulling & Termination"],["7.4.5","Megger / continuity test",0.5801,18,18,"CONSTRUCTION — TANKAGE AREA","Cable Pulling & Termination"],["7.4.6","Tagging & dressing",0.2901,18,18,"CONSTRUCTION — TANKAGE AREA","Cable Pulling & Termination"],["7.5.1","Stanchion / support installation",0.8702,14,15,"CONSTRUCTION — TANKAGE AREA","Field Instrument Installation"],["7.5.2","Instrument mounting",1.2202,15,16,"CONSTRUCTION — TANKAGE AREA","Field Instrument Installation"],["7.5.3","Impulse / air tubing hook-up",0.6901,16,16,"CONSTRUCTION — TANKAGE AREA","Field Instrument Installation"],["7.5.4","Calibration",0.5201,16,16,"CONSTRUCTION — TANKAGE AREA","Field Instrument Installation"],["7.5.5","Inspection & punch",0.17,16,16,"CONSTRUCTION — TANKAGE AREA","Field Instrument Installation"],["7.6.1","Support installation",0.4201,14,15,"CONSTRUCTION — TANKAGE AREA","Instrument Air Piping"],["7.6.2","Header / manifold installation",0.3501,15,16,"CONSTRUCTION — TANKAGE AREA","Instrument Air Piping"],["7.6.3","Tube / pipe routing",0.4201,16,16,"CONSTRUCTION — TANKAGE AREA","Instrument Air Piping"],["7.6.4","Leak test & restoration",0.21,16,17,"CONSTRUCTION — TANKAGE AREA","Instrument Air Piping"],["7.7.1","Material prefabrication",0.4101,14,15,"CONSTRUCTION — TANKAGE AREA","Instrument Hook-up"],["7.7.2","Impulse hook-up installation",0.6501,15,16,"CONSTRUCTION — TANKAGE AREA","Instrument Hook-up"],["7.7.3","Fittings & valves",0.3201,16,16,"CONSTRUCTION — TANKAGE AREA","Instrument Hook-up"],["7.7.4","Leak test",0.24,16,17,"CONSTRUCTION — TANKAGE AREA","Instrument Hook-up"],["7.8.1","Stanchion / support installation",0.8702,19,19,"CONSTRUCTION — TANKAGE AREA","Field Instrument Installation : LNG Tank 1"],["7.8.2","Instrument mounting",1.2202,19,20,"CONSTRUCTION — TANKAGE AREA","Field Instrument Installation : LNG Tank 1"],["7.8.3","Impulse / air tubing hook-up",0.6901,20,21,"CONSTRUCTION — TANKAGE AREA","Field Instrument Installation : LNG Tank 1"],["7.8.4","Calibration",0.5201,21,21,"CONSTRUCTION — TANKAGE AREA","Field Instrument Installation : LNG Tank 1"],["7.8.5","Inspection & punch",0.17,21,21,"CONSTRUCTION — TANKAGE AREA","Field Instrument Installation : LNG Tank 1"],["7.9.1","Stanchion / support installation",0.8702,20,20,"CONSTRUCTION — TANKAGE AREA","Field Instrument Installation : LNG Tank 2"],["7.9.2","Instrument mounting",1.2202,20,21,"CONSTRUCTION — TANKAGE AREA","Field Instrument Installation : LNG Tank 2"],["7.9.3","Impulse / air tubing hook-up",0.6901,21,21,"CONSTRUCTION — TANKAGE AREA","Field Instrument Installation : LNG Tank 2"],["7.9.4","Calibration",0.5201,21,22,"CONSTRUCTION — TANKAGE AREA","Field Instrument Installation : LNG Tank 2"],["7.9.5","Inspection & punch",0.17,22,22,"CONSTRUCTION — TANKAGE AREA","Field Instrument Installation : LNG Tank 2"],["8.1.1","Survey & marking",0.23,13,13,"CONSTRUCTION — PROCESS AREA","Cable Tray / Duct"],["8.1.2","Support fabrication & installation",0.6901,13,14,"CONSTRUCTION — PROCESS AREA","Cable Tray / Duct"],["8.1.3","Tray / duct laying",0.8102,14,16,"CONSTRUCTION — PROCESS AREA","Cable Tray / Duct"],["8.1.4","Fittings & accessories",0.3501,16,16,"CONSTRUCTION — PROCESS AREA","Cable Tray / Duct"],["8.1.5","Cover, earthing & bonding",0.23,16,16,"CONSTRUCTION — PROCESS AREA","Cable Tray / Duct"],["8.2.1","Support installation",0.3101,13,13,"CONSTRUCTION — PROCESS AREA","Junction Box"],["8.2.2","JB mounting & fixing",0.3601,13,14,"CONSTRUCTION — PROCESS AREA","Junction Box"],["8.2.3","Earthing & inspection",0.22,14,14,"CONSTRUCTION — PROCESS AREA","Junction Box"],["8.3.1","Cable receiving & drum set-up",0.4501,15,15,"CONSTRUCTION — PROCESS AREA","Cable Pulling & Termination"],["8.3.2","Cable pulling / laying",1.5603,15,16,"CONSTRUCTION — PROCESS AREA","Cable Pulling & Termination"],["8.3.3","Glanding",0.6701,16,17,"CONSTRUCTION — PROCESS AREA","Cable Pulling & Termination"],["8.3.4","Termination",1.1102,17,17,"CONSTRUCTION — PROCESS AREA","Cable Pulling & Termination"],["8.3.5","Megger / continuity test",0.4501,17,18,"CONSTRUCTION — PROCESS AREA","Cable Pulling & Termination"],["8.3.6","Tagging & dressing",0.22,18,18,"CONSTRUCTION — PROCESS AREA","Cable Pulling & Termination"],["8.4.1","Stanchion / support installation",0.6701,15,16,"CONSTRUCTION — PROCESS AREA","Field Instrument Installation"],["8.4.2","Instrument mounting",0.9402,16,17,"CONSTRUCTION — PROCESS AREA","Field Instrument Installation"],["8.4.3","Impulse / air tubing hook-up",0.5301,17,17,"CONSTRUCTION — PROCESS AREA","Field Instrument Installation"],["8.4.4","Calibration",0.4001,17,18,"CONSTRUCTION — PROCESS AREA","Field Instrument Installation"],["8.4.5","Inspection & punch",0.13,18,18,"CONSTRUCTION — PROCESS AREA","Field Instrument Installation"],["8.5.1","Support installation",0.3201,15,16,"CONSTRUCTION — PROCESS AREA","Instrument Air Piping"],["8.5.2","Header / manifold installation",0.2701,16,17,"CONSTRUCTION — PROCESS AREA","Instrument Air Piping"],["8.5.3","Tube / pipe routing",0.3201,17,18,"CONSTRUCTION — PROCESS AREA","Instrument Air Piping"],["8.5.4","Leak test & restoration",0.16,18,18,"CONSTRUCTION — PROCESS AREA","Instrument Air Piping"],["8.6.1","Material prefabrication",0.3101,15,16,"CONSTRUCTION — PROCESS AREA","Instrument Hook-up"],["8.6.2","Impulse hook-up installation",0.5001,16,17,"CONSTRUCTION — PROCESS AREA","Instrument Hook-up"],["8.6.3","Fittings & valves",0.2501,17,18,"CONSTRUCTION — PROCESS AREA","Instrument Hook-up"],["8.6.4","Leak test",0.19,18,18,"CONSTRUCTION — PROCESS AREA","Instrument Hook-up"],["9.1","Loop check",2.4005,24,24,"Test & Commissioning","Loop check"],["9.2","Loop test",3.0006,24,25,"Test & Commissioning","Loop test"],["9.3","Function & sequence test",3.0006,25,26,"Test & Commissioning","Function & sequence test"],["9.4","Commissioning support",2.4005,26,27,"Test & Commissioning","Commissioning support"],["9.5","Punch item clearance",1.2002,27,27,"Test & Commissioning","Punch item clearance"],["10.1","Punch list clearing",1.0002,24,25,"Final Documentation & Demobilization","Punch list clearing"],["10.2","As-built / red-line mark-up",1.0002,25,25,"Final Documentation & Demobilization","As-built / red-line mark-up"],["10.3","Final documentation dossier",1.2002,25,26,"Final Documentation & Demobilization","Final documentation dossier"],["10.4","Demobilization",0.8002,26,27,"Final Documentation & Demobilization","Demobilization"]]};
+function attachRefSchedules(st){(st.projects||[]).forEach(p=>{
+  if(p.schedule){const a=p.schedule.acts;if(!a||!a.length||a[0].ms===undefined||a[0].h1name===undefined)p.schedule=null;}
+  if(!p.schedule && /GMTP/i.test(p.code||'')){
+    p.schedule={months:L4SEED.months.slice(),contract:L4SEED.contract,dataDate:0,
+      acts:L4SEED.acts.map(a=>({id:uid(),wbs:a[0],name:a[1],weight:a[2],ms:a[3],me:a[4],h1name:a[5],h2name:a[6],actualPct:0}))};
+    regenCashflowFor(p);}});}
+function regenCashflowFor(p){const sc=p.schedule;if(!sc)return;const dur=sc.months.length;
+  let contract=sc.contract;if(!contract){contract=0;p.cats.forEach(c=>c.items.forEach(i=>contract+=(+i.budget||0)));}
+  const planM=Array(dur).fill(0);sc.acts.forEach(a=>{const n=a.me-a.ms+1;for(let m=a.ms;m<=Math.min(a.me,dur-1);m++)planM[m]+=a.weight/n;});
+  const totW=sc.acts.reduce((x,a)=>x+a.weight,0)||100;const cost=planM.map(v=>Math.round(v/totW*contract));
+  const disc={E:Array(dur).fill(0),P:Array(dur).fill(0),C:Array(dur).fill(0)};
+  sc.acts.forEach(a=>{const nm=(a.h1name||'').toLowerCase();let dk=nm.includes('engineering')?'E':(nm.includes('procure')?'P':'C');const n=a.me-a.ms+1;for(let m=a.ms;m<=Math.min(a.me,dur-1);m++)disc[dk][m]+=a.weight/n;});
+  const amt={E:0.10*contract,P:0.50*contract,C:0.40*contract};const sum=o=>o.reduce((x,y)=>x+y,0);
+  const rev=Array(dur).fill(0);['E','P','C'].forEach(k=>{const t=sum(disc[k])||1;for(let m=0;m<dur;m++)rev[m]+=amt[k]*disc[k][m]/t;});
+  p.cashflow={months:sc.months.slice(),revenue:rev.map(x=>Math.round(x)),cost};}
+const TYPECOL={M:'#4f46e5',L:'#0ea5e9',E:'#f59e0b',O:'#94a3b8'};
+const TYPENAME={M:'Material',L:'Labor',E:'Equipment',O:'Other'};
+
+let storageOK=true;
+let state=load();attachRefSchedules(state);
+function mkProject(seed){return {id:uid(),name:seed.name,code:seed.code,client:seed.client,currency:seed.currency||'THB',
+  cats:seed.cats.map(c=>({id:uid(),grp:c.grp,no:c.no,name:c.name,type:c.type,
+    items:(c.items||[]).map(i=>({id:uid(),name:i.name,budget:+i.budget||0,actual:+i.actual||0}))})),
+  cashflow:seed.cashflow?{months:seed.cashflow.months.slice(),revenue:seed.cashflow.revenue.slice(),cost:seed.cashflow.cost.slice()}:null};}
+function freshState(){const ps=SEEDS.projects.map(mkProject);return {projects:ps,activeId:ps[0].id};}
+function load(){try{const s=JSON.parse(localStorage.getItem(KEY));if(s&&s.projects&&s.projects.length)return s;}catch(e){storageOK=false;}
+  return freshState();}
+function save(){try{localStorage.setItem(KEY,JSON.stringify(state));storageOK=true;}catch(e){storageOK=false;}flashSaved();cloudSave();}
+function flashSaved(){const el=document.getElementById('savedInd');if(!el)return;
+  if(storageOK){el.innerHTML='<span class="dot"></span>Saved';el.style.color='';}
+  else{el.innerHTML='<span class="dot" style="background:#f59e0b"></span>Not saved — export a backup';el.style.color='#b45309';}}
+function proj(){return state.projects.find(p=>p.id===state.activeId)||state.projects[0];}
+
+/* helpers */
+function fmt(n){n=Math.round(+n||0);return n.toLocaleString('en-US');}
+function fmtShort(n){n=+n||0;const a=Math.abs(n);if(a>=1e9)return(n/1e9).toFixed(2)+'B';if(a>=1e6)return(n/1e6).toFixed(2)+'M';if(a>=1e3)return(n/1e3).toFixed(0)+'K';return n.toFixed(0);}
+function cur(){return proj().currency||'THB';}
+function esc(s){return String(s==null?'':s).replace(/[&<>"]/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[m]));}
+function parseNum(v){if(typeof v==='number')return v;return Math.round((parseFloat(String(v).replace(/[^0-9.\-]/g,''))||0)*100)/100;}
+function today(){return new Date().toISOString().slice(0,10);}
+function catB(c){return c.items.reduce((a,i)=>a+(+i.budget||0),0);}
+function catA(c){return c.items.reduce((a,i)=>a+(+i.actual||0),0);}
+function grpB(p,g){return p.cats.filter(c=>c.grp===g).reduce((a,c)=>a+catB(c),0);}
+function grpA(p,g){return p.cats.filter(c=>c.grp===g).reduce((a,c)=>a+catA(c),0);}
+function totals(){const p=proj();let b=0,a=0;p.cats.forEach(c=>{b+=catB(c);a+=catA(c);});return {budget:b,actual:a,diff:b-a,margin:b?((b-a)/b*100):0};}
+
+/* router */
+let current='dashboard';let charts={};
+function nav(v){current=v;document.querySelectorAll('.nav a').forEach(a=>a.classList.toggle('active',a.dataset.view===v));render();}
+document.querySelectorAll('.nav a').forEach(a=>a.onclick=()=>nav(a.dataset.view));
+function render(){
+  Object.values(charts).forEach(c=>{try{c.destroy()}catch(e){}});charts={};
+  document.getElementById('projSel').innerHTML=state.projects.map(p=>`<option value="${p.id}" ${p.id===state.activeId?'selected':''}>${esc(p.name)}</option>`).join('');
+  const el=document.getElementById('content');
+  if(current==='dashboard')renderDashboard(el);
+  else if(current==='cost')renderCost(el);
+  else if(current==='cashflow')renderCashflow(el);
+  else if(current==='schedule')renderSchedule(el);
+  else renderSettings(el);
+}
+
+/* ===== DASHBOARD ===== */
+function renderDashboard(el){
+  const p=proj();const t=totals();
+  const cats=p.cats.filter(c=>catB(c)>0||catA(c)>0);
+  const over=cats.filter(c=>catA(c)>catB(c)&&catB(c)>0).sort((a,b)=>(catA(b)-catB(b))-(catA(a)-catB(a)));
+  const used=t.budget?(t.actual/t.budget*100):0;
+  el.innerHTML=`
+   <div class="pagehead"><div><h2>${esc(p.name)}</h2><p>${esc(p.code||'')} ${p.client?'· '+esc(p.client):''} · CBS cost overview (23 categories · 3 groups)</p></div></div>
+   <div class="kpis">
+     ${kpi('Total Budget',cur()+' '+fmt(t.budget),'Approved / contract cost','#eef2ff','#4f46e5',iW)}
+     ${kpi('Total Actual',cur()+' '+fmt(t.actual),used.toFixed(1)+'% of budget','#ecfeff','#0ea5e9',iT)}
+     ${kpi('Difference',(t.diff<0?'-':'')+cur()+' '+fmt(Math.abs(t.diff)),t.diff>=0?'Under budget':'Over budget','#ecfdf5',t.diff>=0?'#10b981':'#ef4444',iD,t.diff>=0?'up':'down')}
+     ${kpi('Margin',t.margin.toFixed(1)+'%',t.diff>=0?'vs budget':'loss','#fffbeb','#f59e0b',iC,t.margin>=0?'up':'down')}
+   </div>
+   <div class="grid g3" style="margin-bottom:16px">
+     <div class="card"><h3>By Group <span class="hint">budget</span></h3><div class="body"><div class="chart-wrap"><canvas id="cGrp"></canvas></div></div></div>
+     <div class="card"><h3>By Cost Type <span class="hint">M / L / E / O</span></h3><div class="body"><div class="chart-wrap"><canvas id="cType"></canvas></div></div></div>
+     <div class="card"><h3>Top Categories <span class="hint">budget</span></h3><div class="body"><div class="chart-wrap"><canvas id="cTop"></canvas></div></div></div>
+   </div>
+   <div class="card" style="margin-bottom:16px"><h3>Budget vs Actual by Category <span class="hint">${cur()}</span></h3><div class="body"><div class="chart-wrap" style="height:420px"><canvas id="cBar"></canvas></div></div></div>
+   <div class="card"><h3>⚠️ Over-budget Categories <span class="hint">${over.length}</span></h3><div class="body" id="alerts"></div></div>`;
+  const av=document.getElementById('alerts');
+  av.innerHTML=over.length?over.map(c=>{const b=catB(c),a=catA(c);return `<div class="alert-row"><div class="bar" style="background:#ef4444"></div><div style="flex:1"><div class="nm">${c.no}. ${esc(c.name)}</div><div class="mini">Actual ${cur()} ${fmt(a)} of ${fmt(b)}</div></div><div class="amt">${fmt(a-b)}</div><div class="pct tag r">+${((a-b)/b*100).toFixed(0)}%</div></div>`;}).join(''):'<div class="empty">✅ No category over budget.</div>';
+  // group chart
+  const gl=['A','B','C'];
+  charts.grp=new Chart(document.getElementById('cGrp'),{type:'doughnut',
+    data:{labels:gl.map(g=>g+'. '+GROUPS[g]),datasets:[{data:gl.map(g=>grpB(p,g)),backgroundColor:['#4f46e5','#0ea5e9','#94a3b8'],borderWidth:2,borderColor:'#fff'}]},
+    options:{responsive:true,maintainAspectRatio:false,cutout:'60%',plugins:{legend:{position:'bottom',labels:{boxWidth:10,font:{size:10}}},tooltip:{callbacks:{label:c=>' '+cur()+' '+fmt(c.raw)}}}}});
+  // type chart
+  const types={M:0,L:0,E:0,O:0};p.cats.forEach(c=>{let ty=c.type[0];if(!(ty in types))ty='O';types[ty]+=catB(c);});
+  const tks=Object.keys(types).filter(k=>types[k]>0);
+  charts.type=new Chart(document.getElementById('cType'),{type:'doughnut',
+    data:{labels:tks.map(k=>TYPENAME[k]),datasets:[{data:tks.map(k=>types[k]),backgroundColor:tks.map(k=>TYPECOL[k]),borderWidth:2,borderColor:'#fff'}]},
+    options:{responsive:true,maintainAspectRatio:false,cutout:'60%',plugins:{legend:{position:'bottom',labels:{boxWidth:10,font:{size:10}}},tooltip:{callbacks:{label:c=>' '+cur()+' '+fmt(c.raw)+' ('+(c.raw/t.budget*100).toFixed(1)+'%)'}}}}});
+  // top categories
+  const top=[...p.cats].sort((a,b)=>catB(b)-catB(a)).slice(0,6);
+  charts.top=new Chart(document.getElementById('cTop'),{type:'bar',
+    data:{labels:top.map(c=>c.no),datasets:[{data:top.map(c=>catB(c)),backgroundColor:'#6366f1',borderRadius:4}]},
+    options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false},tooltip:{callbacks:{title:i=>{const c=top[i[0].dataIndex];return c.no+'. '+c.name;},label:c=>cur()+' '+fmt(c.raw)}}},scales:{y:{ticks:{callback:v=>fmtShort(v),font:{size:9}}},x:{grid:{display:false}}}}});
+  // budget vs actual all cats
+  const ac=p.cats;
+  charts.bar=new Chart(document.getElementById('cBar'),{type:'bar',
+    data:{labels:ac.map(c=>c.no+'. '+c.name),datasets:[
+      {label:'Budget',data:ac.map(c=>catB(c)),backgroundColor:'#c7d2fe',borderRadius:3},
+      {label:'Actual',data:ac.map(c=>catA(c)),backgroundColor:ac.map(c=>catA(c)>catB(c)&&catB(c)>0?'#ef4444':'#4f46e5'),borderRadius:3}]},
+    options:{indexAxis:'y',responsive:true,maintainAspectRatio:false,plugins:{legend:{position:'top',labels:{boxWidth:12,font:{size:11}}},tooltip:{callbacks:{label:c=>c.dataset.label+': '+cur()+' '+fmt(c.raw)}}},
+      scales:{x:{ticks:{callback:v=>fmtShort(v),font:{size:9}},grid:{color:'#eef1f6'}},y:{ticks:{font:{size:9.5}},grid:{display:false}}}}});
+}
+function kpi(t,v,s,bg,fg,ic,dir){return `<div class="kpi"><div class="ic" style="background:${bg};color:${fg}">${ic}</div><div class="t">${t}</div><div class="v">${v}</div><div class="s ${dir||''}">${s}</div></div>`;}
+const iW='<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:19px;height:19px"><path d="M21 12V7H5a2 2 0 0 1 0-4h14v4"/><path d="M3 5v14a2 2 0 0 0 2 2h16v-5"/><path d="M18 12a2 2 0 0 0 0 4h4v-4Z"/></svg>';
+const iT='<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:19px;height:19px"><polyline points="22 7 13.5 15.5 8.5 10.5 2 17"/><polyline points="16 7 22 7 22 13"/></svg>';
+const iD='<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:19px;height:19px"><line x1="12" y1="20" x2="12" y2="4"/><polyline points="6 10 12 4 18 10"/></svg>';
+const iC='<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:19px;height:19px"><circle cx="12" cy="12" r="9"/><path d="M12 7v10M9.5 9.5a2.5 2 0 0 1 5 0c0 2.5-5 1.5-5 4a2.5 2 0 0 0 5 0"/></svg>';
+const iF='<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:19px;height:19px"><path d="M12 2v6M12 22v-6"/><circle cx="12" cy="12" r="4"/></svg>';
+
+/* ===== CBS COST ===== */
+let expanded={};
+function renderCost(el){
+  const p=proj();const t=totals();
+  el.innerHTML=`<div class="pagehead"><div><h2>CBS Cost — Budget vs Actual</h2><p>3 groups → 23 categories → sub-items. Click ▸ to expand and edit sub-items.</p></div>
+     <div style="display:flex;gap:8px"><button class="btn" onclick="app.expandAll(true)">Expand all</button><button class="btn" onclick="app.expandAll(false)">Collapse</button><button class="btn primary" onclick="app.importExcel()">⬆ Upload CBS</button></div></div>
+   <div class="tbl-card"><table class="ct">
+     <thead><tr><th style="width:30px"></th><th class="l">CBS Category / Sub-item</th><th>Type</th><th>Budget</th><th>Actual</th><th>Diff</th><th>Margin</th><th></th></tr></thead>
+     <tbody id="cbsBody"></tbody>
+     <tfoot><tr><td></td><td class="l">GRAND TOTAL</td><td></td><td>${fmt(t.budget)}</td><td>${fmt(t.actual)}</td><td class="${t.diff>=0?'':'neg'}">${fmt(t.diff)}</td><td>${t.margin.toFixed(1)}%</td><td></td></tr></tfoot>
+   </table><div class="addrow"><button onclick="app.addCat()">＋ Add category</button></div></div>`;
+  drawCBS();
+}
+function drawCBS(){
+  const p=proj();let html='';
+  ['A','B','C'].forEach(g=>{
+    const cats=p.cats.filter(c=>c.grp===g);if(!cats.length)return;
+    const gb=grpB(p,g),ga=grpA(p,g);
+    html+=`<tr class="grp"><td></td><td class="l">${g}. ${GROUPS[g]}</td><td></td><td>${fmt(gb)}</td><td>${fmt(ga)}</td><td>${fmt(gb-ga)}</td><td>${gb?((gb-ga)/gb*100).toFixed(1):'0.0'}%</td><td></td></tr>`;
+    cats.forEach(c=>{
+      const b=catB(c),a=catA(c),d=b-a,m=b?(d/b*100):0;const open=expanded[c.id];
+      html+=`<tr class="cat"><td class="tog" onclick="app.tog('${c.id}')">${open?'▾':'▸'}</td>
+        <td class="l">${c.no}. ${esc(c.name)}</td><td class="ty" style="color:${TYPECOL[c.type[0]]||'#94a3b8'}">${c.type}</td>
+        <td>${fmt(b)}</td><td>${fmt(a)}</td><td class="${d>=0?'pos':'neg'}">${fmt(d)}</td><td>${m.toFixed(1)}%</td>
+        <td class="act"><button title="Delete category" onclick="app.delCat('${c.id}')">×</button></td></tr>`;
+      if(open){
+        c.items.forEach(it=>{const dd=(+it.budget||0)-(+it.actual||0);
+          html+=`<tr class="itm"><td></td><td class="l name"><input value="${esc(it.name)}" onchange="app.setItem('${c.id}','${it.id}','name',this.value)"></td><td></td>
+            <td class="num"><input value="${it.budget?fmt(it.budget):''}" placeholder="0" onchange="app.setItem('${c.id}','${it.id}','budget',this.value)"></td>
+            <td class="num"><input value="${it.actual?fmt(it.actual):''}" placeholder="0" onchange="app.setItem('${c.id}','${it.id}','actual',this.value)"></td>
+            <td class="calc ${dd>=0?'pos':'neg'}">${fmt(dd)}</td><td></td>
+            <td class="act"><button title="Delete sub-item" onclick="app.delItem('${c.id}','${it.id}')">×</button></td></tr>`;});
+        html+=`<tr class="addi"><td></td><td colspan="7"><button onclick="app.addItem('${c.id}')">＋ Add sub-item</button></td></tr>`;
+      }
+    });
+  });
+  document.getElementById('cbsBody').innerHTML=html;
+}
+
+/* ===== CASH FLOW ===== */
+function cfCalc(cf){const n=cf.months.length;const net=[],cum=[],cumR=[],cumC=[];let s=0,cr=0,cc=0;
+  for(let m=0;m<n;m++){const r=+cf.revenue[m]||0,c=+cf.cost[m]||0;net.push(r-c);s+=r-c;cum.push(s);cr+=r;cc+=c;cumR.push(cr);cumC.push(cc);}
+  const peak=Math.min(0,...cum);return {net,cum,cumR,cumC,totR:cr,totC:cc,peak,peakM:cum.indexOf(peak),posM:cum.findIndex(x=>x>=0)};}
+function renderCashflow(el){
+  const p=proj();
+  if(!p.cashflow||!p.cashflow.months){
+    el.innerHTML=`<div class="pagehead"><div><h2>Cash Flow &amp; S-Curve</h2><p>No cash-flow model set for this project yet.</p></div></div>
+      <div class="card"><div class="body" style="text-align:center;padding:40px">
+        <p class="mini" style="margin-bottom:16px">Generate a simple monthly model (even cost spread + linear billing) that you can then edit, or keep it empty.</p>
+        <button class="btn primary" onclick="app.genCashflow()">Generate 24-month model</button></div></div>`;
+    return;
+  }
+  const cf=p.cashflow;const k=cfCalc(cf);const profit=k.totR-k.totC;const margin=k.totR?(profit/k.totR*100):0;
+  el.innerHTML=`<div class="pagehead"><div><h2>Cash Flow &amp; S-Curve</h2><p>Cash-in (billing) vs cash-out (cost) · peak funding &amp; cumulative position.</p></div>
+     <div style="display:flex;gap:10px"><button class="btn" onclick="app.exportCashflow()">⬇ Export Excel</button></div></div>
+   <div class="kpis">
+     ${kpi('Contract / Cash-in',cur()+' '+fmt(k.totR),'Total revenue','#eef2ff','#4f46e5',iW)}
+     ${kpi('Total Cash-out',cur()+' '+fmt(k.totC),'Total cost','#ecfeff','#0ea5e9',iT)}
+     ${kpi('Gross Profit',cur()+' '+fmt(profit),margin.toFixed(1)+'% margin','#ecfdf5',profit>=0?'#10b981':'#ef4444',iC,profit>=0?'up':'down')}
+     ${kpi('Peak Funding Need',cur()+' '+fmt(Math.abs(k.peak)),'Max to finance · '+(cf.months[k.peakM]||'-'),'#fff1f2','#ef4444',iF,'down')}
+   </div>
+   <div class="grid g2" style="margin-bottom:16px">
+     <div class="card"><h3>S-Curve — Cumulative Revenue vs Cost</h3><div class="body"><div class="chart-wrap"><canvas id="cS"></canvas></div>
+       <div style="font-size:11.5px;margin-top:8px;display:flex;gap:18px"><span style="color:#10b981;font-weight:700">— Revenue</span><span style="color:#4f46e5;font-weight:700">— Cost</span></div></div></div>
+     <div class="card"><h3>Cash Position <span class="hint">cumulative net</span></h3><div class="body"><div class="chart-wrap"><canvas id="cPos"></canvas></div></div></div>
+   </div>
+   <div class="card" style="margin-bottom:16px"><h3>Monthly Net Cash Flow</h3><div class="body"><div class="chart-wrap" style="height:230px"><canvas id="cNet"></canvas></div></div></div>
+   <div class="tbl-card"><table class="ct"><thead><tr><th class="l">Month</th><th>Revenue</th><th>Cost</th><th>Net</th><th>Cumulative</th></tr></thead>
+     <tbody id="cfBody"></tbody>
+     <tfoot><tr><td class="l">TOTAL</td><td>${fmt(k.totR)}</td><td>${fmt(k.totC)}</td><td class="${profit>=0?'':'neg'}">${fmt(profit)}</td><td>${fmt(k.cum[k.cum.length-1]||0)}</td></tr></tfoot>
+   </table></div>`;
+  document.getElementById('cfBody').innerHTML=cf.months.map((mo,i)=>`<tr><td class="l" style="padding:9px 12px;font-weight:600">${esc(mo)}</td>
+    <td class="num"><input value="${cf.revenue[i]?fmt(cf.revenue[i]):''}" onchange="app.setCF('rev',${i},this.value)"></td>
+    <td class="num"><input value="${cf.cost[i]?fmt(cf.cost[i]):''}" onchange="app.setCF('cost',${i},this.value)"></td>
+    <td class="calc ${k.net[i]>=0?'pos':'neg'}">${fmt(k.net[i])}</td><td class="calc ${k.cum[i]>=0?'pos':'neg'}">${fmt(k.cum[i])}</td></tr>`).join('');
+  const xo={ticks:{font:{size:9},maxRotation:90,minRotation:90},grid:{display:false}};
+  const yo={ticks:{callback:v=>fmtShort(v),font:{size:10}},grid:{color:'#eef1f6'}};
+  charts.s=new Chart(document.getElementById('cS'),{type:'line',data:{labels:cf.months,datasets:[
+    {label:'Rev',data:k.cumR,borderColor:'#10b981',backgroundColor:'rgba(16,185,129,.10)',fill:true,tension:.35,pointRadius:0,borderWidth:2.5},
+    {label:'Cost',data:k.cumC,borderColor:'#4f46e5',backgroundColor:'rgba(79,70,229,.08)',fill:true,tension:.35,pointRadius:0,borderWidth:2.5}]},
+    options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false},tooltip:{callbacks:{label:c=>c.dataset.label+': '+cur()+' '+fmt(c.raw)}}},scales:{x:xo,y:yo}}});
+  charts.pos=new Chart(document.getElementById('cPos'),{type:'line',data:{labels:cf.months,datasets:[
+    {data:k.cum,borderColor:'#0ea5e9',backgroundColor:'rgba(14,165,233,.12)',fill:true,tension:.3,pointRadius:0,borderWidth:2.5,segment:{borderColor:ctx=>ctx.p1.parsed.y<0?'#ef4444':'#10b981'}}]},
+    options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false},tooltip:{callbacks:{label:c=>cur()+' '+fmt(c.raw)}}},scales:{x:xo,y:yo}}});
+  charts.net=new Chart(document.getElementById('cNet'),{type:'bar',data:{labels:cf.months,datasets:[
+    {data:k.net,backgroundColor:k.net.map(v=>v>=0?'#10b981':'#ef4444'),borderRadius:3}]},
+    options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false},tooltip:{callbacks:{label:c=>cur()+' '+fmt(c.raw)}}},scales:{x:xo,y:yo}}});
+}
+
+/* ===== SETTINGS ===== */
+function renderSettings(el){
+  const p=proj();
+  el.innerHTML=`<div class="pagehead"><div><h2>Settings</h2><p>Project details and data.</p></div></div>
+   <div class="settings">
+     <div class="sec"><h3>Project Details</h3><div class="body">
+       <div class="field"><label>Project name</label><input value="${esc(p.name)}" onchange="app.setProj('name',this.value)"></div>
+       <div class="field row"><div><label>Project code</label><input value="${esc(p.code||'')}" onchange="app.setProj('code',this.value)"></div>
+         <div><label>Client</label><input value="${esc(p.client||'')}" onchange="app.setProj('client',this.value)"></div></div>
+       <div class="field"><label>Currency</label><input value="${esc(p.currency)}" onchange="app.setProj('currency',this.value)"></div>
+     </div></div>
+     <div class="sec"><h3>Data</h3><div class="body" style="display:flex;gap:10px;flex-wrap:wrap">
+        <button class="btn" onclick="app.exportExcel()">Export CBS Excel</button>
+        <button class="btn" onclick="app.downloadTemplate()">Blank template</button>
+        <button class="btn" onclick="app.importExcel()">Upload CBS</button>
+        <button class="btn" onclick="app.exportJSON()">Backup JSON</button>
+        <button class="btn" onclick="app.importJSON()">Restore JSON</button>
+        <button class="btn" onclick="app.reseed()">Reload samples</button>
+     </div></div>
+     <div class="sec danger"><h3>Danger Zone</h3><div class="body" style="display:flex;gap:10px;flex-wrap:wrap">
+        <button class="btn danger-b" onclick="app.clearActuals()">Clear all Actuals</button>
+        <button class="btn danger-b" onclick="app.deleteProject()">Delete this project</button>
+     </div></div>
+   </div>`;
+}
+
+/* ===== ACTIONS ===== */
+/* ===== WBS L4 SCHEDULE + CASH-FLOW GENERATOR ===== */
+const MON=['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+function phaseWin(no){const Pm={'1':[0,.30],'2':[.10,.60],'3':[.10,.60],'4':[.20,.70],'5':[.35,.92],'6':[.78,1],'7':[.82,1],
+ '8':[0,1],'9':[0,1],'10':[.30,.95],'11':[.35,.90],'12':[.30,.95],'13':[0,1],'14':[.30,.95],'15':[0,1],'16':[0,1],'17':[.30,.95],'18':[.30,.95],'19':[0,1]};
+ return Pm[no]||[0,1];}
+function genScheduleData(startY,startM,dur){
+  const p=proj();const months=[];
+  for(let i=0;i<dur;i++){const idx=startM+i;const y=startY+Math.floor(idx/12);const m=((idx%12)+12)%12;months.push(MON[m]+"'"+String(y%100).padStart(2,'0'));}
+  let totC=0;p.cats.forEach(c=>{if(c.grp!=='C')c.items.forEach(i=>totC+=(+i.budget||0));});if(!totC)totC=1;
+  const acts=[];
+  p.cats.forEach(c=>{if(c.grp==='C')return;const w=phaseWin(c.no);let s=Math.floor(w[0]*dur),e=Math.ceil(w[1]*dur)-1;
+    if(s<0)s=0;if(e>dur-1)e=dur-1;if(e<s)e=s;
+    c.items.forEach(it=>{const wt=+it.budget||0;if(wt<=0)return;
+      acts.push({id:uid(),wbs:c.no,name:it.name,h1name:GROUPS[c.grp],h2name:c.no+'. '+c.name,weight:wt/totC*100,ms:s,me:e,actualPct:0});});});
+  p.schedule={startY,startM,dur,months,contract:totals().budget,acts,dataDate:0};
+  regenCashflowFor(p);save();
+}
+function regenCashflowFromSchedule(){regenCashflowFor(proj());}
+function schedStats(){const p=proj();const sc=p.schedule;const dur=sc.months.length;
+  const totW=sc.acts.reduce((a,x)=>a+x.weight,0)||100;const planM=Array(dur).fill(0);
+  sc.acts.forEach(a=>{const n=a.me-a.ms+1;for(let m=a.ms;m<=Math.min(a.me,dur-1);m++)planM[m]+=a.weight/n;});
+  const planCum=[];let s=0;planM.forEach(v=>{s+=v;planCum.push(s);});
+  const dd=Math.min(sc.dataDate||0,dur-1);
+  const earned=sc.acts.reduce((a,x)=>a+x.weight*(+x.actualPct||0)/100,0);
+  const actCum=[];for(let m=0;m<dur;m++){if(m>dd){actCum.push(null);continue;}const sh=planCum[dd]?planCum[m]/planCum[dd]:0;actCum.push(earned*sh);}
+  return {dur,totW,planCum,actCum,dd,earned,planToDate:planCum[dd]||0,planPct:planCum[dd]/totW*100,actPct:earned/totW*100};
+}
+let expandedS={};
+function renderSchedule(el){
+  const p=proj();const sc=p.schedule;
+  if(!sc){el.innerHTML=`<div class="pagehead"><div><h2>Schedule — WBS Level 4</h2><p>Upload your real project schedule, then break it down to Level&nbsp;4 here.</p></div></div>
+     <div class="card"><div class="body" style="text-align:center;padding:38px">
+       <p class="mini" style="max-width:580px;margin:0 auto 18px">Upload a project schedule (Excel: <b>Activity, Start, Finish</b>, optional Weight&nbsp;%). The app imports the main activities; you then add Level-4 sub-activities and assign weights here.<br><span style="color:#94a3b8">PDF schedule? Send it to me in chat and I'll convert it into the import template.</span></p>
+       <div style="display:flex;gap:10px;justify-content:center;flex-wrap:wrap">
+         <button class="btn primary" onclick="app.importSchedule()">⬆ Upload Project Schedule (Excel)</button>
+         <button class="btn" onclick="app.scheduleTemplate()">🧾 Import template</button>
+         <button class="btn" onclick="app.scheduleWizard()">Auto-generate from BOQ (rough)</button>
+       </div></div></div>`;return;}
+  const k=schedStats();const spi=k.planToDate?(k.earned/k.planToDate):0;
+  el.innerHTML=`<div class="pagehead"><div><h2>Schedule — WBS Level 4 (Plan / Actual)</h2><p>${esc(p.name)} · ${sc.months[0]}–${sc.months[sc.months.length-1]} · ${sc.months.length} months · weighted physical progress</p></div>
+     <div style="display:flex;gap:8px;align-items:center">Data date:
+       <select onchange="app.setDataDate(this.value)" style="border:1px solid var(--line);border-radius:8px;padding:6px 8px">${sc.months.map((m,i)=>`<option value="${i}" ${i===k.dd?'selected':''}>${m}</option>`).join('')}</select>
+       <button class="btn" onclick="app.importSchedule()">⬆ Import</button><button class="btn" onclick="app.addMainActivity()">＋ Main</button><button class="btn" onclick="app.normalizeWeights()">Normalize 100%</button><button class="btn" onclick="app.exportSchedule()">⬇ Excel</button></div></div>
+   <div class="kpis">
+     ${kpi('Planned % (to date)',k.planPct.toFixed(1)+'%','by '+sc.months[k.dd],'#eef2ff','#4f46e5',iT)}
+     ${kpi('Actual % complete',k.actPct.toFixed(1)+'%','earned value '+cur()+' '+fmt(k.earned/100*(sc.contract||totals().budget)),'#ecfeff','#0ea5e9',iC,k.actPct>=k.planPct?'up':'down')}
+     ${kpi('Schedule Perf. Index',spi.toFixed(2),spi>=1?'On/ahead of plan':'Behind plan','#ecfdf5',spi>=1?'#10b981':'#ef4444',iD,spi>=1?'up':'down')}
+     ${kpi('Total Weight',k.totW.toFixed(0)+'%',sc.acts.length+' L4 activities','#fffbeb','#f59e0b',iW)}
+   </div>
+   <div class="card" style="margin-bottom:16px"><h3>S-Curve — Plan vs Actual <span class="hint">% complete</span></h3><div class="body"><div class="chart-wrap"><canvas id="cSC"></canvas></div>
+     <div style="font-size:11.5px;margin-top:8px;display:flex;gap:18px"><span style="color:#c7d2fe;font-weight:700">■ Planned</span><span style="color:#4f46e5;font-weight:700">■ Actual (to data date)</span></div></div></div>
+   <div class="tbl-card"><table class="ct">
+     <thead><tr><th style="width:30px"></th><th class="l">WBS L4 Activity</th><th>Weight</th><th>Start</th><th>Dur</th><th>Timeline (Plan/Actual)</th><th>Plan%</th><th>Actual%</th></tr></thead>
+     <tbody id="scBody"></tbody></table></div>`;
+  drawSchedule();
+  const pcum=k.planCum.map(v=>v/k.totW*100);const acum=k.actCum.map(v=>v==null?null:v/k.totW*100);
+  charts.sc=new Chart(document.getElementById('cSC'),{type:'line',data:{labels:sc.months,datasets:[
+    {label:'Plan',data:pcum,borderColor:'#94a3b8',backgroundColor:'rgba(199,210,254,.35)',fill:true,tension:.35,pointRadius:0,borderWidth:2},
+    {label:'Actual',data:acum,borderColor:'#4f46e5',backgroundColor:'rgba(79,70,229,.10)',fill:true,tension:.35,pointRadius:0,borderWidth:2.5,spanGaps:false}]},
+    options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false},tooltip:{callbacks:{label:c=>c.dataset.label+': '+(c.raw==null?'-':c.raw.toFixed(1)+'%')}}},
+      scales:{x:{ticks:{font:{size:9},maxRotation:90,minRotation:90},grid:{display:false}},y:{ticks:{callback:v=>v+'%',font:{size:10}},grid:{color:'#eef1f6'},max:100}}}});
+}
+function drawSchedule(){const p=proj();const sc=p.schedule;let html='';const dur=sc.months.length;const dd=sc.dataDate||0;
+  const order=[];const byH={};sc.acts.forEach(a=>{const hh=a.h1name||'Other';if(!byH[hh]){byH[hh]=[];order.push(hh);}byH[hh].push(a);});
+  order.forEach((hh,hi)=>{const list=byH[hh];const hw=list.reduce((a,x)=>a+(+x.weight||0),0);
+    const he=list.reduce((a,x)=>a+(+x.weight||0)*(+x.actualPct||0)/100,0);
+    let hp=0;list.forEach(a=>{const n=a.me-a.ms+1;for(let m=a.ms;m<=Math.min(a.me,dd);m++)hp+=(+a.weight||0)/n;});
+    const open=expandedS[hi];
+    html+=`<tr class="grp"><td class="tog" style="color:#fff;cursor:pointer" onclick="app.togS(${hi})">${open?'▾':'▸'}</td><td class="l">${esc(hh)}</td><td>${hw.toFixed(2)}%</td><td colspan="3"></td><td>${(hw?hp/hw*100:0).toFixed(0)}%</td><td>${(hw?he/hw*100:0).toFixed(0)}%</td></tr>`;
+    if(open){list.forEach(a=>{const pl=(a.ms/dur*100),pw=((a.me-a.ms+1)/dur*100);const ap=+a.actualPct||0;
+      const pdt=a.me<dd?100:(a.ms>dd?0:Math.round(((dd-a.ms+1)/(a.me-a.ms+1))*100));
+      html+=`<tr class="act2"><td></td>
+        <td class="l name"><input value="${esc(a.name)}" onchange="app.setActF('${a.id}','name',this.value)"></td>
+        <td class="pin"><input style="width:64px;text-align:right" value="${a.weight?(+a.weight).toFixed(2):''}" placeholder="0" onchange="app.setActF('${a.id}','weight',this.value)"></td>
+        <td style="text-align:center"><select onchange="app.setActF('${a.id}','ms',this.value)" style="border:1px solid var(--line);border-radius:6px;padding:3px 4px">${sc.months.map((m,i)=>`<option value="${i}" ${i===a.ms?'selected':''}>${m}</option>`).join('')}</select></td>
+        <td class="pin" style="text-align:center"><input style="width:42px;text-align:center" value="${a.me-a.ms+1}" onchange="app.setActF('${a.id}','dur',this.value)"></td>
+        <td><div class="gtrack"><div class="gplan" style="left:${pl}%;width:${pw}%"></div><div class="gact" style="left:${pl}%;width:${pw*ap/100}%"></div></div></td>
+        <td style="text-align:right">${pdt}%</td>
+        <td class="pin" style="white-space:nowrap"><input style="width:48px;text-align:right" value="${ap||''}" placeholder="0" onchange="app.setActual('${a.id}',this.value)"><button title="Delete" style="color:var(--rose);opacity:.45;font-size:15px;margin-left:3px" onclick="app.delAct('${a.id}')">×</button></td></tr>`;});
+      html+=`<tr class="addi"><td></td><td colspan="7"><button onclick="app.addSub('${encodeURIComponent(hh)}')">＋ Add sub-activity (L4)</button></td></tr>`;
+    }
+  });
+  document.getElementById('scBody').innerHTML=html;
+}
+function buildScheduleExcel(){const p=proj();const sc=p.schedule;const wb=XLSX.utils.book_new();const dur=sc.months.length;
+  const head=['WBS','Heading','Sub-heading','Activity','Weight %','Start','Finish','Dur',...sc.months,'Actual %'];
+  const aoa=[head];
+  sc.acts.forEach(a=>{const n=a.me-a.ms+1;const row=[a.wbs||'',a.h1name||'',a.h2name||'',a.name,+a.weight.toFixed(3),sc.months[a.ms],sc.months[a.me],n];
+    for(let m=0;m<dur;m++)row.push((m>=a.ms&&m<=a.me)?+(a.weight/n).toFixed(3):'');row.push(+a.actualPct||0);aoa.push(row);});
+  const ws=XLSX.utils.aoa_to_sheet(aoa);ws['!cols']=[{wch:8},{wch:24},{wch:22},{wch:34},{wch:9},{wch:8},{wch:8},{wch:6},...sc.months.map(()=>({wch:8})),{wch:9}];
+  XLSX.utils.book_append_sheet(wb,ws,'L4 Weighted Schedule');
+  const k=schedStats();const contract=sc.contract||totals().budget;
+  const s2=[['Month','Plan period %','Plan cum %','Actual cum %','Plan cum cost','Actual cum cost']];
+  sc.months.forEach((m,i)=>{const pc=k.planCum[i];const ac=k.actCum[i];const per=(i===0?pc:pc-k.planCum[i-1]);
+    s2.push([m,+per.toFixed(2),+pc.toFixed(2),ac==null?'':+ac.toFixed(2),Math.round(pc/k.totW*contract),ac==null?'':Math.round(ac/k.totW*contract)]);});
+  XLSX.utils.book_append_sheet(wb,XLSX.utils.aoa_to_sheet(s2),'S-Curve & Cost');
+  XLSX.writeFile(wb,'L4-Weighted-Schedule-'+(p.code||p.name).replace(/\s+/g,'_')+'-'+today()+'.xlsx');toast('Schedule exported');
+}
+/* ---- Project schedule import (Excel) ---- */
+function buildSchedTemplate(){const wb=XLSX.utils.book_new();
+  const aoa=[['WBS','Activity','Section','Start','Finish','Duration (d)','Weight %'],
+    ['1','Engineering','Engineering','2027-01-05','2027-02-01',27,2],
+    ['4','Construction — Berth & Trestle','Construction','2027-04-12','2028-01-25',288,''],
+    ['4.1','Cable Tray / Duct','Construction','2027-04-12','2027-09-30',171,2.2],
+    ['4.2','Cable Pulling & Termination','Construction','2027-05-01','2027-11-30',171,4.23],
+    ['9','Test & Commissioning','Commissioning','2029-01-13','2029-04-14',91,12]];
+  const ws=XLSX.utils.aoa_to_sheet(aoa);ws['!cols']=[{wch:8},{wch:40},{wch:16},{wch:12},{wch:12},{wch:12},{wch:10}];
+  XLSX.utils.book_append_sheet(wb,ws,'Schedule');
+  const info=[['PROJECT SCHEDULE IMPORT — how to use'],[],
+   ['1) One row per activity. Columns: WBS (optional), Activity, Section (optional), Start, Finish (or Duration), Weight % (optional).'],
+   ['2) Use real dates (YYYY-MM-DD). Weight % = physical progress weighting; blank = app splits by duration.'],
+   ['3) WBS like 4 / 4.1 / 4.1.1 builds hierarchy; parent rows become headings. Or use the Section column to group.'],
+   ['4) Save, then in the app: Upload Project Schedule. You can then add L4 sub-activities & weights inside the app.']];
+  XLSX.utils.book_append_sheet(wb,XLSX.utils.aoa_to_sheet(info),'READ ME');
+  XLSX.writeFile(wb,'Project-Schedule-Import-Template.xlsx');toast('Template downloaded');}
+document.getElementById('schedInput').onchange=function(e){const f=e.target.files[0];if(!f)return;const r=new FileReader();
+ r.onload=()=>{try{const wb=XLSX.read(r.result,{type:'array',cellDates:true});
+   let sn=wb.SheetNames.find(n=>skey(n)!=='read me')||wb.SheetNames[0];
+   const rows=XLSX.utils.sheet_to_json(wb.Sheets[sn],{header:1});
+   let hr=rows.findIndex(rw=>rw&&rw.some(x=>['activity','description','task','work'].includes(skey(x))));if(hr<0)hr=0;
+   const H=rows[hr]||[];const find=(...ks)=>{for(let i=0;i<H.length;i++)if(ks.includes(skey(H[i])))return i;return -1;};
+   const wi=find('wbs','no','no.','id'),ai=find('activity','description','task','work','name'),
+     si=find('start','start date','begin','plan start'),f2=find('finish','end','finish date','completion','plan finish'),
+     di=find('duration','duration (d)','dur','days'),gi=find('section','heading','group','area','phase','discipline'),wg=find('weight','weight %','weight%','wt');
+   if(ai<0)throw new Error('no "Activity" column found');
+   const toDate=v=>{if(v==null||v==='')return null;if(v instanceof Date)return v;if(typeof v==='number')return new Date(Date.UTC(1899,11,30)+Math.round(v)*86400000);const d=new Date(v);return isNaN(d.getTime())?null:d;};
+   const raw=[];
+   for(let k=hr+1;k<rows.length;k++){const rw=rows[k];if(!rw||!rw.length)continue;const nm=rw[ai];if(nm==null||String(nm).trim()===''||skey(nm)==='total')continue;
+     raw.push({wbs:wi>=0?String(rw[wi]==null?'':rw[wi]).trim():'',name:String(nm).trim(),start:toDate(rw[si]),finish:toDate(rw[f2]),dur:di>=0?parseFloat(rw[di]):null,grp:gi>=0?String(rw[gi]==null?'':rw[gi]).trim():'',weight:wg>=0?parseFloat(rw[wg]):null});}
+   if(!raw.length)throw new Error('no activity rows');
+   const codes=new Set(raw.map(x=>x.wbs).filter(Boolean));
+   const hasChild=w=>w&&[...codes].some(c=>c!==w&&c.indexOf(w+'.')===0);
+   const topName={};raw.forEach(x=>{if(x.wbs&&x.wbs.indexOf('.')<0)topName[x.wbs]=x.name;});
+   const leaves=raw.filter(x=>!hasChild(x.wbs));
+   let minD=null,maxD=null;leaves.forEach(x=>{if(x.start&&(!minD||x.start<minD))minD=x.start;const fd=x.finish||x.start;if(fd&&(!maxD||fd>maxD))maxD=fd;});
+   let months=[];if(minD&&maxD){const nM=(maxD.getFullYear()-minD.getFullYear())*12+(maxD.getMonth()-minD.getMonth())+1;for(let i=0;i<Math.max(1,nM);i++){const dt=new Date(minD.getFullYear(),minD.getMonth()+i,1);months.push(MON[dt.getMonth()]+'-'+String(dt.getFullYear()%100).padStart(2,'0'));}}else months=['M1'];
+   const mIdx=d=>{if(!d||!minD)return 0;return Math.max(0,Math.min(months.length-1,(d.getFullYear()-minD.getFullYear())*12+(d.getMonth()-minD.getMonth())));};
+   const acts=leaves.map(x=>{const ms=mIdx(x.start);let me=x.finish?mIdx(x.finish):(x.dur?Math.min(ms+Math.max(1,Math.round(x.dur/30))-1,months.length-1):ms);if(me<ms)me=ms;
+     const h1=(x.wbs&&x.wbs.indexOf('.')>=0)?(topName[x.wbs.split('.')[0]]||x.grp||'Schedule'):(x.grp||x.name);
+     return {id:uid(),wbs:x.wbs,name:x.name,h1name:h1,weight:(x.weight&&x.weight>0)?x.weight:0,ms,me,actualPct:0};});
+   let tw=acts.reduce((a,x)=>a+x.weight,0);
+   if(tw<=0){const td=acts.reduce((a,x)=>a+(x.me-x.ms+1),0)||1;acts.forEach(a=>a.weight=(a.me-a.ms+1)/td*100);}
+   else acts.forEach(a=>a.weight=a.weight/tw*100);
+   const p=proj();p.schedule={months,contract:totals().budget,acts,dataDate:0};expandedS={};
+   regenCashflowFor(p);save();nav('schedule');toast('Imported '+acts.length+' activities into L4 schedule');
+ }catch(err){toast('Import failed: '+(err.message||err));}};
+ r.readAsArrayBuffer(f);};
+/* Cash-flow upload + template */
+function cashflowTemplateBuild(){const p=proj();const cf=p.cashflow;const wb=XLSX.utils.book_new();
+  const aoa=[['Month','Revenue','Cost']];
+  if(cf&&cf.months)cf.months.forEach((m,i)=>aoa.push([m,+cf.revenue[i]||0,+cf.cost[i]||0]));
+  else for(let i=0;i<24;i++)aoa.push(['M'+(i+1),'','']);
+  const ws=XLSX.utils.aoa_to_sheet(aoa);ws['!cols']=[{wch:12},{wch:16},{wch:16}];
+  XLSX.utils.book_append_sheet(wb,ws,'Cash Flow');
+  XLSX.writeFile(wb,'CashFlow-Template-'+(p.code||p.name).replace(/\s+/g,'_')+'.xlsx');toast('Cash flow template downloaded');}
+document.getElementById('cfInput').onchange=function(e){const f=e.target.files[0];if(!f)return;const r=new FileReader();
+ r.onload=()=>{try{const wb=XLSX.read(r.result,{type:'array'});let sn=wb.SheetNames.find(n=>skey(n)!=='read me')||wb.SheetNames[0];
+   const rows=XLSX.utils.sheet_to_json(wb.Sheets[sn],{header:1});
+   let hr=rows.findIndex(rw=>rw&&rw.some(x=>skey(x)==='month'));if(hr<0)hr=0;const H=rows[hr]||[];
+   let mi=H.findIndex(x=>skey(x)==='month');if(mi<0)mi=0;let ri=H.findIndex(x=>skey(x)==='revenue');if(ri<0)ri=1;let ci=H.findIndex(x=>skey(x)==='cost');if(ci<0)ci=2;
+   const months=[],rev=[],cost=[];
+   for(let k=hr+1;k<rows.length;k++){const rw=rows[k];if(!rw||!rw.length)continue;const mo=rw[mi];if(mo==null||String(mo).trim()===''||skey(mo)==='total')continue;
+     months.push(String(mo));rev.push(parseNum(rw[ri]));cost.push(parseNum(rw[ci]));}
+   if(!months.length)throw 0;proj().cashflow={months,revenue:rev,cost};save();nav('cashflow');toast('Cash flow uploaded ('+months.length+' months)');
+ }catch(err){toast('Could not read Cash Flow file');}};
+ r.readAsArrayBuffer(f);};
+
+const app={
+  switchProject(id){state.activeId=id;save();render();},
+  togS(k){expandedS[k]=!expandedS[k];drawSchedule();},
+  setActual(aid,v){const a=proj().schedule.acts.find(x=>x.id===aid);if(a){a.actualPct=Math.max(0,Math.min(100,parseNum(v)));save();renderSchedule(document.getElementById('content'));}},
+  setActF(id,f,v){const sc=proj().schedule;const a=sc.acts.find(x=>x.id===id);if(!a)return;
+    if(f==='name')a.name=v;else if(f==='weight')a.weight=Math.max(0,parseNum(v));
+    else if(f==='ms'){a.ms=Math.max(0,Math.min(sc.months.length-1,+v));if(a.me<a.ms)a.me=a.ms;}
+    else if(f==='dur'){const d=Math.max(1,parseInt(v)||1);a.me=Math.min(a.ms+d-1,sc.months.length-1);}
+    save();regenCashflowFor(proj());if(f==='name')drawSchedule();else renderSchedule(document.getElementById('content'));},
+  addSub(hEnc){const hh=decodeURIComponent(hEnc);const sc=proj().schedule;const same=sc.acts.filter(a=>(a.h1name||'Other')===hh);
+    const ms=same.length?Math.min(...same.map(a=>a.ms)):0;const me=same.length?Math.max(...same.map(a=>a.me)):Math.min(2,sc.months.length-1);
+    sc.acts.push({id:uid(),wbs:'',name:'New sub-activity',h1name:hh,weight:0,ms,me,actualPct:0});save();drawSchedule();},
+  delAct(id){const sc=proj().schedule;sc.acts=sc.acts.filter(a=>a.id!==id);save();regenCashflowFor(proj());renderSchedule(document.getElementById('content'));},
+  addMainActivity(){modal(`<h4>Add main activity</h4><div class="mbody wz"><label>Main activity / heading name</label><input id="maName" placeholder="e.g. Construction — Tankage Area"></div><div class="mfoot"><button class="btn" onclick="app.closeModal()">Cancel</button><button class="btn primary" onclick="app.doAddMain()">Add</button></div>`);},
+  doAddMain(){const nm=(document.getElementById('maName').value||'New Heading').trim();const sc=proj().schedule;if(!sc)return;
+    sc.acts.push({id:uid(),wbs:'',name:nm+' — activity 1',h1name:nm,weight:0,ms:0,me:Math.min(2,sc.months.length-1),actualPct:0});
+    app.closeModal();save();renderSchedule(document.getElementById('content'));toast('Main activity added — expand to add sub-activities');},
+  normalizeWeights(){const sc=proj().schedule;if(!sc)return;const s=sc.acts.reduce((a,x)=>a+(+x.weight||0),0);if(!s)return toast('No weights to normalize');
+    sc.acts.forEach(a=>a.weight=a.weight/s*100);save();regenCashflowFor(proj());renderSchedule(document.getElementById('content'));toast('Weights normalized to 100%');},
+  importSchedule(){document.getElementById('dataMenu').classList.remove('open');const fi=document.getElementById('schedInput');fi.value='';fi.click();},
+  scheduleTemplate(){document.getElementById('dataMenu').classList.remove('open');buildSchedTemplate();},
+  setDataDate(v){proj().schedule.dataDate=+v;save();renderSchedule(document.getElementById('content'));},
+  exportSchedule(){buildScheduleExcel();},
+  cashflowTemplate(){document.getElementById('dataMenu').classList.remove('open');cashflowTemplateBuild();},
+  uploadCashflow(){document.getElementById('dataMenu').classList.remove('open');const fi=document.getElementById('cfInput');fi.value='';fi.click();},
+  scheduleWizard(){document.getElementById('dataMenu').classList.remove('open');const now=new Date();const sc=proj().schedule;
+    const sy=sc?sc.startY:now.getFullYear();const sm=sc?sc.startM:now.getMonth();const du=sc?sc.dur:24;
+    modal(`<h4>Generate WBS L4 + Cash Flow</h4><div class="mbody wz">
+      <p class="mini">Costs are phased automatically by discipline. Set the start &amp; duration; existing actual progress will be reset.</p>
+      <label>Start month</label><select id="wzM">${MON.map((m,i)=>`<option value="${i}" ${i===sm?'selected':''}>${m}</option>`).join('')}</select>
+      <label>Start year</label><input id="wzY" type="number" value="${sy}">
+      <label>Project duration (months)</label><input id="wzD" type="number" min="1" max="120" value="${du}">
+     </div><div class="mfoot"><button class="btn" onclick="app.closeModal()">Cancel</button><button class="btn primary" onclick="app.runWizard()">Generate</button></div>`);},
+  runWizard(){const m=+document.getElementById('wzM').value,y=+document.getElementById('wzY').value||2026,d=Math.max(1,Math.min(120,+document.getElementById('wzD').value||24));
+    genScheduleData(y,m,d);app.closeModal();nav('schedule');toast('Schedule + cash flow generated');},
+  toggleMenu(e){e.stopPropagation();document.getElementById('dataMenu').classList.toggle('open');},
+  setProj(k,v){proj()[k]=v;save();if(k==='name'||k==='currency')render();},
+  tog(id){expanded[id]=!expanded[id];drawCBS();},
+  expandAll(v){proj().cats.forEach(c=>expanded[c.id]=v);drawCBS();},
+  setItem(cid,iid,f,v){const it=proj().cats.find(c=>c.id===cid).items.find(i=>i.id===iid);if(f==='name')it.name=v;else it[f]=parseNum(v);save();if(f!=='name'){renderCost(document.getElementById('content'));}},
+  addItem(cid){const c=proj().cats.find(x=>x.id===cid);c.items.push({id:uid(),name:'New sub-item',budget:0,actual:0});expanded[cid]=true;save();drawCBS();},
+  delItem(cid,iid){const c=proj().cats.find(x=>x.id===cid);c.items=c.items.filter(i=>i.id!==iid);save();renderCost(document.getElementById('content'));},
+  addCat(){const p=proj();p.cats.push({id:uid(),grp:'B',no:'+',name:'New Category',type:'O',items:[{id:uid(),name:'Item 1',budget:0,actual:0}]});save();renderCost(document.getElementById('content'));},
+  delCat(id){const p=proj();if(p.cats.length<=1)return toast('At least one category required');confirmBox('Delete this category and its sub-items?',()=>{p.cats=p.cats.filter(c=>c.id!==id);save();render();});},
+  clearActuals(){confirmBox('Set all Actual values to 0?',()=>{proj().cats.forEach(c=>c.items.forEach(i=>i.actual=0));save();render();toast('Actuals cleared');});},
+  deleteProject(){if(state.projects.length<=1)return toast('Cannot delete the only project');confirmBox('Delete this project?',()=>{state.projects=state.projects.filter(p=>p.id!==state.activeId);state.activeId=state.projects[0].id;save();render();toast('Deleted');});},
+  reseed(){document.getElementById('dataMenu').classList.remove('open');confirmBox('Reload MAP2 + GMTP samples? This replaces ALL current data.',()=>{state=freshState();save();render();toast('Samples reloaded');});},
+  newProjectModal(){modal(`<h4>New Project</h4><div class="mbody">
+      <div class="field"><label>Project name</label><input id="npName" placeholder="e.g. Rayong Substation E&I"></div>
+      <div class="field row"><div><label>Code</label><input id="npCode"></div><div><label>Currency</label><input id="npCur" value="THB"></div></div>
+      <div class="field"><label>Start with</label><select id="npTpl"><option value="cbs">Blank CBS (23 categories, zero)</option><option value="map2">Copy MAP2</option><option value="gmtp">Copy GMTP</option></select></div>
+     </div><div class="mfoot"><button class="btn" onclick="app.closeModal()">Cancel</button><button class="btn primary" onclick="app.createProject()">Create</button></div>`);},
+  createProject(){const name=(document.getElementById('npName').value||'Untitled').trim();const tpl=document.getElementById('npTpl').value;let p;
+    if(tpl==='map2')p=mkProject(SEEDS.projects[0]);
+    else if(tpl==='gmtp')p=mkProject(SEEDS.projects[1]);
+    else{p={id:uid(),name,code:'',client:'',currency:'THB',cats:CBS.map(c=>({id:uid(),grp:c[0],no:c[1],name:c[2],type:c[3],items:[]})),cashflow:null};}
+    p.name=name;p.code=document.getElementById('npCode').value;p.currency=document.getElementById('npCur').value||'THB';
+    state.projects.push(p);state.activeId=p.id;save();app.closeModal();nav('cost');toast('Project created');},
+  closeModal(){document.getElementById('overlay').classList.remove('open');},
+  setCF(w,i,v){const cf=proj().cashflow;(w==='rev'?cf.revenue:cf.cost)[i]=parseNum(v);save();renderCashflow(document.getElementById('content'));},
+  genCashflow(){const p=proj();const t=totals();const N=24;const months=[];const d=new Date();
+    for(let i=0;i<N;i++){const dt=new Date(d.getFullYear(),d.getMonth()+i,1);months.push(['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'][dt.getMonth()]+"'"+String(dt.getFullYear()%100).padStart(2,'0'));}
+    const cost=grpB(p,'A')+grpB(p,'B');const rev=t.budget;
+    p.cashflow={months,revenue:months.map(()=>Math.round(rev/N)),cost:months.map(()=>Math.round(cost/N))};save();renderCashflow(document.getElementById('content'));toast('Model generated — edit as needed');},
+  exportCashflow(){buildCashflowExcel();},
+  exportJSON(){document.getElementById('dataMenu').classList.remove('open');dl(new Blob([JSON.stringify(state,null,2)],{type:'application/json'}),'costflow-backup-'+today()+'.json');toast('Backup downloaded');},
+  importJSON(){document.getElementById('dataMenu').classList.remove('open');const fi=document.getElementById('fileInput');fi.value='';fi.click();},
+  exportExcel(){document.getElementById('dataMenu').classList.remove('open');buildExcel(true);},
+  downloadTemplate(){document.getElementById('dataMenu').classList.remove('open');buildExcel(false);},
+  importExcel(){document.getElementById('dataMenu').classList.remove('open');const fi=document.getElementById('xlsxInput');fi.value='';fi.click();},
+  printReport(){document.getElementById('dataMenu').classList.remove('open');window.print();},
+};
+function dl(blob,name){const u=URL.createObjectURL(blob);const a=document.createElement('a');a.href=u;a.download=name;a.click();setTimeout(()=>URL.revokeObjectURL(u),1000);}
+document.getElementById('fileInput').onchange=function(e){const f=e.target.files[0];if(!f)return;const r=new FileReader();
+  r.onload=()=>{try{const d=JSON.parse(r.result);if(d.projects&&d.projects.length){state=d;}else throw 0;save();render();toast('Restored');}catch(err){toast('Invalid file');}};r.readAsText(f);};
+
+/* ===== Excel CBS export / template / import ===== */
+function buildExcel(withData){
+  const p=proj();const wb=XLSX.utils.book_new();
+  const aoa=[['Group','No.','Category','Sub-item','Type','Budget','Actual']];
+  ['A','B','C'].forEach(g=>{p.cats.filter(c=>c.grp===g).forEach(c=>{
+    if(c.items.length)c.items.forEach(it=>aoa.push([g,c.no,c.name,it.name,c.type,withData?(+it.budget||0):'',withData?(+it.actual||0):'']));
+    else aoa.push([g,c.no,c.name,'',c.type,'','']);
+  });});
+  const ws=XLSX.utils.aoa_to_sheet(aoa);ws['!cols']=[{wch:8},{wch:5},{wch:34},{wch:40},{wch:6},{wch:15},{wch:15}];
+  XLSX.utils.book_append_sheet(wb,ws,'CBS');
+  const info=[['E&I CBS — Cost Upload'],['Project',p.name],['Currency',p.currency],[],
+    ['How to upload:'],['1) Fill Budget (and Actual) for each sub-item row on the "CBS" sheet.'],
+    ['2) Match by Category name + Sub-item name. Add rows for new sub-items.'],
+    ['3) A row with Category but no Sub-item = a single lump for that category.'],['4) Save, then in the app: Upload CBS.']];
+  XLSX.utils.book_append_sheet(wb,XLSX.utils.aoa_to_sheet(info),'READ ME');
+  XLSX.writeFile(wb,(withData?'CBS-Cost-':'CBS-Template-')+(p.code||p.name).replace(/\s+/g,'_')+(withData?'-'+today():'')+'.xlsx');
+  toast(withData?'CBS exported':'Template downloaded');
+}
+function skey(n){return String(n==null?'':n).replace(/\s+/g,' ').trim().toLowerCase();}
+document.getElementById('xlsxInput').onchange=function(e){const f=e.target.files[0];if(!f)return;const r=new FileReader();
+ r.onload=()=>{try{const wb=XLSX.read(r.result,{type:'array'});const p=proj();
+   let sn=wb.SheetNames.find(n=>skey(n)==='cbs')||wb.SheetNames.find(n=>skey(n)!=='read me')||wb.SheetNames[0];
+   const rows=XLSX.utils.sheet_to_json(wb.Sheets[sn],{header:1});
+   let hr=rows.findIndex(rw=>rw&&rw.some(x=>skey(x)==='category'));if(hr<0)hr=0;
+   const H=rows[hr]||[];
+   const gi=H.findIndex(x=>skey(x)==='group'),ni=H.findIndex(x=>skey(x)==='no.'||skey(x)==='no'),
+     cti=H.findIndex(x=>skey(x)==='category'),si=H.findIndex(x=>skey(x)==='sub-item'||skey(x)==='subitem'||skey(x)==='item'),
+     ti=H.findIndex(x=>skey(x)==='type'),bi=H.findIndex(x=>skey(x)==='budget'),ai=H.findIndex(x=>skey(x)==='actual');
+   let n=0;
+   for(let k=hr+1;k<rows.length;k++){const rw=rows[k];if(!rw||!rw.length)continue;
+     const cn=cti>=0?rw[cti]:null;if(cn==null||String(cn).trim()===''||skey(cn).indexOf('total')===0)continue;
+     const cno=ni>=0?String(rw[ni]).trim():'';
+     let c=p.cats.find(x=>(cno&&String(x.no)===cno)||skey(x.name)===skey(cn));
+     if(!c){c={id:uid(),grp:(gi>=0&&rw[gi])?String(rw[gi]).trim().charAt(0).toUpperCase():'B',no:cno||'+',name:String(cn),type:(ti>=0&&rw[ti])?String(rw[ti]).trim():'O',items:[]};p.cats.push(c);}
+     const sname=si>=0?rw[si]:null;
+     const bud=bi>=0?rw[bi]:null, act=ai>=0?rw[ai]:null;
+     if(sname==null||String(sname).trim()===''){
+       // category lump -> single item
+       let it=c.items[0];if(!it){it={id:uid(),name:c.name,budget:0,actual:0};c.items.push(it);}
+       if(bud!=null&&String(bud).trim()!=='')it.budget=parseNum(bud);
+       if(act!=null&&String(act).trim()!=='')it.actual=parseNum(act);
+     }else{
+       let it=c.items.find(x=>skey(x.name)===skey(sname));
+       if(!it){it={id:uid(),name:String(sname),budget:0,actual:0};c.items.push(it);}
+       if(bud!=null&&String(bud).trim()!=='')it.budget=parseNum(bud);
+       if(act!=null&&String(act).trim()!=='')it.actual=parseNum(act);
+     }
+     n++;}
+   save();render();toast('Imported '+n+' rows');
+ }catch(err){toast('Could not read Excel file');}};
+ r.readAsArrayBuffer(f);};
+function buildCashflowExcel(){const p=proj();const cf=p.cashflow;const k=cfCalc(cf);const wb=XLSX.utils.book_new();
+  const aoa=[['Month','Revenue','Cost','Net','Cumulative','Cum. Revenue','Cum. Cost']];
+  cf.months.forEach((mo,i)=>aoa.push([mo,+cf.revenue[i]||0,+cf.cost[i]||0,k.net[i],k.cum[i],k.cumR[i],k.cumC[i]]));
+  aoa.push([]);aoa.push(['TOTAL',k.totR,k.totC,k.totR-k.totC]);aoa.push(['Peak funding',k.peak,'at',cf.months[k.peakM]||'']);
+  const ws=XLSX.utils.aoa_to_sheet(aoa);ws['!cols']=[{wch:10},{wch:15},{wch:15},{wch:15},{wch:16},{wch:15},{wch:15}];
+  XLSX.utils.book_append_sheet(wb,ws,'Cash Flow');
+  XLSX.writeFile(wb,'CashFlow-'+(p.code||p.name).replace(/\s+/g,'_')+'-'+today()+'.xlsx');toast('Cash flow exported');}
+
+function modal(html){document.getElementById('modal').innerHTML=html;document.getElementById('overlay').classList.add('open');}
+function confirmBox(msg,onYes){modal(`<h4>Confirm</h4><div class="mbody">${esc(msg)}</div><div class="mfoot"><button class="btn" onclick="app.closeModal()">Cancel</button><button class="btn primary" id="cfY">Yes, continue</button></div>`);document.getElementById('cfY').onclick=()=>{app.closeModal();onYes();};}
+let tT;function toast(m){const el=document.getElementById('toast');el.textContent=m;el.classList.add('show');clearTimeout(tT);tT=setTimeout(()=>el.classList.remove('show'),2200);}
+document.addEventListener('click',()=>document.getElementById('dataMenu').classList.remove('open'));
+document.getElementById('overlay').onclick=e=>{if(e.target.id==='overlay')app.closeModal();};
+
+/* ===== Firebase Auth + Firestore cloud sync ===== */
+let fbUser=null,fbAuth=null,fbDb=null,cloudTimer=null;
+function cloudSave(){if(fbUser&&fbDb){clearTimeout(cloudTimer);cloudTimer=setTimeout(()=>{fbDb.collection('users').doc(fbUser.uid).set({state:state,updated:Date.now()}).catch(()=>{});},900);}}
+function authErr(m){const e=document.getElementById('authErr');if(e){e.textContent=(m||'').replace('Firebase: ','');e.style.display='block';}}
+function authLogin(){const em=(document.getElementById('authEmail').value||'').trim(),pw=document.getElementById('authPass').value;if(!em||!pw)return authErr('Enter email and password');fbAuth.signInWithEmailAndPassword(em,pw).catch(e=>authErr(e.message));}
+function authSignup(){const em=(document.getElementById('authEmail').value||'').trim(),pw=document.getElementById('authPass').value;if(!em||pw.length<6)return authErr('Enter email and a password of at least 6 characters');fbAuth.createUserWithEmailAndPassword(em,pw).catch(e=>authErr(e.message));}
+function authGoogle(){fbAuth.signInWithPopup(new firebase.auth.GoogleAuthProvider()).catch(e=>authErr(e.message));}
+function authLogout(){if(fbAuth)fbAuth.signOut();}
+function startLocal(){const s=document.getElementById('signOutBtn');if(s)s.style.display='none';document.getElementById('authScreen').style.display='none';document.getElementById('appRoot').style.display='flex';save();render();}
+function startFirebase(){
+  try{firebase.initializeApp(window.FIREBASE_CONFIG);}catch(e){}
+  fbAuth=firebase.auth();fbDb=firebase.firestore();
+  document.getElementById('authScreen').style.display='flex';
+  const s=document.getElementById('signOutBtn');if(s)s.style.display='';
+  fbAuth.onAuthStateChanged(async user=>{fbUser=user;
+    if(user){document.getElementById('authScreen').style.display='none';document.getElementById('appRoot').style.display='flex';
+      const uc=document.getElementById('userChip');if(uc)uc.textContent=user.email||'signed in';
+      try{const d=await fbDb.collection('users').doc(user.uid).get();
+        if(d.exists&&d.data()&&d.data().state){state=migrate(d.data().state);attachRefSchedules(state);}
+        else{await fbDb.collection('users').doc(user.uid).set({state:state,updated:Date.now()});}
+      }catch(e){console.warn('cloud load failed, using local',e);}
+      render();
+    }else{document.getElementById('appRoot').style.display='none';document.getElementById('authScreen').style.display='flex';}
+  });
+}
+(function boot(){const cfg=window.FIREBASE_CONFIG;
+  if(cfg&&cfg.apiKey&&!/PASTE|YOUR_/.test(cfg.apiKey)&&typeof firebase!=='undefined'){startFirebase();}
+  else{startLocal();}
+})();
+</script>
+</body>
+</html>
