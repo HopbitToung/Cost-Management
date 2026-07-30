@@ -128,6 +128,8 @@ tr.act2 td.l{padding-left:8px}
 tr.act2 td.pin input{width:70px;border:1px solid var(--line);border-radius:7px;padding:5px 7px;text-align:right;font-weight:600}
 .wz label{display:block;font-size:12px;font-weight:600;color:var(--muted);margin:10px 0 5px}
 .wz input,.wz select{width:100%;border:1px solid var(--line);border-radius:9px;padding:9px 11px;background:var(--soft)}
+.scroll{overflow-x:auto}
+.tbl-card.scroll table.ct{min-width:820px}
 </style>
 </head>
 <body>
@@ -315,43 +317,39 @@ const iF='<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-widt
 /* ===== CBS COST ===== */
 let expanded={};
 function renderCost(el){
-  const p=proj();const t=totals();
-  el.innerHTML=`<div class="pagehead"><div><h2>CBS Cost — Budget vs Ready-to-Claim</h2><p>15 categories · <b>Rdy to Claim</b> = Budget × L4 progress (earned). Update progress in L4.</p></div>
+  const p=proj();const t=totals();const claimT=p.cats.reduce((a,c)=>a+catClaim(c),0);
+  el.innerHTML=`<div class="pagehead"><div><h2>CBS Cost — Budget vs Ready-to-Claim</h2><p>15 categories · <b>Rdy to Claim</b> = Budget × L4 progress · set <b>Actual Claim + date + credit</b> per line → feeds Cash Flow.</p></div>
      <div style="display:flex;gap:8px"><button class="btn" onclick="app.expandAll(true)">Expand all</button><button class="btn" onclick="app.expandAll(false)">Collapse</button><button class="btn primary" onclick="app.importExcel()">⬆ Upload CBS</button></div></div>
-   <div class="tbl-card"><table class="ct">
-     <thead><tr><th style="width:30px"></th><th class="l">CBS Category / Sub-item</th><th>Type</th><th>Budget</th><th>Rdy to Claim</th><th>Diff</th><th>% Done</th><th></th></tr></thead>
+   <div class="tbl-card scroll"><table class="ct">
+     <thead><tr><th style="width:26px"></th><th class="l">CBS Category / Sub-item</th><th>→</th><th>Budget</th><th>Rdy to Claim</th><th>Actual Claim</th><th>Claim Date</th><th>Credit</th><th></th></tr></thead>
      <tbody id="cbsBody"></tbody>
-     <tfoot><tr><td></td><td class="l">GRAND TOTAL</td><td></td><td>${fmt(t.budget)}</td><td>${fmt(t.actual)}</td><td class="${t.diff>=0?'':'neg'}">${fmt(t.diff)}</td><td>${t.margin.toFixed(1)}%</td><td></td></tr></tfoot>
-   </table><div class="addrow"><button onclick="app.addCat()">＋ Add category</button></div></div>`;
+     <tfoot><tr><td></td><td class="l">GRAND TOTAL</td><td></td><td>${fmt(t.budget)}</td><td>${fmt(t.actual)}</td><td>${fmt(claimT)}</td><td></td><td></td><td></td></tr></tfoot>
+   </table></div><div class="addrow" style="background:#fff;border:1px solid var(--line);border-radius:0 0 14px 14px;border-top:none;margin-top:-1px"><button onclick="app.addCat()">＋ Add category</button></div>`;
   drawCBS();
 }
 function drawCBS(){
-  const p=proj();let html='';
-  ['A','B','C'].forEach(g=>{
-    const cats=p.cats.filter(c=>c.grp===g);if(!cats.length)return;
-    const gb=grpB(p,g),ga=grpA(p,g);
-    html+=`<tr class="grp"><td></td><td class="l">${g}. ${GROUPS[g]}</td><td></td><td>${fmt(gb)}</td><td>${fmt(ga)}</td><td>${fmt(gb-ga)}</td><td>${gb?((gb-ga)/gb*100).toFixed(1):'0.0'}%</td><td></td></tr>`;
-    cats.forEach(c=>{
-      const b=catB(c),a=catA(c),d=b-a,m=b?(a/b*100):0;const open=expanded[c.id];
-      html+=`<tr class="cat"><td class="tog" onclick="app.tog('${c.id}')">${open?'▾':'▸'}</td>
-        <td class="l">${c.no}. ${esc(c.name)}</td><td class="ty" style="color:${TYPECOL[c.type[0]]||'#94a3b8'}">${c.type}</td>
-        <td>${fmt(b)}</td><td>${fmt(a)}</td><td class="${d>=0?'pos':'neg'}">${fmt(d)}</td><td>${m.toFixed(1)}%</td>
-        <td class="act"><button title="Delete category" onclick="app.delCat('${c.id}')">×</button></td></tr>`;
-      if(open){
-        c.items.forEach(it=>{const rc=(+it.budget||0)*(+it.actualPct||0)/100;const dd=(+it.budget||0)-rc;const done=(+it.budget||0)?(rc/(+it.budget||0)*100):0;const rev=it.review?'<span title="Auto-mapped — please verify category" style="color:#f59e0b;font-weight:800;margin-right:3px">⚠</span>':'';
-          html+=`<tr class="itm ${it.review?'rev':''}"><td></td><td class="l name">${rev}<input value="${esc(it.name)}" style="width:calc(100% - 18px)" onchange="app.setItem('${c.id}','${it.id}','name',this.value)"></td>
-            <td style="text-align:center"><select title="Move to CBS category" style="font-size:10.5px;border:1px solid var(--line);border-radius:6px;padding:2px 1px;max-width:64px" onchange="app.moveItem('${c.id}','${it.id}',this.value)">${p.cats.map(x=>`<option value="${x.no}" ${x.id===c.id?'selected':''}>${x.no}</option>`).join('')}</select></td>
-            <td class="num"><input value="${it.budget?fmt(it.budget):''}" placeholder="0" onchange="app.setItem('${c.id}','${it.id}','budget',this.value)"></td>
-            <td class="calc" style="text-align:right;color:#0ea5e9">${fmt(rc)}</td>
-            <td class="calc ${dd>=0?'pos':'neg'}">${fmt(dd)}</td><td style="text-align:right;color:#64748b;font-size:12px">${done.toFixed(0)}%</td>
-            <td class="act"><button title="Delete sub-item" onclick="app.delItem('${c.id}','${it.id}')">×</button></td></tr>`;});
-        html+=`<tr class="addi"><td></td><td colspan="7"><button onclick="app.addItem('${c.id}')">＋ Add sub-item</button></td></tr>`;
+  const p=proj();const months=planMonths(ensurePlan(p));let html='';
+  ['A','B','C'].forEach(g=>{const cats=p.cats.filter(c=>c.grp===g);if(!cats.length)return;
+    const gb=grpB(p,g),ga=cats.reduce((a,c)=>a+catA(c),0),gc=cats.reduce((a,c)=>a+catClaim(c),0);
+    html+=`<tr class="grp"><td></td><td class="l">${g}. ${GROUPS[g]}</td><td></td><td>${fmt(gb)}</td><td>${fmt(ga)}</td><td>${fmt(gc)}</td><td></td><td></td><td></td></tr>`;
+    cats.forEach(c=>{const b=catB(c),a=catA(c),cc=catClaim(c);const open=expanded[c.id];
+      html+=`<tr class="cat"><td class="tog" onclick="app.tog('${c.id}')">${open?'▾':'▸'}</td><td class="l">${c.no}. ${esc(c.name)} <span style="color:#94a3b8;font-size:10px">${c.type}</span></td><td></td><td>${fmt(b)}</td><td>${fmt(a)}</td><td>${fmt(cc)}</td><td></td><td></td><td class="act"><button title="Delete category" onclick="app.delCat('${c.id}')">×</button></td></tr>`;
+      if(open){c.items.forEach(it=>{const rc=(+it.budget||0)*(+it.actualPct||0)/100;const cm=(it.claimMonth==null?null:+it.claimMonth);const camt=(it.claim!=null&&it.claim!=='')?(+it.claim||0):(cm!=null?rc:'');const rev=it.review?'<span title="Auto-mapped — verify" style="color:#f59e0b;font-weight:800;margin-right:3px">⚠</span>':'';
+        html+=`<tr class="itm ${it.review?'rev':''}"><td></td>
+          <td class="l name">${rev}<input value="${esc(it.name)}" style="width:calc(100% - 18px)" onchange="app.setItem('${c.id}','${it.id}','name',this.value)"></td>
+          <td style="text-align:center"><select title="Move category" style="font-size:10px;border:1px solid var(--line);border-radius:6px;padding:2px 1px;max-width:52px" onchange="app.moveItem('${c.id}','${it.id}',this.value)">${p.cats.map(x=>`<option value="${x.no}" ${x.id===c.id?'selected':''}>${x.no}</option>`).join('')}</select></td>
+          <td class="num"><input value="${it.budget?fmt(it.budget):''}" placeholder="0" onchange="app.setItem('${c.id}','${it.id}','budget',this.value)"></td>
+          <td class="calc" style="text-align:right;color:#0ea5e9">${fmt(rc)}</td>
+          <td class="num"><input value="${camt!==''?fmt(camt):''}" placeholder="${rc?fmt(rc):'0'}" onchange="app.setItemClaim('${c.id}','${it.id}','claim',this.value)"></td>
+          <td style="text-align:center"><select onchange="app.setItemClaim('${c.id}','${it.id}','month',this.value)" style="border:1px solid var(--line);border-radius:6px;padding:2px;font-size:11px"><option value="" ${cm==null?'selected':''}>—</option>${months.map((m,j)=>`<option value="${j}" ${j===cm?'selected':''}>${m}</option>`).join('')}</select></td>
+          <td class="pin" style="text-align:center"><input style="width:38px;text-align:center" value="${it.credit!=null?it.credit:''}" placeholder="${p.plan.payLag||0}" onchange="app.setItemClaim('${c.id}','${it.id}','credit',this.value)"></td>
+          <td class="act"><button title="Delete sub-item" onclick="app.delItem('${c.id}','${it.id}')">×</button></td></tr>`;});
+        html+=`<tr class="addi"><td></td><td colspan="8"><button onclick="app.addItem('${c.id}')">＋ Add sub-item</button></td></tr>`;
       }
     });
   });
   document.getElementById('cbsBody').innerHTML=html;
 }
-
 /* ===== CASH FLOW ===== */
 const PHASE_OF={ENG:'eng',DOC:'eng',MEL:'proc',MIN:'proc',BLK:'proc',STF:'inst',SUB:'comm',TCF:'ind',TOL:'ind',RNT:'ind',TRN:'ind',SAF:'ind',ENV:'ind',UTL:'ind',OHC:'ind'};
 const PHNAME={eng:'Engineering & Design',proc:'Procurement',inst:'Installation',comm:'Testing & Commissioning',ind:'Indirect / Site'};
@@ -364,7 +362,11 @@ function isMargin(it){const nm=(it.name||'').toLowerCase();return nm.indexOf('ov
 function marginTotal(p){let t=0;p.cats.forEach(c=>c.items.forEach(i=>{if(isMargin(i))t+=(+i.budget||0);}));return t;}
 function costTotal(p){return contractTotal(p)-marginTotal(p);}
 function projReady(p){let t=0;p.cats.forEach(c=>c.items.forEach(it=>t+=(+it.budget||0)*(+it.actualPct||0)/100));return t;}
-function claimReceipts(p){const dur=planMonths(ensurePlan(p)).length;const arr=Array(dur).fill(0);(p.claims||[]).forEach(cl=>{const amt=+cl.amount||0;if(!amt)return;const rm=(+cl.month||0)+(+cl.credit||0);if(rm<0)return;arr[Math.min(rm,dur-1)]+=amt;});return arr;}
+function readyToClaim(it){return (+it.budget||0)*(+it.actualPct||0)/100;}
+function itemClaimAmt(it){if(it.claimMonth==null)return 0;return (it.claim!=null&&it.claim!=='')?(+it.claim||0):readyToClaim(it);}
+function catClaim(c){return c.items.reduce((a,it)=>a+itemClaimAmt(it),0);}
+function projClaim(p){let t=0;p.cats.forEach(c=>t+=catClaim(c));return t;}
+function claimReceipts(p){const dur=planMonths(ensurePlan(p)).length;const arr=Array(dur).fill(0);p.cats.forEach(c=>c.items.forEach(it=>{const amt=itemClaimAmt(it);if(amt<=0)return;const rm=(+it.claimMonth||0)+((it.credit!=null)?+it.credit:(p.plan.payLag||0));arr[Math.min(Math.max(rm,0),dur-1)]+=amt;}));return arr;}
 function contractTotal(p){let t=0;p.cats.forEach(c=>c.items.forEach(i=>t+=(+i.budget||0)));return t;}
 function findItem(id){const p=proj();for(const c of p.cats){const it=c.items.find(i=>i.id===id);if(it)return it;}return null;}
 function buildSchedule(p){const pl=ensurePlan(p);const months=planMonths(pl);const dur=months.length;const end=dur-1;const tot=costTotal(p)||1;const acts=[];
@@ -390,7 +392,7 @@ function renderCashflow(el){const p=proj();ensurePlan(p);if(!p.claims)p.claims=[
   const net=[],cum=[],cumR=[],cumC=[];let s=0,cr=0,cc=0;for(let m=0;m<dur;m++){net.push(inSel[m]-cost[m]);s+=net[m];cum.push(s);cr+=cf.revenue[m];cc+=cost[m];cumR.push(cr);cumC.push(cc);}
   const totPlanIn=planIn.reduce((a,b)=>a+b,0),totCost=cost.reduce((a,b)=>a+b,0),profit=totPlanIn-totCost;
   const peak=Math.min(0,...cum),peakM=cum.indexOf(peak);
-  const claimed=(p.claims||[]).reduce((a,c)=>a+(+c.amount||0),0);const dd=p.plan.dataDate||0;const received=actIn.slice(0,dd+1).reduce((a,b)=>a+b,0);const ready=projReady(p);
+  const claimed=projClaim(p);const dd=p.plan.dataDate||0;const received=actIn.slice(0,dd+1).reduce((a,b)=>a+b,0);const ready=projReady(p);
   const segb=(on)=>on?'background:#4f46e5;color:#fff':'background:#eef1f6;color:#64748b';
   el.innerHTML=`<div class="pagehead"><div><h2>Cash Flow &amp; S-Curve <span style="font-weight:500;font-size:12px;color:var(--muted)">· ${cfMode==='actual'?'Actual claims basis':'Plan basis'}</span></h2><p>Cash-out = progress × cost · Plan cash-in lagged ${p.plan.payLag||0} mo · Actual cash-in from claims (date + credit)</p></div>
      <div style="display:flex;gap:8px;align-items:center"><div style="display:inline-flex;border:1px solid var(--line);border-radius:9px;overflow:hidden"><button onclick="app.setCfMode('plan')" style="${segb(cfMode!=='actual')};border:none;padding:7px 14px;font-weight:700;font-size:12px;cursor:pointer">Plan</button><button onclick="app.setCfMode('actual')" style="${segb(cfMode==='actual')};border:none;padding:7px 14px;font-weight:700;font-size:12px;cursor:pointer">Actual</button></div><button class="btn" onclick="app.exportCashflow()">⬇ Excel</button></div></div>
@@ -407,16 +409,7 @@ function renderCashflow(el){const p=proj();ensurePlan(p);if(!p.claims)p.claims=[
    <div class="card" style="margin-bottom:16px"><h3>Monthly Net Cash Flow <span class="hint">${cfMode}</span></h3><div class="body"><div class="chart-wrap" style="height:230px"><canvas id="cNet"></canvas></div></div></div>
    <div class="tbl-card" style="margin-bottom:16px"><table class="ct"><thead><tr><th class="l">Month</th><th>Cash-in (Plan)</th><th>Cash-in (Actual)</th><th>Cash-out</th><th>Net (${cfMode})</th><th>Cumulative</th></tr></thead>
      <tbody>${cf.months.map((mo,i)=>`<tr><td class="l" style="padding:9px 12px;font-weight:600">${esc(mo)}</td><td class="calc">${fmt(planIn[i])}</td><td class="calc" style="color:#0ea5e9">${actIn[i]?fmt(actIn[i]):''}</td><td class="calc">${fmt(cost[i])}</td><td class="calc ${net[i]>=0?'pos':'neg'}">${fmt(net[i])}</td><td class="calc ${cum[i]>=0?'pos':'neg'}">${fmt(cum[i])}</td></tr>`).join('')}</tbody>
-     <tfoot><tr><td class="l">TOTAL</td><td>${fmt(totPlanIn)}</td><td>${fmt(claimed)}</td><td>${fmt(totCost)}</td><td class="${profit>=0?'':'neg'}">${fmt(inSel.reduce((a,b)=>a+b,0)-totCost)}</td><td>${fmt(cum[cum.length-1]||0)}</td></tr></tfoot></table></div>
-   <div class="tbl-card"><div style="padding:14px 16px;border-bottom:1px solid var(--line);font-weight:700;font-size:14px">Progress Claims — Actual Cash-in <span class="hint" style="font-weight:500;color:var(--muted)">received = claim month + credit</span></div>
-     <table class="ct"><thead><tr><th class="l">Description</th><th>Amount</th><th>Claim month</th><th>Credit (mo)</th><th>Received</th><th></th></tr></thead>
-     <tbody>${(p.claims||[]).map((cl,i)=>{const rm=(+cl.month||0)+(+cl.credit||0);return `<tr><td class="l name"><input value="${esc(cl.desc||'')}" onchange="app.setClaim(${i},'desc',this.value)"></td>
-       <td class="num"><input value="${cl.amount?fmt(cl.amount):''}" placeholder="0" onchange="app.setClaim(${i},'amount',this.value)"></td>
-       <td style="text-align:center"><select onchange="app.setClaim(${i},'month',this.value)" style="border:1px solid var(--line);border-radius:6px;padding:3px">${cf.months.map((m,j)=>`<option value="${j}" ${j==(cl.month||0)?'selected':''}>${m}</option>`).join('')}</select></td>
-       <td class="pin" style="text-align:center"><input style="width:44px;text-align:center" value="${cl.credit!=null?cl.credit:(p.plan.payLag||0)}" onchange="app.setClaim(${i},'credit',this.value)"></td>
-       <td style="text-align:center;font-weight:600">${cf.months[Math.min(rm,dur-1)]||'-'}</td>
-       <td class="act"><button title="Delete claim" onclick="app.delClaim(${i})">×</button></td></tr>`;}).join('')}</tbody></table>
-     <div class="addrow"><button onclick="app.addClaim()">＋ Add claim (default = Ready-to-Claim not yet claimed)</button></div></div>`;
+     <tfoot><tr><td class="l">TOTAL</td><td>${fmt(totPlanIn)}</td><td>${fmt(claimed)}</td><td>${fmt(totCost)}</td><td class="${profit>=0?'':'neg'}">${fmt(inSel.reduce((a,b)=>a+b,0)-totCost)}</td><td>${fmt(cum[cum.length-1]||0)}</td></tr></tfoot></table></div>`;
   const xo={ticks:{font:{size:9},maxRotation:90,minRotation:90},grid:{display:false}};const yo={ticks:{callback:v=>fmtShort(v),font:{size:10}},grid:{color:'#eef1f6'}};
   charts.s=new Chart(document.getElementById('cS'),{type:'line',data:{labels:cf.months,datasets:[{label:'Rev',data:cumR,borderColor:'#10b981',backgroundColor:'rgba(16,185,129,.10)',fill:true,tension:.35,pointRadius:0,borderWidth:2.5},{label:'Cost',data:cumC,borderColor:'#4f46e5',backgroundColor:'rgba(79,70,229,.08)',fill:true,tension:.35,pointRadius:0,borderWidth:2.5}]},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false},tooltip:{callbacks:{label:c=>c.dataset.label+': '+cur()+' '+fmt(c.raw)}}},scales:{x:xo,y:yo}}});
   charts.pos=new Chart(document.getElementById('cPos'),{type:'line',data:{labels:cf.months,datasets:[{data:cum,borderColor:'#0ea5e9',backgroundColor:'rgba(14,165,233,.12)',fill:true,tension:.3,pointRadius:0,borderWidth:2.5,segment:{borderColor:ctx=>ctx.p1.parsed.y<0?'#ef4444':'#10b981'}}]},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false},tooltip:{callbacks:{label:c=>cur()+' '+fmt(c.raw)}}},scales:{x:xo,y:yo}}});
@@ -667,6 +660,7 @@ const app={
   switchProject(id){state.activeId=id;save();render();},
   moveItem(fromId,itemId,toCode){const p=proj();const from=p.cats.find(c=>c.id===fromId);const to=p.cats.find(c=>c.no===toCode);if(!from||!to||from===to)return;const idx=from.items.findIndex(i=>i.id===itemId);if(idx<0)return;const it=from.items.splice(idx,1)[0];delete it.review;to.items.push(it);save();renderCost(document.getElementById('content'));},
   autoGenCbs(){document.getElementById('dataMenu').classList.remove('open');const fi=document.getElementById('quoteInput');fi.value='';fi.click();},
+  setItemClaim(cid,iid,f,v){const it=proj().cats.find(c=>c.id===cid).items.find(i=>i.id===iid);if(!it)return;if(f==='claim')it.claim=(v===''||v==null)?undefined:parseNum(v);else if(f==='month')it.claimMonth=(v===''||v==null)?null:+v;else if(f==='credit')it.credit=(v===''||v==null)?null:Math.max(0,parseInt(v)||0);save();renderCost(document.getElementById('content'));},
   togS(k){expandedS[k]=!expandedS[k];drawSchedule();},
   setActual(aid,v){const it=findItem(aid);if(it){it.actualPct=Math.max(0,Math.min(100,parseNum(v)));save();renderSchedule(document.getElementById('content'));}},
   setActF(id,f,v){const sc=buildSchedule(proj());const a=sc.acts.find(x=>x.id===id);if(!a)return;const it=a.ref;const end=sc.dur-1;
