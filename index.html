@@ -206,9 +206,649 @@ tr.act2 td.pin input{width:70px;border:1px solid var(--line);border-radius:7px;p
 <input type="file" id="cfInput" accept=".xlsx,.xls" class="hide">
 <input type="file" id="schedInput" accept=".xlsx,.xls" class="hide">
 <input type="file" id="quoteInput" accept=".xlsx,.xls" class="hide">
-  <script src="js/01-data.js"></script>
-  <script src="js/02-views-core.js"></script>
-  <script src="js/03-engine-schedule.js"></script>
-  <script src="js/04-app.js"></script>
+<script>
+
+const SEEDS={"cbs": [["A", "ENG", "Engineering", "L"], ["A", "MEL", "Material - Electrical", "M"], ["A", "MIN", "Material - Instrument", "M"], ["A", "BLK", "Bulk Material", "M"], ["A", "TCF", "Temporary Construction Facilities", "E"], ["A", "TOL", "Tools & Equipment", "E"], ["A", "RNT", "Equipment Rental", "E"], ["A", "TRN", "Transportation & Logistics", "E"], ["A", "STF", "Staff Salary & Site Manpower", "L"], ["A", "SAF", "Safety", "M"], ["A", "ENV", "Environment", "M"], ["A", "UTL", "Utility & Site Services", "O"], ["A", "DOC", "Documentation & IT", "O"], ["A", "SUB", "Subcontract", "L"], ["B", "OHC", "Overhead & Contingency", "O"]], "groups": {"A": "DIRECT COST", "B": "INDIRECT COST"}, "projects": [{"name": "MAP2 LNG ASU Project", "code": "MAP2-EI", "client": "MAP Ta Phut Air Products", "currency": "THB", "cats": [{"grp": "A", "no": "ENG", "name": "Engineering", "type": "L", "items": [{"name": "Electrical Engineering (4,800 hr)", "budget": 1440000, "actual": 0}, {"name": "Instrument Engineering (4,800 hr)", "budget": 1440000, "actual": 0}, {"name": "Software License (AutoCAD/3D)", "budget": 700000, "actual": 0}, {"name": "Professional Engineer License", "budget": 960000, "actual": 0}, {"name": "3D Modelling (5,760 hr)", "budget": 2016000, "actual": 0}]}, {"grp": "A", "no": "MEL", "name": "Material - Electrical", "type": "M", "items": [{"name": "High Voltage Cable", "budget": 12128484, "actual": 0}, {"name": "Low Voltage Cable", "budget": 16176808, "actual": 0}, {"name": "Lighting System", "budget": 8028870, "actual": 0}, {"name": "Cable Tray, Ladder & Accessories", "budget": 5671476, "actual": 0}, {"name": "Fire Alarm System", "budget": 2968350, "actual": 0}, {"name": "Grounding System", "budget": 2849450, "actual": 0}, {"name": "UPS (Plant)", "budget": 2400000, "actual": 0}, {"name": "Steel Support", "budget": 1663440, "actual": 0}, {"name": "Battery & Charger (DC Panel)", "budget": 1455000, "actual": 0}, {"name": "Cable Gland & Plug", "budget": 1054262, "actual": 0}, {"name": "Push Button & E-Stop Stations", "budget": 985000, "actual": 0}, {"name": "Lightning Protection", "budget": 694098, "actual": 0}, {"name": "Public Address System", "budget": 665400, "actual": 0}, {"name": "Lighting Pole", "budget": 421500, "actual": 0}, {"name": "Conduit & Accessories", "budget": 358500, "actual": 0}, {"name": "Underground Conduit & Hand-hole", "budget": 333500, "actual": 0}, {"name": "Utility Panel", "budget": 320000, "actual": 0}, {"name": "Lighting Panel", "budget": 240000, "actual": 0}, {"name": "Power Distribution Boards", "budget": 185000, "actual": 0}, {"name": "Remote Control Panel (Plant)", "budget": 85000, "actual": 0}, {"name": "Receptacle", "budget": 65000, "actual": 0}, {"name": "Remote Control Panel (115kV Sub)", "budget": 60000, "actual": 0}]}, {"grp": "A", "no": "MIN", "name": "Material - Instrument", "type": "M", "items": [{"name": "Tube, Fitting & Instrument Valves", "budget": 6689701, "actual": 0}, {"name": "Instrument Cable", "budget": 6631000, "actual": 0}, {"name": "Cable Tray & Accessories", "budget": 3392617, "actual": 0}, {"name": "Junction Box", "budget": 1782000, "actual": 0}, {"name": "Steel Support & Structure", "budget": 1023000, "actual": 0}, {"name": "CCTV System", "budget": 844570, "actual": 0}, {"name": "Instrument Power Distribution Panel", "budget": 600000, "actual": 0}, {"name": "Cable Gland & Plug", "budget": 474350, "actual": 0}, {"name": "Analyser Gas Cylinder Rack", "budget": 420000, "actual": 0}, {"name": "Conduit & Accessories", "budget": 252500, "actual": 0}, {"name": "Stanchion", "budget": 152700, "actual": 0}, {"name": "Sunshade (HDG)", "budget": 111600, "actual": 0}, {"name": "Alarm Sounder & Beacon", "budget": 35000, "actual": 0}]}, {"grp": "A", "no": "BLK", "name": "Bulk Material", "type": "M", "items": []}, {"grp": "A", "no": "TCF", "name": "Temporary Construction Facilities", "type": "E", "items": [{"name": "Site Office & Store", "budget": 400000, "actual": 0}, {"name": "Temp Power / Space Heater / HVAC", "budget": 655000, "actual": 0}]}, {"grp": "A", "no": "TOL", "name": "Tools & Equipment", "type": "E", "items": []}, {"grp": "A", "no": "RNT", "name": "Equipment Rental", "type": "E", "items": [{"name": "Scaffolding Erection & Dismantle", "budget": 3120000, "actual": 0}, {"name": "Generators", "budget": 870000, "actual": 0}]}, {"grp": "A", "no": "TRN", "name": "Transportation & Logistics", "type": "E", "items": [{"name": "Transportation", "budget": 550000, "actual": 0}, {"name": "Hiab", "budget": 430000, "actual": 0}, {"name": "Crane (25T/50T)", "budget": 110000, "actual": 0}]}, {"grp": "A", "no": "STF", "name": "Staff Salary & Site Manpower", "type": "L", "items": [{"name": "Electrical Installation (C-EL)", "budget": 14004094, "actual": 0}, {"name": "Instrument Installation (C-IN)", "budget": 7376590, "actual": 0}]}, {"grp": "A", "no": "SAF", "name": "Safety", "type": "M", "items": [{"name": "Safety Cost", "budget": 510000, "actual": 0}, {"name": "Safety Promotion", "budget": 80000, "actual": 0}]}, {"grp": "A", "no": "ENV", "name": "Environment", "type": "M", "items": []}, {"grp": "A", "no": "UTL", "name": "Utility & Site Services", "type": "O", "items": []}, {"grp": "A", "no": "DOC", "name": "Documentation & IT", "type": "O", "items": []}, {"grp": "A", "no": "SUB", "name": "Subcontract", "type": "L", "items": [{"name": "Electrical Inspection & Test", "budget": 1640000, "actual": 0}, {"name": "Instrument Inspection & Test", "budget": 234750, "actual": 0}, {"name": "Loop & Function Test", "budget": 525600, "actual": 0}, {"name": "Tube Cleaning for O2 Service", "budget": 301500, "actual": 0}, {"name": "Material Unloading & Receipt", "budget": 300000, "actual": 0}, {"name": "Instrument Calibration", "budget": 502000, "actual": 0}]}, {"grp": "B", "no": "OHC", "name": "Overhead & Contingency", "type": "O", "items": [{"name": "Field Expenses", "budget": 700000, "actual": 0}, {"name": "N2 Cylinder for Loop Test", "budget": 32000, "actual": 0}, {"name": "Overhead & Profit (2%)", "budget": 2402314.2, "actual": 0}]}], "plan": {"startY": 2026, "startM": 6, "dataDate": 0, "payLag": 1, "retention": 0, "phases": {"eng": {"s": 0, "dur": 13}, "proc": {"s": 2, "dur": 10}, "inst": {"s": 8, "dur": 22}, "comm": {"s": 30, "dur": 10}, "ind": {"s": 0, "dur": 0}}}}, {"name": "Gulf MTP LNG Terminal (Instrument)", "code": "GMTP-INS", "client": "Gulf MTP", "currency": "THB", "cats": [{"grp": "A", "no": "ENG", "name": "Engineering", "type": "L", "items": []}, {"grp": "A", "no": "MEL", "name": "Material - Electrical", "type": "M", "items": []}, {"grp": "A", "no": "MIN", "name": "Material - Instrument", "type": "M", "items": [{"name": "Direct Material (Instrument BOM)", "budget": 39190810, "actual": 0}]}, {"grp": "A", "no": "BLK", "name": "Bulk Material", "type": "M", "items": []}, {"grp": "A", "no": "TCF", "name": "Temporary Construction Facilities", "type": "E", "items": [{"name": "Temporary Facilities", "budget": 1500000, "actual": 0}, {"name": "Storage Container", "budget": 400000, "actual": 0}]}, {"grp": "A", "no": "TOL", "name": "Tools & Equipment", "type": "E", "items": [{"name": "Tool & Consumable", "budget": 4000000, "actual": 0}]}, {"grp": "A", "no": "RNT", "name": "Equipment Rental", "type": "E", "items": [{"name": "Construction Equipment", "budget": 15920839, "actual": 0}]}, {"grp": "A", "no": "TRN", "name": "Transportation & Logistics", "type": "E", "items": []}, {"grp": "A", "no": "STF", "name": "Staff Salary & Site Manpower", "type": "L", "items": [{"name": "Direct Labor", "budget": 93909774.5, "actual": 0}, {"name": "Indirect Labor", "budget": 9000000, "actual": 0}]}, {"grp": "A", "no": "SAF", "name": "Safety", "type": "M", "items": [{"name": "Safety, Health & Environment", "budget": 2500000, "actual": 0}]}, {"grp": "A", "no": "ENV", "name": "Environment", "type": "M", "items": []}, {"grp": "A", "no": "UTL", "name": "Utility & Site Services", "type": "O", "items": []}, {"grp": "A", "no": "DOC", "name": "Documentation & IT", "type": "O", "items": []}, {"grp": "A", "no": "SUB", "name": "Subcontract", "type": "L", "items": []}, {"grp": "B", "no": "OHC", "name": "Overhead & Contingency", "type": "O", "items": [{"name": "General Field Expenses", "budget": 2000000, "actual": 0}, {"name": "Overhead & Profit", "budget": 7451071.17, "actual": 0}, {"name": "Insurance", "budget": 1500000, "actual": 0}, {"name": "Tax & Duties (VAT excl.)", "budget": 1490214.24, "actual": 0}]}], "plan": {"startY": 2027, "startM": 0, "dataDate": 0, "payLag": 1, "retention": 0, "phases": {"eng": {"s": 0, "dur": 2}, "proc": {"s": 1, "dur": 4}, "inst": {"s": 4, "dur": 16}, "comm": {"s": 20, "dur": 6}, "ind": {"s": 0, "dur": 0}}}}]};
+const CBS=SEEDS.cbs, GROUPS=SEEDS.groups;
+const MAPRULES=[["temporary power maintenance", "UTL"], ["electrical third party test", "SUB"], ["site service miscellaneous", "UTL"], ["corporate overhead markup", "OHC"], ["instrument location plan", "ENG"], ["multifunction calibrator", "TOL"], ["scaffold material rental", "RNT"], ["commissioning supervisor", "STF"], ["confined space attendant", "STF"], ["hazardous waste disposal", "ENV"], ["water quality monitoring", "ENV"], ["environmental inspection", "ENV"], ["thai-english translation", "DOC"], ["site management overhead", "OHC"], ["construction contingency", "OHC"], ["explosion proof fixture", "MEL"], ["temperature transmitter", "MIN"], ["project control manager", "STF"], ["control system engineer", "STF"], ["electrical qc inspector", "STF"], ["instrument qc inspector", "STF"], ["accommodation allowance", "STF"], ["work at height training", "SAF"], ["confined space training", "SAF"], ["electrical calculation", "ENG"], ["power quality analyzer", "TOL"], ["temperature calibrator", "TOL"], ["hydraulic cable cutter", "TOL"], ["welding machine rental", "RNT"], ["special test equipment", "RNT"], ["qa document controller", "STF"], ["temporary gas detector", "SAF"], ["general waste disposal", "ENV"], ["environmental training", "ENV"], ["incident investigation", "ENV"], ["instrument calibration", "SUB"], ["equipment preservation", "SUB"], ["head office management", "OHC"], ["general administration", "OHC"], ["professional indemnity", "OHC"], ["marine cargo insurance", "OHC"], ["vendor drawing review", "ENG"], ["instrumentation cable", "MEL"], ["conductivity analyzer", "MIN"], ["local control station", "MIN"], ["scaffold modification", "RNT"], ["electrical supervisor", "STF"], ["instrument supervisor", "STF"], ["instrument technician", "STF"], ["night shift allowance", "STF"], ["portable gas detector", "SAF"], ["toolbox talk material", "SAF"], ["technical translation", "DOC"], ["pressure test witness", "SUB"], ["vendor representative", "SUB"], ["cable transit sealing", "SUB"], ["miscellaneous expense", "OHC"], ["housekeeping overhead", "OHC"], ["commercial adjustment", "OHC"], ["interface management", "ENG"], ["cable routing layout", "ENG"], ["instrument datasheet", "ENG"], ["network architecture", "ENG"], ["progress measurement", "ENG"], ["fire resistant cable", "MEL"], ["pressure transmitter", "MIN"], ["ultrasonic flowmeter", "MIN"], ["magnetic level gauge", "MIN"], ["air filter regulator", "MIN"], ["liquid tight conduit", "BLK"], ["documentation charge", "TRN"], ["construction manager", "STF"], ["environmental permit", "ENV"], ["environmental report", "ENV"], ["engineering software", "DOC"], ["authority submission", "DOC"], ["platform fabrication", "SUB"], ["scaffold dismantling", "SUB"], ["finance & accounting", "OHC"], ["advance payment bond", "OHC"], ["workmen compensation", "OHC"], ["withholding tax cost", "OHC"], ["project coordinator", "ENG"], ["single line diagram", "ENG"], ["plc hardware design", "ENG"], ["dcs hardware design", "ENG"], ["local control panel", "MEL"], ["marshalling cabinet", "MEL"], ["instrument manifold", "MIN"], ["self drilling screw", "BLK"], ["warehouse container", "TCF"], ["electrical tool set", "TOL"], ["instrument tool set", "TOL"], ["pressure calibrator", "TOL"], ["scaffold inspection", "RNT"], ["electrical engineer", "STF"], ["instrument engineer", "STF"], ["material controller", "STF"], ["document controller", "STF"], ["environmental audit", "ENV"], ["radio communication", "UTL"], ["gas cylinder rental", "UTL"], ["scheduling software", "DOC"], ["support fabrication", "SUB"], ["hot dip galvanizing", "SUB"], ["welding subcontract", "SUB"], ["surface preparation", "SUB"], ["analyzer specialist", "SUB"], ["industrial cleaning", "SUB"], ["procurement support", "OHC"], ["site administration", "OHC"], ["material escalation", "OHC"], ["rounding adjustment", "OHC"], ["manpower histogram", "ENG"], ["thermocouple cable", "MEL"], ["distribution board", "MEL"], ["temperature switch", "MIN"], ["magnetic flowmeter", "MIN"], ["coriolis flowmeter", "MIN"], ["warehouse lighting", "TCF"], ["warehouse security", "TCF"], ["temporary lighting", "TCF"], ["temporary drainage", "TCF"], ["injection test set", "TOL"], ["dead weight tester", "TOL"], ["portable generator", "TOL"], ["suspended platform", "RNT"], ["material transport", "TRN"], ["warehouse handling", "TRN"], ["general supervisor", "STF"], ["electrical foreman", "STF"], ["instrument foreman", "STF"], ["permit coordinator", "STF"], ["first aid training", "SAF"], ["wastewater control", "ENV"], ["electricity charge", "UTL"], ["construction water", "UTL"], ["coating inspection", "SUB"], ["lifting inspection", "SUB"], ["loop check support", "SUB"], ["thermal insulation", "SUB"], ["site communication", "OHC"], ["exchange rate risk", "OHC"], ["warranty allowance", "OHC"], ["logic development", "ENG"], ["baseline schedule", "ENG"], ["fiber optic cable", "MEL"], ["industrial socket", "MEL"], ["temperature gauge", "MIN"], ["level transmitter", "MIN"], ["guided wave radar", "MIN"], ["gas chromatograph", "MIN"], ["manual call point", "MIN"], ["equipment support", "BLK"], ["pulling lubricant", "BLK"], ["insulation tester", "TOL"], ["hart communicator", "TOL"], ["hydraulic crimper", "TOL"], ["threading machine", "TOL"], ["compressor rental", "RNT"], ["scaffold erection", "RNT"], ["customs clearance", "TRN"], ["vehicle insurance", "TRN"], ["planning engineer", "STF"], ["welding inspector", "STF"], ["safety supervisor", "STF"], ["full body harness", "SAF"], ["fire extinguisher", "SAF"], ["heat stress meter", "SAF"], ["waste segregation", "ENV"], ["wastewater charge", "UTL"], ["coffee & beverage", "UTL"], ["cleaning supplies", "UTL"], ["inspection record", "DOC"], ["punch list record", "DOC"], ["network equipment", "DOC"], ["client submission", "DOC"], ["steel fabrication", "SUB"], ["touch up painting", "SUB"], ["chemical cleaning", "SUB"], ["productivity risk", "OHC"], ["temporary facilit", "TCF"], ["project director", "ENG"], ["instrument index", "ENG"], ["cause and effect", "ENG"], ["level 3 schedule", "ENG"], ["level 4 schedule", "ENG"], ["document control", "ENG"], ["method statement", "ENG"], ["as-built drawing", "ENG"], ["project closeout", "ENG"], ["unarmoured cable", "MEL"], ["fire alarm cable", "MEL"], ["flow transmitter", "MIN"], ["vortex flowmeter", "MIN"], ["limit switch box", "MIN"], ["analyzer shelter", "MIN"], ["remote i/o panel", "MIN"], ["flexible conduit", "BLK"], ["instrument stand", "BLK"], ["office container", "TCF"], ["office furniture", "TCF"], ["chemical storage", "TCF"], ["backup generator", "TCF"], ["signal generator", "TOL"], ["cable drum stand", "TOL"], ["generator rental", "RNT"], ["pickup operation", "TRN"], ["domestic freight", "TRN"], ["vehicle cleaning", "TRN"], ["travel allowance", "STF"], ["emergency shower", "SAF"], ["rescue equipment", "SAF"], ["safety induction", "SAF"], ["lifting training", "SAF"], ["scrap management", "ENV"], ["chemical cabinet", "ENV"], ["noise monitoring", "ENV"], ["drain protection", "ENV"], ["emission control", "ENV"], ["telephone charge", "UTL"], ["waste collection", "UTL"], ["turnover package", "DOC"], ["document courier", "DOC"], ["start-up support", "SUB"], ["flushing support", "SUB"], ["performance bond", "OHC"], ["public liability", "OHC"], ["rework allowance", "OHC"], ["project manager", "ENG"], ["lighting layout", "ENG"], ["earthing layout", "ENG"], ["hook-up drawing", "ENG"], ["hmi development", "ENG"], ["fat/sat support", "ENG"], ["forecast update", "ENG"], ["technical query", "ENG"], ["emergency light", "MEL"], ["battery charger", "MEL"], ["pressure switch", "MIN"], ["liquid analyzer", "MIN"], ["oxygen analyzer", "MIN"], ["horizontal bend", "BLK"], ["nylon cable tie", "BLK"], ["air conditioner", "TCF"], ["office supplies", "TCF"], ["office cleaning", "TCF"], ["covered storage", "TCF"], ["cable drum yard", "TCF"], ["temporary power", "TCF"], ["temporary cable", "TCF"], ["temporary water", "TCF"], ["screwdriver set", "TOL"], ["cutting machine", "TOL"], ["loop calibrator", "TOL"], ["welding machine", "TOL"], ["gas cutting set", "TOL"], ["mobile scaffold", "RNT"], ["staff transport", "TRN"], ["express freight", "TRN"], ["dangerous goods", "TRN"], ["ndt coordinator", "STF"], ["chemical gloves", "SAF"], ["reflective vest", "SAF"], ["safety campaign", "SAF"], ["emergency drill", "SAF"], ["waste transport", "ENV"], ["dust monitoring", "ENV"], ["soil monitoring", "ENV"], ["erosion control", "ENV"], ["internet charge", "UTL"], ["pantry supplies", "UTL"], ["toilet supplies", "UTL"], ["office software", "DOC"], ["cold insulation", "SUB"], ["site stationery", "OHC"], ["fire extinguish", "SAF"], ["cable schedule", "ENG"], ["modbus mapping", "ENG"], ["lv power cable", "MEL"], ["mv power cable", "MEL"], ["flexible cable", "MEL"], ["armoured cable", "MEL"], ["ethernet cable", "MEL"], ["lighting panel", "MEL"], ["capacitor bank", "MEL"], ["terminal block", "MEL"], ["dp transmitter", "MIN"], ["pressure gauge", "MIN"], ["solenoid valve", "MIN"], ["flame detector", "MIN"], ["smoke detector", "MIN"], ["expansion bolt", "BLK"], ["instrument tag", "BLK"], ["first aid room", "TCF"], ["temporary cctv", "TCF"], ["access control", "TCF"], ["security guard", "TCF"], ["electric drill", "TOL"], ["magnetic drill", "TOL"], ["air compressor", "TOL"], ["lighting tower", "RNT"], ["thermal camera", "RNT"], ["customs broker", "TRN"], ["export packing", "TRN"], ["vehicle repair", "TRN"], ["field engineer", "STF"], ["general worker", "STF"], ["safety officer", "STF"], ["site allowance", "STF"], ["meal allowance", "STF"], ["safety glasses", "SAF"], ["barricade tape", "SAF"], ["safety barrier", "SAF"], ["safety meeting", "SAF"], ["ppe inspection", "SAF"], ["chemical label", "ENV"], ["air monitoring", "ENV"], ["generator fuel", "UTL"], ["lighting power", "UTL"], ["drinking water", "UTL"], ["color printing", "DOC"], ["plc specialist", "SUB"], ["dcs specialist", "SUB"], ["panel cleaning", "SUB"], ["retention bond", "OHC"], ["financing cost", "OHC"], ["final dossier", "ENG"], ["control cable", "MEL"], ["mv switchgear", "MEL"], ["lv switchgear", "MEL"], ["lighting pole", "MEL"], ["lightning rod", "MEL"], ["orifice plate", "MIN"], ["control valve", "MIN"], ["instrument jb", "MIN"], ["barrier panel", "MIN"], ["heat detector", "MIN"], ["vertical bend", "BLK"], ["channel steel", "BLK"], ["spring washer", "BLK"], ["equipment tag", "BLK"], ["warning label", "BLK"], ["grinding disc", "BLK"], ["material yard", "TCF"], ["rotary hammer", "TOL"], ["angle grinder", "TOL"], ["impact wrench", "TOL"], ["hi-pot tester", "TOL"], ["bench grinder", "TOL"], ["crawler crane", "RNT"], ["passenger van", "RNT"], ["flatbed truck", "RNT"], ["total station", "RNT"], ["bus operation", "TRN"], ["cost engineer", "STF"], ["cable jointer", "STF"], ["qa/qc manager", "STF"], ["safety helmet", "SAF"], ["first aid kit", "SAF"], ["medical check", "SAF"], ["chemical tray", "ENV"], ["absorbent pad", "ENV"], ["noise control", "ENV"], ["potable water", "UTL"], ["cloud storage", "DOC"], ["concrete work", "SUB"], ["road crossing", "SUB"], ["core drilling", "SUB"], ["certification", "SUB"], ["car insurance", "OHC"], ["schedule risk", "OHC"], ["profit margin", "OHC"], ["steel support", "BLK"], ["accommodation", "TCF"], ["heavy machine", "RNT"], ["communication", "UTL"], ["commissioning", "SUB"], ["field expense", "OHC"], ["entertainment", "OHC"], ["loop diagram", "ENG"], ["scada design", "ENG"], ["cost control", "ENG"], ["signal cable", "MEL"], ["street light", "MEL"], ["battery bank", "MEL"], ["soft starter", "MEL"], ["thermocouple", "MIN"], ["level switch", "MIN"], ["on-off valve", "MIN"], ["gas analyzer", "MIN"], ["ss tube 10mm", "MIN"], ["ss tube 12mm", "MIN"], ["tube fitting", "MIN"], ["needle valve", "MIN"], ["gas detector", "MIN"], ["cable ladder", "BLK"], ["ladder cover", "BLK"], ["splice plate", "BLK"], ["pipe support", "BLK"], ["tray support", "BLK"], ["threaded rod", "BLK"], ["ss cable tie", "BLK"], ["cutting disc", "BLK"], ["meeting room", "TCF"], ["rack & shelf", "TCF"], ["temporary db", "TCF"], ["washing area", "TCF"], ["housekeeping", "TCF"], ["cable cutter", "TOL"], ["earth tester", "TOL"], ["cable roller", "TOL"], ["cable puller", "TOL"], ["mobile crane", "RNT"], ["scissor lift", "RNT"], ["pickup truck", "RNT"], ["drone survey", "RNT"], ["wooden crate", "TRN"], ["registration", "TRN"], ["site manager", "STF"], ["store helper", "STF"], ["safety shoes", "SAF"], ["fire blanket", "SAF"], ["warning sign", "SAF"], ["traffic cone", "SAF"], ["permit board", "SAF"], ["safety award", "SAF"], ["dust control", "ENV"], ["data package", "UTL"], ["pest control", "UTL"], ["pdf software", "DOC"], ["fireproofing", "SUB"], ["holiday test", "SUB"], ["witness test", "SUB"], ["unknown risk", "OHC"], ["junction box", "MIN"], ["installation", "STF"], ["sub-contract", "SUB"], ["jb schedule", "ENG"], ["led fixture", "MEL"], ["transformer", "MEL"], ["bare copper", "MEL"], ["earth cable", "MEL"], ["cable gland", "MEL"], ["cable cleat", "MEL"], ["radar level", "MIN"], ["level gauge", "MIN"], ["ph analyzer", "MIN"], ["ss tube 6mm", "MIN"], ["ss tube 8mm", "MIN"], ["horn strobe", "MIN"], ["rgs conduit", "BLK"], ["emt conduit", "BLK"], ["pvc conduit", "BLK"], ["conduit box", "BLK"], ["anchor bolt", "BLK"], ["rubber tape", "BLK"], ["heat shrink", "BLK"], ["welding rod", "BLK"], ["locker room", "TCF"], ["guard house", "TCF"], ["spanner set", "TOL"], ["tube cutter", "TOL"], ["clamp meter", "TOL"], ["cable winch", "TOL"], ["truck crane", "RNT"], ["telehandler", "RNT"], ["chain block", "RNT"], ["lever hoist", "RNT"], ["spider lift", "RNT"], ["water truck", "RNT"], ["pump rental", "RNT"], ["laser level", "RNT"], ["sea freight", "TRN"], ["air freight", "TRN"], ["heavy cargo", "TRN"], ["import duty", "TRN"], ["port charge", "TRN"], ["oil service", "TRN"], ["electrician", "STF"], ["hse manager", "STF"], ["hse officer", "STF"], ["storekeeper", "STF"], ["interpreter", "STF"], ["face shield", "SAF"], ["work gloves", "SAF"], ["noise meter", "SAF"], ["calibration", "SAF"], ["safety sign", "SAF"], ["test report", "DOC"], ["a4 printing", "DOC"], ["a3 printing", "DOC"], ["a1 plotting", "DOC"], ["a0 plotting", "DOC"], ["cad license", "DOC"], ["data backup", "DOC"], ["backfilling", "SUB"], ["trench work", "SUB"], ["office rent", "OHC"], ["bank charge", "OHC"], ["license fee", "OHC"], ["engineering", "ENG"], ["calculation", "ENG"], ["power cable", "MEL"], ["transmitter", "MIN"], ["site office", "TCF"], ["termination", "STF"], ["environment", "ENV"], ["electricity", "UTL"], ["subcontract", "SUB"], ["contingency", "OHC"], ["paga cable", "MEL"], ["cctv cable", "MEL"], ["floodlight", "MEL"], ["receptacle", "MEL"], ["thermowell", "MIN"], ["positioner", "MIN"], ["tube clamp", "MIN"], ["root valve", "MIN"], ["cable tray", "BLK"], ["tray cover", "BLK"], ["jb support", "BLK"], ["base plate", "BLK"], ["socket set", "TOL"], ["core drill", "TOL"], ["multimeter", "TOL"], ["vlf tester", "TOL"], ["cable jack", "TOL"], ["hiab crane", "RNT"], ["scaffolder", "STF"], ["fire watch", "STF"], ["site admin", "STF"], ["timekeeper", "STF"], ["holiday ot", "STF"], ["respirator", "SAF"], ["lamination", "DOC"], ["it support", "DOC"], ["excavation", "SUB"], ["foundation", "SUB"], ["hr support", "OHC"], ["stamp duty", "OHC"], ["permit fee", "OHC"], ["switchgear", "MEL"], ["instrument", "MIN"], ["gas detect", "MIN"], ["consumable", "BLK"], ["supervisor", "STF"], ["technician", "STF"], ["stationery", "DOC"], ["insulation", "SUB"], ["load list", "ENG"], ["ups panel", "MEL"], ["vfd panel", "MEL"], ["plc panel", "MEL"], ["earth rod", "MEL"], ["earth pit", "MEL"], ["earth bar", "MEL"], ["cable lug", "MEL"], ["rotameter", "MIN"], ["esd valve", "MIN"], ["f&g panel", "MIN"], ["angle bar", "BLK"], ["c-channel", "BLK"], ["cable tag", "BLK"], ["panel tag", "BLK"], ["nameplate", "BLK"], ["drill bit", "BLK"], ["telephone", "TCF"], ["rest area", "TCF"], ["signboard", "TCF"], ["boom lift", "RNT"], ["demurrage", "TRN"], ["unloading", "TRN"], ["insulator", "STF"], ["secretary", "STF"], ["normal ot", "STF"], ["dust mask", "SAF"], ["fire hose", "SAF"], ["stretcher", "SAF"], ["lux meter", "SAF"], ["road sign", "SAF"], ["drug test", "SAF"], ["waste bin", "ENV"], ["spill kit", "ENV"], ["acetylene", "UTL"], ["procedure", "DOC"], ["data book", "DOC"], ["antivirus", "DOC"], ["machining", "SUB"], ["fire stop", "SUB"], ["utilities", "OHC"], ["lc charge", "OHC"], ["legal fee", "OHC"], ["audit fee", "OHC"], ["datasheet", "ENG"], ["grounding", "MEL"], ["lightning", "MEL"], ["container", "TCF"], ["warehouse", "TCF"], ["generator", "RNT"], ["transport", "TRN"], ["fireproof", "SUB"], ["insurance", "OHC"], ["i/o list", "ENG"], ["dp gauge", "MIN"], ["manifold", "MIN"], ["coupling", "BLK"], ["flat bar", "BLK"], ["hex bolt", "BLK"], ["pvc tape", "BLK"], ["internet", "TCF"], ["band saw", "TOL"], ["forklift", "RNT"], ["toll fee", "TRN"], ["wrapping", "TRN"], ["ear plug", "SAF"], ["ear muff", "SAF"], ["coverall", "SAF"], ["raincoat", "SAF"], ["eye wash", "SAF"], ["oil boom", "ENV"], ["sim card", "UTL"], ["nitrogen", "UTL"], ["scanning", "DOC"], ["grouting", "SUB"], ["painting", "SUB"], ["cladding", "SUB"], ["bid bond", "OHC"], ["discount", "OHC"], ["mv cable", "MEL"], ["lv cable", "MEL"], ["hv cable", "MEL"], ["lighting", "MEL"], ["earthing", "MEL"], ["analyzer", "MIN"], ["analyser", "MIN"], ["scaffold", "RNT"], ["logistic", "TRN"], ["delivery", "TRN"], ["engineer", "STF"], ["manpower", "STF"], ["overtime", "STF"], ["document", "DOC"], ["printing", "DOC"], ["software", "DOC"], ["overhead", "OHC"], ["s-curve", "ENG"], ["reducer", "BLK"], ["thinner", "BLK"], ["printer", "TCF"], ["canteen", "TCF"], ["manlift", "RNT"], ["trailer", "RNT"], ["parking", "TRN"], ["courier", "TRN"], ["loading", "TRN"], ["lashing", "TRN"], ["painter", "STF"], ["cleaner", "STF"], ["flagman", "STF"], ["laundry", "UTL"], ["binding", "DOC"], ["desktop", "DOC"], ["monitor", "DOC"], ["drawing", "ENG"], ["diagram", "ENG"], ["fitting", "MIN"], ["conduit", "BLK"], ["support", "BLK"], ["welding", "BLK"], ["grinder", "TOL"], ["driller", "TOL"], ["vehicle", "RNT"], ["freight", "TRN"], ["customs", "TRN"], ["manager", "STF"], ["foreman", "STF"], ["install", "STF"], ["pulling", "STF"], ["harness", "SAF"], ["utility", "UTL"], ["welfare", "UTL"], ["testing", "SUB"], ["f&g jb", "MIN"], ["i-beam", "BLK"], ["washer", "BLK"], ["u-bolt", "BLK"], ["jb tag", "BLK"], ["toilet", "TCF"], ["pliers", "TOL"], ["driver", "TRN"], ["pallet", "TRN"], ["welder", "STF"], ["fitter", "STF"], ["rigger", "STF"], ["helper", "STF"], ["oxygen", "UTL"], ["laptop", "DOC"], ["server", "DOC"], ["design", "ENG"], ["busbar", "MEL"], ["tubing", "MIN"], ["megger", "TOL"], ["rental", "RNT"], ["pickup", "TRN"], ["salary", "STF"], ["labour", "STF"], ["safety", "SAF"], ["helmet", "SAF"], ["report", "DOC"], ["profit", "OHC"], ["margin", "OHC"], ["cross", "BLK"], ["elbow", "BLK"], ["union", "BLK"], ["clamp", "BLK"], ["paint", "BLK"], ["fence", "TCF"], ["argon", "UTL"], ["panel", "MEL"], ["gland", "MEL"], ["store", "TCF"], ["crane", "RNT"], ["staff", "STF"], ["labor", "STF"], ["waste", "ENV"], ["spill", "ENV"], ["civil", "SUB"], ["gate", "TCF"], ["fuel", "TRN"], ["tire", "TRN"], ["cctv", "MIN"], ["bulk", "BLK"], ["tool", "TOL"], ["hiab", "RNT"], ["bond", "OHC"], ["risk", "OHC"], ["rfi", "ENG"], ["itp", "ENG"], ["mcc", "MEL"], ["ups", "MEL"], ["vfd", "MEL"], ["spd", "MEL"], ["rtd", "MIN"], ["mov", "MIN"], ["tee", "BLK"], ["nut", "BLK"], ["bus", "RNT"], ["ice", "UTL"], ["lpg", "UTL"], ["pmi", "SUB"], ["dcs", "MIN"], ["plc", "MIN"], ["sis", "MIN"], ["tag", "BLK"], ["ot ", "STF"], ["ppe", "SAF"], ["hse", "SAF"], ["it ", "DOC"], ["ndt", "SUB"], ["o&p", "OHC"], ["tax", "OHC"], ["vat", "OHC"], ["rt", "SUB"], ["ut", "SUB"], ["mt", "SUB"], ["pt", "SUB"]];
+function autoMapCode(desc){const d=(desc||'').toLowerCase();for(const r of MAPRULES){if(d.indexOf(r[0])>=0)return r[1];}return null;}
+const KEY='costflow_state_v5';
+const uid=()=>Math.random().toString(36).slice(2,9);
+const L4SEED={"months":["Jan-27","Feb-27","Mar-27","Apr-27","May-27","Jun-27","Jul-27","Aug-27","Sep-27","Oct-27","Nov-27","Dec-27","Jan-28","Feb-28","Mar-28","Apr-28","May-28","Jun-28","Jul-28","Aug-28","Sep-28","Oct-28","Nov-28","Dec-28","Jan-29","Feb-29","Mar-29","Apr-29"],"contract":178862708.91,"acts":[["1.1","Material approval (bulk & main)",0.7001,0,0,"Engineering","Material approval (bulk & main)"],["1.2","Construction procedures & method statements",0.6001,0,0,"Engineering","Construction procedures & method statements"],["1.3","ITP & test procedures",0.4001,0,0,"Engineering","ITP & test procedures"],["1.4","Safety documents",0.3001,0,1,"Engineering","Safety documents"],["2.1","Purchase order placement",0.6001,1,1,"Procurement & Receiving","Purchase order placement"],["2.2","Manufacturing & delivery (bulk)",1.3503,1,2,"Procurement & Receiving","Manufacturing & delivery (bulk)"],["2.3","Material receiving & inspection",1.0502,2,3,"Procurement & Receiving","Material receiving & inspection"],["3.1","Site clearing",0.18,3,3,"Site Preparation","Site clearing"],["3.2","Install fence & gate",0.16,3,3,"Site Preparation","Install fence & gate"],["3.3","Container office mobilization",0.18,3,3,"Site Preparation","Container office mobilization"],["3.4","Toilet & welfare mobilization",0.14,3,3,"Site Preparation","Toilet & welfare mobilization"],["3.5","Install site utilities",0.18,3,3,"Site Preparation","Install site utilities"],["3.6","Lay-down & storage set-up",0.16,3,4,"Site Preparation","Lay-down & storage set-up"],["4.1.1","Survey & marking",0.22,3,3,"CONSTRUCTION — BERTH & TRESTLE","Cable Tray / Duct"],["4.1.2","Support fabrication & installation",0.6601,3,5,"CONSTRUCTION — BERTH & TRESTLE","Cable Tray / Duct"],["4.1.3","Tray / duct laying",0.7702,5,7,"CONSTRUCTION — BERTH & TRESTLE","Cable Tray / Duct"],["4.1.4","Fittings & accessories",0.3301,7,8,"CONSTRUCTION — BERTH & TRESTLE","Cable Tray / Duct"],["4.1.5","Cover, earthing & bonding",0.22,8,8,"CONSTRUCTION — BERTH & TRESTLE","Cable Tray / Duct"],["4.2.1","Support installation",0.3001,3,5,"CONSTRUCTION — BERTH & TRESTLE","Junction Box"],["4.2.2","JB mounting & fixing",0.3401,5,7,"CONSTRUCTION — BERTH & TRESTLE","Junction Box"],["4.2.3","Earthing & inspection",0.21,7,8,"CONSTRUCTION — BERTH & TRESTLE","Junction Box"],["4.3.1","Cable receiving & drum set-up",0.4201,3,3,"CONSTRUCTION — BERTH & TRESTLE","Cable Pulling & Termination"],["4.3.2","Cable pulling / laying",1.4803,3,5,"CONSTRUCTION — BERTH & TRESTLE","Cable Pulling & Termination"],["4.3.3","Glanding",0.6301,5,6,"CONSTRUCTION — BERTH & TRESTLE","Cable Pulling & Termination"],["4.3.4","Termination",1.0602,6,7,"CONSTRUCTION — BERTH & TRESTLE","Cable Pulling & Termination"],["4.3.5","Megger / continuity test",0.4201,7,8,"CONSTRUCTION — BERTH & TRESTLE","Cable Pulling & Termination"],["4.3.6","Tagging & dressing",0.21,8,8,"CONSTRUCTION — BERTH & TRESTLE","Cable Pulling & Termination"],["4.4.1","Cable receiving & drum set-up",0.4201,8,8,"CONSTRUCTION — BERTH & TRESTLE","Cable Pulling & Termination"],["4.4.2","Cable pulling / laying",1.4803,8,10,"CONSTRUCTION — BERTH & TRESTLE","Cable Pulling & Termination"],["4.4.3","Glanding",0.6301,10,10,"CONSTRUCTION — BERTH & TRESTLE","Cable Pulling & Termination"],["4.4.4","Termination",1.0602,10,12,"CONSTRUCTION — BERTH & TRESTLE","Cable Pulling & Termination"],["4.4.5","Megger / continuity test",0.4201,12,12,"CONSTRUCTION — BERTH & TRESTLE","Cable Pulling & Termination"],["4.4.6","Tagging & dressing",0.21,12,12,"CONSTRUCTION — BERTH & TRESTLE","Cable Pulling & Termination"],["4.5.1","Stanchion / support installation",0.6301,8,9,"CONSTRUCTION — BERTH & TRESTLE","Field Instrument Installation"],["4.5.2","Instrument mounting",0.8902,9,10,"CONSTRUCTION — BERTH & TRESTLE","Field Instrument Installation"],["4.5.3","Impulse / air tubing hook-up",0.5101,10,10,"CONSTRUCTION — BERTH & TRESTLE","Field Instrument Installation"],["4.5.4","Calibration",0.3801,10,11,"CONSTRUCTION — BERTH & TRESTLE","Field Instrument Installation"],["4.5.5","Inspection & punch",0.13,11,11,"CONSTRUCTION — BERTH & TRESTLE","Field Instrument Installation"],["4.6.1","Support installation",0.3001,8,9,"CONSTRUCTION — BERTH & TRESTLE","Instrument Air Piping"],["4.6.2","Header / manifold installation",0.2501,9,10,"CONSTRUCTION — BERTH & TRESTLE","Instrument Air Piping"],["4.6.3","Tube / pipe routing",0.3001,10,10,"CONSTRUCTION — BERTH & TRESTLE","Instrument Air Piping"],["4.6.4","Leak test & restoration",0.15,10,11,"CONSTRUCTION — BERTH & TRESTLE","Instrument Air Piping"],["4.7.1","Material prefabrication",0.3001,8,9,"CONSTRUCTION — BERTH & TRESTLE","Instrument Hook-up"],["4.7.2","Impulse hook-up installation",0.4701,9,10,"CONSTRUCTION — BERTH & TRESTLE","Instrument Hook-up"],["4.7.3","Fittings & valves",0.24,10,10,"CONSTRUCTION — BERTH & TRESTLE","Instrument Hook-up"],["4.7.4","Leak test",0.18,10,11,"CONSTRUCTION — BERTH & TRESTLE","Instrument Hook-up"],["5.1.1","Survey & marking",0.23,4,4,"CONSTRUCTION — BUILDING AREA","Cable Tray / Duct"],["5.1.2","Support fabrication & installation",0.6901,4,6,"CONSTRUCTION — BUILDING AREA","Cable Tray / Duct"],["5.1.3","Tray / duct laying",0.8102,6,8,"CONSTRUCTION — BUILDING AREA","Cable Tray / Duct"],["5.1.4","Fittings & accessories",0.3501,8,9,"CONSTRUCTION — BUILDING AREA","Cable Tray / Duct"],["5.1.5","Cover, earthing & bonding",0.23,9,10,"CONSTRUCTION — BUILDING AREA","Cable Tray / Duct"],["5.2.1","Support installation",0.3101,5,7,"CONSTRUCTION — BUILDING AREA","Junction Box"],["5.2.2","JB mounting & fixing",0.3601,7,9,"CONSTRUCTION — BUILDING AREA","Junction Box"],["5.2.3","Earthing & inspection",0.22,9,11,"CONSTRUCTION — BUILDING AREA","Junction Box"],["5.3.1","Cable receiving & drum set-up",0.4501,7,7,"CONSTRUCTION — BUILDING AREA","Cable Pulling & Termination"],["5.3.2","Cable pulling / laying",1.5603,7,10,"CONSTRUCTION — BUILDING AREA","Cable Pulling & Termination"],["5.3.3","Glanding",0.6701,10,10,"CONSTRUCTION — BUILDING AREA","Cable Pulling & Termination"],["5.3.4","Termination",1.1102,10,12,"CONSTRUCTION — BUILDING AREA","Cable Pulling & Termination"],["5.3.5","Megger / continuity test",0.4501,12,13,"CONSTRUCTION — BUILDING AREA","Cable Pulling & Termination"],["5.3.6","Tagging & dressing",0.22,13,13,"CONSTRUCTION — BUILDING AREA","Cable Pulling & Termination"],["5.4.1","Cabinet / panel placement",0.4301,10,10,"CONSTRUCTION — BUILDING AREA","Control System Installation"],["5.4.2","Internal cabling & termination",0.5701,10,11,"CONSTRUCTION — BUILDING AREA","Control System Installation"],["5.4.3","Power-up & I/O check",0.2901,11,12,"CONSTRUCTION — BUILDING AREA","Control System Installation"],["5.4.4","Inspection & punch",0.14,12,12,"CONSTRUCTION — BUILDING AREA","Control System Installation"],["6.1.1","Survey & marking",0.24,7,7,"CONSTRUCTION — UTILITY AREA","Cable Tray / Duct"],["6.1.2","Support fabrication & installation",0.7301,7,9,"CONSTRUCTION — UTILITY AREA","Cable Tray / Duct"],["6.1.3","Tray / duct laying",0.8502,9,11,"CONSTRUCTION — UTILITY AREA","Cable Tray / Duct"],["6.1.4","Fittings & accessories",0.3601,11,12,"CONSTRUCTION — UTILITY AREA","Cable Tray / Duct"],["6.1.5","Cover, earthing & bonding",0.24,12,12,"CONSTRUCTION — UTILITY AREA","Cable Tray / Duct"],["6.2.1","Support installation",0.3301,7,9,"CONSTRUCTION — UTILITY AREA","Junction Box"],["6.2.2","JB mounting & fixing",0.3701,9,11,"CONSTRUCTION — UTILITY AREA","Junction Box"],["6.2.3","Earthing & inspection",0.23,11,12,"CONSTRUCTION — UTILITY AREA","Junction Box"],["6.3.1","Cable receiving & drum set-up",0.4701,10,11,"CONSTRUCTION — UTILITY AREA","Cable Pulling & Termination"],["6.3.2","Cable pulling / laying",1.6403,11,12,"CONSTRUCTION — UTILITY AREA","Cable Pulling & Termination"],["6.3.3","Glanding",0.7001,12,13,"CONSTRUCTION — UTILITY AREA","Cable Pulling & Termination"],["6.3.4","Termination",1.1702,13,14,"CONSTRUCTION — UTILITY AREA","Cable Pulling & Termination"],["6.3.5","Megger / continuity test",0.4701,14,15,"CONSTRUCTION — UTILITY AREA","Cable Pulling & Termination"],["6.3.6","Tagging & dressing",0.23,15,15,"CONSTRUCTION — UTILITY AREA","Cable Pulling & Termination"],["6.4.1","Cabinet / panel placement",0.4501,11,12,"CONSTRUCTION — UTILITY AREA","Control System Installation"],["6.4.2","Internal cabling & termination",0.6001,12,12,"CONSTRUCTION — UTILITY AREA","Control System Installation"],["6.4.3","Power-up & I/O check",0.3001,12,13,"CONSTRUCTION — UTILITY AREA","Control System Installation"],["6.4.4","Inspection & punch",0.15,13,13,"CONSTRUCTION — UTILITY AREA","Control System Installation"],["6.5.1","Stanchion / support installation",0.7001,11,12,"CONSTRUCTION — UTILITY AREA","Field Instrument Installation"],["6.5.2","Instrument mounting",0.9802,12,12,"CONSTRUCTION — UTILITY AREA","Field Instrument Installation"],["6.5.3","Impulse / air tubing hook-up",0.5601,12,13,"CONSTRUCTION — UTILITY AREA","Field Instrument Installation"],["6.5.4","Calibration",0.4201,13,13,"CONSTRUCTION — UTILITY AREA","Field Instrument Installation"],["6.5.5","Inspection & punch",0.14,13,13,"CONSTRUCTION — UTILITY AREA","Field Instrument Installation"],["6.6.1","Support installation",0.3401,14,14,"CONSTRUCTION — UTILITY AREA","Instrument Air Piping"],["6.6.2","Header / manifold installation",0.2801,14,15,"CONSTRUCTION — UTILITY AREA","Instrument Air Piping"],["6.6.3","Tube / pipe routing",0.3401,15,16,"CONSTRUCTION — UTILITY AREA","Instrument Air Piping"],["6.6.4","Leak test & restoration",0.17,16,16,"CONSTRUCTION — UTILITY AREA","Instrument Air Piping"],["6.7.1","Material prefabrication",0.3301,14,14,"CONSTRUCTION — UTILITY AREA","Instrument Hook-up"],["6.7.2","Impulse hook-up installation",0.5201,14,15,"CONSTRUCTION — UTILITY AREA","Instrument Hook-up"],["6.7.3","Fittings & valves",0.2601,15,16,"CONSTRUCTION — UTILITY AREA","Instrument Hook-up"],["6.7.4","Leak test",0.2,16,16,"CONSTRUCTION — UTILITY AREA","Instrument Hook-up"],["7.1.1","Cabinet / panel placement",0.5601,3,4,"CONSTRUCTION — TANKAGE AREA","Control System Installation"],["7.1.2","Internal cabling & termination",0.7401,4,5,"CONSTRUCTION — TANKAGE AREA","Control System Installation"],["7.1.3","Power-up & I/O check",0.3701,5,5,"CONSTRUCTION — TANKAGE AREA","Control System Installation"],["7.1.4","Inspection & punch",0.19,5,6,"CONSTRUCTION — TANKAGE AREA","Control System Installation"],["7.2.1","Survey & marking",0.3001,11,11,"CONSTRUCTION — TANKAGE AREA","Cable Tray / Duct"],["7.2.2","Support fabrication & installation",0.9002,11,12,"CONSTRUCTION — TANKAGE AREA","Cable Tray / Duct"],["7.2.3","Tray / duct laying",1.0502,12,13,"CONSTRUCTION — TANKAGE AREA","Cable Tray / Duct"],["7.2.4","Fittings & accessories",0.4501,13,14,"CONSTRUCTION — TANKAGE AREA","Cable Tray / Duct"],["7.2.5","Cover, earthing & bonding",0.3001,14,14,"CONSTRUCTION — TANKAGE AREA","Cable Tray / Duct"],["7.3.1","Support installation",0.4101,12,13,"CONSTRUCTION — TANKAGE AREA","Junction Box"],["7.3.2","JB mounting & fixing",0.4601,13,14,"CONSTRUCTION — TANKAGE AREA","Junction Box"],["7.3.3","Earthing & inspection",0.2901,14,14,"CONSTRUCTION — TANKAGE AREA","Junction Box"],["7.4.1","Cable receiving & drum set-up",0.5801,14,15,"CONSTRUCTION — TANKAGE AREA","Cable Pulling & Termination"],["7.4.2","Cable pulling / laying",2.0304,15,16,"CONSTRUCTION — TANKAGE AREA","Cable Pulling & Termination"],["7.4.3","Glanding",0.8702,16,17,"CONSTRUCTION — TANKAGE AREA","Cable Pulling & Termination"],["7.4.4","Termination",1.4503,17,18,"CONSTRUCTION — TANKAGE AREA","Cable Pulling & Termination"],["7.4.5","Megger / continuity test",0.5801,18,18,"CONSTRUCTION — TANKAGE AREA","Cable Pulling & Termination"],["7.4.6","Tagging & dressing",0.2901,18,18,"CONSTRUCTION — TANKAGE AREA","Cable Pulling & Termination"],["7.5.1","Stanchion / support installation",0.8702,14,15,"CONSTRUCTION — TANKAGE AREA","Field Instrument Installation"],["7.5.2","Instrument mounting",1.2202,15,16,"CONSTRUCTION — TANKAGE AREA","Field Instrument Installation"],["7.5.3","Impulse / air tubing hook-up",0.6901,16,16,"CONSTRUCTION — TANKAGE AREA","Field Instrument Installation"],["7.5.4","Calibration",0.5201,16,16,"CONSTRUCTION — TANKAGE AREA","Field Instrument Installation"],["7.5.5","Inspection & punch",0.17,16,16,"CONSTRUCTION — TANKAGE AREA","Field Instrument Installation"],["7.6.1","Support installation",0.4201,14,15,"CONSTRUCTION — TANKAGE AREA","Instrument Air Piping"],["7.6.2","Header / manifold installation",0.3501,15,16,"CONSTRUCTION — TANKAGE AREA","Instrument Air Piping"],["7.6.3","Tube / pipe routing",0.4201,16,16,"CONSTRUCTION — TANKAGE AREA","Instrument Air Piping"],["7.6.4","Leak test & restoration",0.21,16,17,"CONSTRUCTION — TANKAGE AREA","Instrument Air Piping"],["7.7.1","Material prefabrication",0.4101,14,15,"CONSTRUCTION — TANKAGE AREA","Instrument Hook-up"],["7.7.2","Impulse hook-up installation",0.6501,15,16,"CONSTRUCTION — TANKAGE AREA","Instrument Hook-up"],["7.7.3","Fittings & valves",0.3201,16,16,"CONSTRUCTION — TANKAGE AREA","Instrument Hook-up"],["7.7.4","Leak test",0.24,16,17,"CONSTRUCTION — TANKAGE AREA","Instrument Hook-up"],["7.8.1","Stanchion / support installation",0.8702,19,19,"CONSTRUCTION — TANKAGE AREA","Field Instrument Installation : LNG Tank 1"],["7.8.2","Instrument mounting",1.2202,19,20,"CONSTRUCTION — TANKAGE AREA","Field Instrument Installation : LNG Tank 1"],["7.8.3","Impulse / air tubing hook-up",0.6901,20,21,"CONSTRUCTION — TANKAGE AREA","Field Instrument Installation : LNG Tank 1"],["7.8.4","Calibration",0.5201,21,21,"CONSTRUCTION — TANKAGE AREA","Field Instrument Installation : LNG Tank 1"],["7.8.5","Inspection & punch",0.17,21,21,"CONSTRUCTION — TANKAGE AREA","Field Instrument Installation : LNG Tank 1"],["7.9.1","Stanchion / support installation",0.8702,20,20,"CONSTRUCTION — TANKAGE AREA","Field Instrument Installation : LNG Tank 2"],["7.9.2","Instrument mounting",1.2202,20,21,"CONSTRUCTION — TANKAGE AREA","Field Instrument Installation : LNG Tank 2"],["7.9.3","Impulse / air tubing hook-up",0.6901,21,21,"CONSTRUCTION — TANKAGE AREA","Field Instrument Installation : LNG Tank 2"],["7.9.4","Calibration",0.5201,21,22,"CONSTRUCTION — TANKAGE AREA","Field Instrument Installation : LNG Tank 2"],["7.9.5","Inspection & punch",0.17,22,22,"CONSTRUCTION — TANKAGE AREA","Field Instrument Installation : LNG Tank 2"],["8.1.1","Survey & marking",0.23,13,13,"CONSTRUCTION — PROCESS AREA","Cable Tray / Duct"],["8.1.2","Support fabrication & installation",0.6901,13,14,"CONSTRUCTION — PROCESS AREA","Cable Tray / Duct"],["8.1.3","Tray / duct laying",0.8102,14,16,"CONSTRUCTION — PROCESS AREA","Cable Tray / Duct"],["8.1.4","Fittings & accessories",0.3501,16,16,"CONSTRUCTION — PROCESS AREA","Cable Tray / Duct"],["8.1.5","Cover, earthing & bonding",0.23,16,16,"CONSTRUCTION — PROCESS AREA","Cable Tray / Duct"],["8.2.1","Support installation",0.3101,13,13,"CONSTRUCTION — PROCESS AREA","Junction Box"],["8.2.2","JB mounting & fixing",0.3601,13,14,"CONSTRUCTION — PROCESS AREA","Junction Box"],["8.2.3","Earthing & inspection",0.22,14,14,"CONSTRUCTION — PROCESS AREA","Junction Box"],["8.3.1","Cable receiving & drum set-up",0.4501,15,15,"CONSTRUCTION — PROCESS AREA","Cable Pulling & Termination"],["8.3.2","Cable pulling / laying",1.5603,15,16,"CONSTRUCTION — PROCESS AREA","Cable Pulling & Termination"],["8.3.3","Glanding",0.6701,16,17,"CONSTRUCTION — PROCESS AREA","Cable Pulling & Termination"],["8.3.4","Termination",1.1102,17,17,"CONSTRUCTION — PROCESS AREA","Cable Pulling & Termination"],["8.3.5","Megger / continuity test",0.4501,17,18,"CONSTRUCTION — PROCESS AREA","Cable Pulling & Termination"],["8.3.6","Tagging & dressing",0.22,18,18,"CONSTRUCTION — PROCESS AREA","Cable Pulling & Termination"],["8.4.1","Stanchion / support installation",0.6701,15,16,"CONSTRUCTION — PROCESS AREA","Field Instrument Installation"],["8.4.2","Instrument mounting",0.9402,16,17,"CONSTRUCTION — PROCESS AREA","Field Instrument Installation"],["8.4.3","Impulse / air tubing hook-up",0.5301,17,17,"CONSTRUCTION — PROCESS AREA","Field Instrument Installation"],["8.4.4","Calibration",0.4001,17,18,"CONSTRUCTION — PROCESS AREA","Field Instrument Installation"],["8.4.5","Inspection & punch",0.13,18,18,"CONSTRUCTION — PROCESS AREA","Field Instrument Installation"],["8.5.1","Support installation",0.3201,15,16,"CONSTRUCTION — PROCESS AREA","Instrument Air Piping"],["8.5.2","Header / manifold installation",0.2701,16,17,"CONSTRUCTION — PROCESS AREA","Instrument Air Piping"],["8.5.3","Tube / pipe routing",0.3201,17,18,"CONSTRUCTION — PROCESS AREA","Instrument Air Piping"],["8.5.4","Leak test & restoration",0.16,18,18,"CONSTRUCTION — PROCESS AREA","Instrument Air Piping"],["8.6.1","Material prefabrication",0.3101,15,16,"CONSTRUCTION — PROCESS AREA","Instrument Hook-up"],["8.6.2","Impulse hook-up installation",0.5001,16,17,"CONSTRUCTION — PROCESS AREA","Instrument Hook-up"],["8.6.3","Fittings & valves",0.2501,17,18,"CONSTRUCTION — PROCESS AREA","Instrument Hook-up"],["8.6.4","Leak test",0.19,18,18,"CONSTRUCTION — PROCESS AREA","Instrument Hook-up"],["9.1","Loop check",2.4005,24,24,"Test & Commissioning","Loop check"],["9.2","Loop test",3.0006,24,25,"Test & Commissioning","Loop test"],["9.3","Function & sequence test",3.0006,25,26,"Test & Commissioning","Function & sequence test"],["9.4","Commissioning support",2.4005,26,27,"Test & Commissioning","Commissioning support"],["9.5","Punch item clearance",1.2002,27,27,"Test & Commissioning","Punch item clearance"],["10.1","Punch list clearing",1.0002,24,25,"Final Documentation & Demobilization","Punch list clearing"],["10.2","As-built / red-line mark-up",1.0002,25,25,"Final Documentation & Demobilization","As-built / red-line mark-up"],["10.3","Final documentation dossier",1.2002,25,26,"Final Documentation & Demobilization","Final documentation dossier"],["10.4","Demobilization",0.8002,26,27,"Final Documentation & Demobilization","Demobilization"]]};
+function attachRefSchedules(st){(st.projects||[]).forEach(p=>{ensurePlan(p);});}
+function regenCashflowFor(p){}
+const TYPECOL={M:'#4f46e5',L:'#0ea5e9',E:'#f59e0b',O:'#94a3b8'};
+const TYPENAME={M:'Material',L:'Labor',E:'Equipment',O:'Other'};
+
+let storageOK=true;
+let state=load();attachRefSchedules(state);
+function mkProject(seed){return {id:uid(),name:seed.name,code:seed.code,client:seed.client,currency:seed.currency||'THB',
+  cats:seed.cats.map(c=>({id:uid(),grp:c.grp,no:c.no,name:c.name,type:c.type,
+    items:(c.items||[]).map(i=>({id:uid(),name:i.name,budget:+i.budget||0,actual:+i.actual||0,actualPct:+i.actualPct||0}))})),
+  plan:seed.plan?JSON.parse(JSON.stringify(seed.plan)):defaultPlan()};}
+function freshState(){const ps=SEEDS.projects.map(mkProject);return {projects:ps,activeId:ps[0].id};}
+function load(){try{const s=JSON.parse(localStorage.getItem(KEY));if(s&&s.projects&&s.projects.length)return s;}catch(e){storageOK=false;}
+  return freshState();}
+let prevSnap=null,undoStack=[],redoStack=[];
+function save(){try{if(prevSnap!==null){undoStack.push(prevSnap);if(undoStack.length>40)undoStack.shift();redoStack.length=0;}prevSnap=JSON.stringify(state);localStorage.setItem(KEY,prevSnap);storageOK=true;}catch(e){storageOK=false;}flashSaved();cloudSave();}
+function doUndo(){if(!undoStack.length)return toast('Nothing to undo');redoStack.push(JSON.stringify(state));const sp=undoStack.pop();state=JSON.parse(sp);prevSnap=sp;try{localStorage.setItem(KEY,sp)}catch(e){}cloudSave();render();toast('Undone');}
+function doRedo(){if(!redoStack.length)return toast('Nothing to redo');undoStack.push(JSON.stringify(state));const sp=redoStack.pop();state=JSON.parse(sp);prevSnap=sp;try{localStorage.setItem(KEY,sp)}catch(e){}cloudSave();render();toast('Redone');}
+function flashSaved(){const el=document.getElementById('savedInd');if(!el)return;
+  if(storageOK){el.innerHTML='<span class="dot"></span>Saved';el.style.color='';}
+  else{el.innerHTML='<span class="dot" style="background:#f59e0b"></span>Not saved — export a backup';el.style.color='#b45309';}}
+function proj(){return state.projects.find(p=>p.id===state.activeId)||state.projects[0];}
+
+/* helpers */
+function fmt(n){n=Math.round(+n||0);return n.toLocaleString('en-US');}
+function fmtShort(n){n=+n||0;const a=Math.abs(n);if(a>=1e9)return(n/1e9).toFixed(2)+'B';if(a>=1e6)return(n/1e6).toFixed(2)+'M';if(a>=1e3)return(n/1e3).toFixed(0)+'K';return n.toFixed(0);}
+function cur(){return proj().currency||'THB';}
+function esc(s){return String(s==null?'':s).replace(/[&<>"]/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[m]));}
+function parseNum(v){if(typeof v==='number')return v;return Math.round((parseFloat(String(v).replace(/[^0-9.\-]/g,''))||0)*100)/100;}
+function today(){return new Date().toISOString().slice(0,10);}
+function catB(c){return c.items.reduce((a,i)=>a+(+i.budget||0),0);}
+function catA(c){return c.items.reduce((a,i)=>a+(+i.budget||0)*(+i.actualPct||0)/100,0);}
+function grpB(p,g){return p.cats.filter(c=>c.grp===g).reduce((a,c)=>a+catB(c),0);}
+function grpA(p,g){return p.cats.filter(c=>c.grp===g).reduce((a,c)=>a+catA(c),0);}
+function totals(){const p=proj();let b=0,a=0;p.cats.forEach(c=>{b+=catB(c);a+=catA(c);});return {budget:b,actual:a,diff:b-a,margin:b?((b-a)/b*100):0};}
+
+/* router */
+let current='portfolio';let charts={};let cfMode='plan';
+function nav(v){current=v;document.querySelectorAll('.nav a').forEach(a=>a.classList.toggle('active',a.dataset.view===v));render();}
+document.querySelectorAll('.nav a').forEach(a=>a.onclick=()=>nav(a.dataset.view));
+function render(){
+  Object.values(charts).forEach(c=>{try{c.destroy()}catch(e){}});charts={};
+  document.getElementById('projSel').innerHTML=state.projects.map(p=>`<option value="${p.id}" ${p.id===state.activeId?'selected':''}>${esc(p.name)}</option>`).join('');
+  const el=document.getElementById('content');
+  if(current==='dashboard')renderDashboard(el);
+  else if(current==='portfolio')renderPortfolio(el);
+  else if(current==='cost')renderCost(el);
+  else if(current==='cashflow')renderCashflow(el);
+  else if(current==='schedule')renderSchedule(el);
+  else renderSettings(el);
+}
+
+/* ===== DASHBOARD ===== */
+function renderDashboard(el){
+  const p=proj();const t=totals();
+  const cats=p.cats.filter(c=>catB(c)>0||catA(c)>0);
+  const over=cats.filter(c=>catA(c)>catB(c)&&catB(c)>0).sort((a,b)=>(catA(b)-catB(b))-(catA(a)-catB(a)));
+  const used=t.budget?(t.actual/t.budget*100):0;
+  el.innerHTML=`
+   <div class="pagehead"><div><h2>${esc(p.name)}</h2><p>${esc(p.code||'')} ${p.client?'· '+esc(p.client):''} · CBS cost overview (23 categories · 3 groups)</p></div></div>
+   <div class="kpis">
+     ${kpi('Total Budget',cur()+' '+fmt(t.budget),'Approved / contract cost','#eef2ff','#4f46e5',iW)}
+     ${kpi('Total Actual',cur()+' '+fmt(t.actual),used.toFixed(1)+'% of budget','#ecfeff','#0ea5e9',iT)}
+     ${kpi('Difference',(t.diff<0?'-':'')+cur()+' '+fmt(Math.abs(t.diff)),t.diff>=0?'Under budget':'Over budget','#ecfdf5',t.diff>=0?'#10b981':'#ef4444',iD,t.diff>=0?'up':'down')}
+     ${kpi('Margin',t.margin.toFixed(1)+'%',t.diff>=0?'vs budget':'loss','#fffbeb','#f59e0b',iC,t.margin>=0?'up':'down')}
+   </div>
+   <div class="grid g3" style="margin-bottom:16px">
+     <div class="card"><h3>By Group <span class="hint">budget</span></h3><div class="body"><div class="chart-wrap"><canvas id="cGrp"></canvas></div></div></div>
+     <div class="card"><h3>By Cost Type <span class="hint">M / L / E / O</span></h3><div class="body"><div class="chart-wrap"><canvas id="cType"></canvas></div></div></div>
+     <div class="card"><h3>Top Categories <span class="hint">budget</span></h3><div class="body"><div class="chart-wrap"><canvas id="cTop"></canvas></div></div></div>
+   </div>
+   <div class="card" style="margin-bottom:16px"><h3>Budget vs Actual by Category <span class="hint">${cur()}</span></h3><div class="body"><div class="chart-wrap" style="height:420px"><canvas id="cBar"></canvas></div></div></div>
+   <div class="card"><h3>⚠️ Over-budget Categories <span class="hint">${over.length}</span></h3><div class="body" id="alerts"></div></div>`;
+  const av=document.getElementById('alerts');
+  av.innerHTML=over.length?over.map(c=>{const b=catB(c),a=catA(c);return `<div class="alert-row"><div class="bar" style="background:#ef4444"></div><div style="flex:1"><div class="nm">${c.no}. ${esc(c.name)}</div><div class="mini">Actual ${cur()} ${fmt(a)} of ${fmt(b)}</div></div><div class="amt">${fmt(a-b)}</div><div class="pct tag r">+${((a-b)/b*100).toFixed(0)}%</div></div>`;}).join(''):'<div class="empty">✅ No category over budget.</div>';
+  // group chart
+  const gl=['A','B','C'].filter(g=>GROUPS[g]);
+  charts.grp=new Chart(document.getElementById('cGrp'),{type:'doughnut',
+    data:{labels:gl.map(g=>g+'. '+GROUPS[g]),datasets:[{data:gl.map(g=>grpB(p,g)),backgroundColor:['#4f46e5','#0ea5e9','#94a3b8'],borderWidth:2,borderColor:'#fff'}]},
+    options:{responsive:true,maintainAspectRatio:false,cutout:'60%',plugins:{legend:{position:'bottom',labels:{boxWidth:10,font:{size:10}}},tooltip:{callbacks:{label:c=>' '+cur()+' '+fmt(c.raw)}}}}});
+  // type chart
+  const types={M:0,L:0,E:0,O:0};p.cats.forEach(c=>{let ty=c.type[0];if(!(ty in types))ty='O';types[ty]+=catB(c);});
+  const tks=Object.keys(types).filter(k=>types[k]>0);
+  charts.type=new Chart(document.getElementById('cType'),{type:'doughnut',
+    data:{labels:tks.map(k=>TYPENAME[k]),datasets:[{data:tks.map(k=>types[k]),backgroundColor:tks.map(k=>TYPECOL[k]),borderWidth:2,borderColor:'#fff'}]},
+    options:{responsive:true,maintainAspectRatio:false,cutout:'60%',plugins:{legend:{position:'bottom',labels:{boxWidth:10,font:{size:10}}},tooltip:{callbacks:{label:c=>' '+cur()+' '+fmt(c.raw)+' ('+(c.raw/t.budget*100).toFixed(1)+'%)'}}}}});
+  // top categories
+  const top=[...p.cats].sort((a,b)=>catB(b)-catB(a)).slice(0,6);
+  charts.top=new Chart(document.getElementById('cTop'),{type:'bar',
+    data:{labels:top.map(c=>c.no),datasets:[{data:top.map(c=>catB(c)),backgroundColor:'#6366f1',borderRadius:4}]},
+    options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false},tooltip:{callbacks:{title:i=>{const c=top[i[0].dataIndex];return c.no+'. '+c.name;},label:c=>cur()+' '+fmt(c.raw)}}},scales:{y:{ticks:{callback:v=>fmtShort(v),font:{size:9}}},x:{grid:{display:false}}}}});
+  // budget vs actual all cats
+  const ac=p.cats;
+  charts.bar=new Chart(document.getElementById('cBar'),{type:'bar',
+    data:{labels:ac.map(c=>c.no+'. '+c.name),datasets:[
+      {label:'Budget',data:ac.map(c=>catB(c)),backgroundColor:'#c7d2fe',borderRadius:3},
+      {label:'Actual',data:ac.map(c=>catA(c)),backgroundColor:ac.map(c=>catA(c)>catB(c)&&catB(c)>0?'#ef4444':'#4f46e5'),borderRadius:3}]},
+    options:{indexAxis:'y',responsive:true,maintainAspectRatio:false,plugins:{legend:{position:'top',labels:{boxWidth:12,font:{size:11}}},tooltip:{callbacks:{label:c=>c.dataset.label+': '+cur()+' '+fmt(c.raw)}}},
+      scales:{x:{ticks:{callback:v=>fmtShort(v),font:{size:9}},grid:{color:'#eef1f6'}},y:{ticks:{font:{size:9.5}},grid:{display:false}}}}});
+}
+function kpi(t,v,s,bg,fg,ic,dir){return `<div class="kpi"><div class="ic" style="background:${bg};color:${fg}">${ic}</div><div class="t">${t}</div><div class="v">${v}</div><div class="s ${dir||''}">${s}</div></div>`;}
+const iW='<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:19px;height:19px"><path d="M21 12V7H5a2 2 0 0 1 0-4h14v4"/><path d="M3 5v14a2 2 0 0 0 2 2h16v-5"/><path d="M18 12a2 2 0 0 0 0 4h4v-4Z"/></svg>';
+const iT='<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:19px;height:19px"><polyline points="22 7 13.5 15.5 8.5 10.5 2 17"/><polyline points="16 7 22 7 22 13"/></svg>';
+const iD='<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:19px;height:19px"><line x1="12" y1="20" x2="12" y2="4"/><polyline points="6 10 12 4 18 10"/></svg>';
+const iC='<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:19px;height:19px"><circle cx="12" cy="12" r="9"/><path d="M12 7v10M9.5 9.5a2.5 2 0 0 1 5 0c0 2.5-5 1.5-5 4a2.5 2 0 0 0 5 0"/></svg>';
+const iF='<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:19px;height:19px"><path d="M12 2v6M12 22v-6"/><circle cx="12" cy="12" r="4"/></svg>';
+
+/* ===== CBS COST ===== */
+let expanded={};
+function renderCost(el){
+  const p=proj();const t=totals();const claimT=p.cats.reduce((a,c)=>a+catClaim(c),0);
+  el.innerHTML=`<div class="pagehead"><div><h2>CBS Cost — Budget vs Ready-to-Claim</h2><p>15 categories · <b>Rdy to Claim</b> = Budget × L4 progress · set <b>Actual Claim + date + credit</b> per line → feeds Cash Flow.</p></div>
+     <div style="display:flex;gap:8px"><button class="btn" onclick="app.expandAll(true)">Expand all</button><button class="btn" onclick="app.expandAll(false)">Collapse</button><button class="btn primary" onclick="app.importExcel()">⬆ Upload CBS</button></div></div>
+   <div class="tbl-card scroll"><table class="ct">
+     <thead><tr><th style="width:26px"></th><th class="l">CBS Category / Sub-item</th><th>→</th><th>Budget</th><th>Rdy to Claim</th><th>Actual Claim</th><th>Claim Date</th><th>Credit</th><th></th></tr></thead>
+     <tbody id="cbsBody"></tbody>
+     <tfoot><tr><td></td><td class="l">GRAND TOTAL</td><td></td><td>${fmt(t.budget)}</td><td>${fmt(t.actual)}</td><td>${fmt(claimT)}</td><td></td><td></td><td></td></tr></tfoot>
+   </table></div><div class="addrow" style="background:#fff;border:1px solid var(--line);border-radius:0 0 14px 14px;border-top:none;margin-top:-1px"><button onclick="app.addCat()">＋ Add category</button></div>`;
+  drawCBS();
+}
+function drawCBS(){
+  const p=proj();const months=planMonths(ensurePlan(p));let html='';
+  ['A','B','C'].forEach(g=>{const cats=p.cats.filter(c=>c.grp===g);if(!cats.length)return;
+    const gb=grpB(p,g),ga=cats.reduce((a,c)=>a+catA(c),0),gc=cats.reduce((a,c)=>a+catClaim(c),0);
+    html+=`<tr class="grp"><td></td><td class="l">${g}. ${GROUPS[g]}</td><td></td><td>${fmt(gb)}</td><td>${fmt(ga)}</td><td>${fmt(gc)}</td><td></td><td></td><td></td></tr>`;
+    cats.forEach(c=>{const b=catB(c),a=catA(c),cc=catClaim(c);const open=expanded[c.id];
+      html+=`<tr class="cat"><td class="tog" onclick="app.tog('${c.id}')">${open?'▾':'▸'}</td><td class="l">${c.no}. ${esc(c.name)} <span style="color:#94a3b8;font-size:10px">${c.type}</span></td><td></td><td>${fmt(b)}</td><td>${fmt(a)}</td><td>${fmt(cc)}</td><td></td><td></td><td class="act"><button title="Delete category" onclick="app.delCat('${c.id}')">×</button></td></tr>`;
+      if(open){c.items.forEach(it=>{const rc=(+it.budget||0)*(+it.actualPct||0)/100;const cm=(it.claimMonth==null?null:+it.claimMonth);const camt=(it.claim!=null&&it.claim!=='')?(+it.claim||0):(cm!=null?rc:'');const rev=it.review?'<span title="Auto-mapped — verify" style="color:#f59e0b;font-weight:800;margin-right:3px">⚠</span>':'';
+        html+=`<tr class="itm ${it.review?'rev':''}"><td></td>
+          <td class="l name">${rev}<input value="${esc(it.name)}" style="width:calc(100% - 18px)" onchange="app.setItem('${c.id}','${it.id}','name',this.value)"></td>
+          <td style="text-align:center"><select title="Move category" style="font-size:10px;border:1px solid var(--line);border-radius:6px;padding:2px 1px;max-width:52px" onchange="app.moveItem('${c.id}','${it.id}',this.value)">${p.cats.map(x=>`<option value="${x.no}" ${x.id===c.id?'selected':''}>${x.no}</option>`).join('')}</select></td>
+          <td class="num"><input value="${it.budget?fmt(it.budget):''}" placeholder="0" onchange="app.setItem('${c.id}','${it.id}','budget',this.value)"></td>
+          <td class="calc" style="text-align:right;color:${it.credit==null?'#10b981':'#0ea5e9'};font-weight:${it.credit==null?'700':'500'}">${fmt(rc)}</td>
+          <td class="num"><input value="${camt!==''?fmt(camt):''}" placeholder="${rc?fmt(rc):'0'}" onchange="app.setItemClaim('${c.id}','${it.id}','claim',this.value)"></td>
+          <td style="text-align:center"><select onchange="app.setItemClaim('${c.id}','${it.id}','month',this.value)" style="border:1px solid var(--line);border-radius:6px;padding:2px;font-size:11px"><option value="" ${cm==null?'selected':''}>—</option>${months.map((m,j)=>`<option value="${j}" ${j===cm?'selected':''}>${m}</option>`).join('')}</select></td>
+          <td class="pin" style="text-align:center;white-space:nowrap"><input style="width:34px;text-align:center" value="${it.credit!=null?it.credit:''}" placeholder="0" onchange="app.setItemClaim('${c.id}','${it.id}','credit',this.value)"><select style="font-size:10px;border:1px solid var(--line);border-radius:5px;padding:1px;margin-left:2px" onchange="app.setItemClaim('${c.id}','${it.id}','creditUnit',this.value)"><option value="d" ${(it.creditUnit||'d')==='d'?'selected':''}>d</option><option value="mo" ${it.creditUnit==='mo'?'selected':''}>mo</option></select></td>
+          <td class="act"><button title="Delete sub-item" onclick="app.delItem('${c.id}','${it.id}')">×</button></td></tr>`;});
+        html+=`<tr class="addi"><td></td><td colspan="8"><button onclick="app.addItem('${c.id}')">＋ Add sub-item</button></td></tr>`;
+      }
+    });
+  });
+  document.getElementById('cbsBody').innerHTML=html;
+}
+/* ===== CASH FLOW ===== */
+const PHASE_OF={ENG:'eng',DOC:'eng',MEL:'proc',MIN:'proc',BLK:'proc',STF:'inst',SUB:'comm',TCF:'ind',TOL:'ind',RNT:'ind',TRN:'ind',SAF:'ind',ENV:'ind',UTL:'ind',OHC:'ind'};
+const PHNAME={eng:'Engineering & Design',proc:'Procurement',inst:'Installation',comm:'Testing & Commissioning',ind:'Indirect / Site'};
+const PHKEYS=['eng','proc','inst','comm'];
+function defaultPlan(){const d=new Date();return {startY:d.getFullYear(),startM:d.getMonth(),dataDate:0,payLag:1,phases:{eng:{s:0,dur:3},proc:{s:2,dur:5},inst:{s:5,dur:9},comm:{s:13,dur:3}}};}
+function ensurePlan(p){if(!p.plan)p.plan=defaultPlan();if(!p.plan.phases)p.plan.phases=defaultPlan().phases;['eng','proc','inst','comm'].forEach(k=>{if(!p.plan.phases[k])p.plan.phases[k]={s:0,dur:3};});if(p.plan.payLag==null)p.plan.payLag=1;if(!p.claims)p.claims=[];return p.plan;}
+function planEnd(pl){let e=1;['eng','proc','inst','comm'].forEach(k=>{const ph=pl.phases[k];if(ph)e=Math.max(e,ph.s+ph.dur);});return e;}
+function planMonths(pl){const n=planEnd(pl);const out=[];for(let i=0;i<n;i++){const idx=pl.startM+i;const y=pl.startY+Math.floor(idx/12);const m=((idx%12)+12)%12;out.push(MON[m]+"-"+String(y%100).padStart(2,'0'));}return out;}
+function isMargin(it){const nm=(it.name||'').toLowerCase();return nm.indexOf('overhead & profit')>=0||nm.indexOf('o&p')>=0||nm.indexOf('overhead and profit')>=0||/(^|[^a-z])profit/.test(nm);}
+function marginTotal(p){let t=0;p.cats.forEach(c=>c.items.forEach(i=>{if(isMargin(i))t+=(+i.budget||0);}));return t;}
+function costTotal(p){return contractTotal(p)-marginTotal(p);}
+function projReady(p){let t=0;p.cats.forEach(c=>c.items.forEach(it=>t+=(+it.budget||0)*(+it.actualPct||0)/100));return t;}
+function readyToClaim(it){return (+it.budget||0)*(+it.actualPct||0)/100;}
+function itemClaimAmt(it){const ready=readyToClaim(it);return (it.claim!=null&&it.claim!=='')?(+it.claim||0):ready;}
+function creditMonths(it,pl){if(it.credit==null||it.credit==='')return 0;const v=+it.credit||0;return (it.creditUnit==='mo')?v:Math.round(v/30);}
+function catClaim(c){return c.items.reduce((a,it)=>a+itemClaimAmt(it),0);}
+function projClaim(p){let t=0;p.cats.forEach(c=>t+=catClaim(c));return t;}
+function claimReceipts(p){const dur=planMonths(ensurePlan(p)).length;const arr=Array(dur).fill(0);p.cats.forEach(c=>c.items.forEach(it=>{const amt=itemClaimAmt(it);if(amt<=0)return;const rm=(+it.claimMonth||0)+((it.credit!=null)?+it.credit:(p.plan.payLag||0));arr[Math.min(Math.max(rm,0),dur-1)]+=amt;}));return arr;}
+function contractTotal(p){let t=0;p.cats.forEach(c=>c.items.forEach(i=>t+=(+i.budget||0)));return t;}
+function findItem(id){const p=proj();for(const c of p.cats){const it=c.items.find(i=>i.id===id);if(it)return it;}return null;}
+function buildSchedule(p){const pl=ensurePlan(p);const months=planMonths(pl);const dur=months.length;const end=dur-1;const tot=costTotal(p)||1;const acts=[];
+  p.cats.forEach(c=>{const ph=PHASE_OF[c.no]||'ind';
+    let win=(ph==='ind')?{s:0,dur:dur}:pl.phases[ph];if(!win)win={s:0,dur:dur};
+    let ws=Math.max(0,Math.min(end,win.s)),we=Math.max(ws,Math.min(end,win.s+win.dur-1));
+    c.items.forEach(it=>{if(isMargin(it))return;const b=+it.budget||0;if(b<=0)return;
+      const ms=(it.ms!=null)?Math.max(0,Math.min(end,it.ms)):ws;const me=(it.me!=null)?Math.max(ms,Math.min(end,it.me)):we;
+      acts.push({id:it.id,catNo:c.no,catName:c.name,phase:ph,name:it.name,weight:b/tot*100,budget:b,ms,me,actualPct:+it.actualPct||0,ref:it});});});
+  return {months,acts,dur,tot};}
+function buildCashflow(p){const sc=buildSchedule(p);const pl=p.plan;const dur=sc.dur;
+  const planM=Array(dur).fill(0);sc.acts.forEach(a=>{const n=a.me-a.ms+1;for(let m=a.ms;m<=a.me;m++)planM[m]+=a.weight/n;});
+  const cT=costTotal(p),kT=contractTotal(p),lag=Math.max(0,pl.payLag||0);
+  const cost=planM.map(v=>Math.round(v/100*cT));
+  const billed=planM.map(v=>v/100*kT);const rev=Array(dur).fill(0);for(let m=0;m<dur;m++){const src=m-lag;if(src>=0)rev[m]=Math.round(billed[src]);}
+  const sumR=rev.reduce((a,b)=>a+b,0),totB=Math.round(billed.reduce((a,b)=>a+b,0));if(dur>0)rev[dur-1]+=totB-sumR;
+  const aOut=Array(dur).fill(0),aIn=Array(dur).fill(0);
+  p.cats.forEach(c=>c.items.forEach(it=>{const prog=(+it.actualPct||0)/100;const amt=itemClaimAmt(it);if(prog<=0&&amt<=0)return;
+    const rm=Math.min(Math.max((it.claimMonth!=null?+it.claimMonth:(pl.dataDate||0)),0),dur-1);
+    if(!isMargin(it))aOut[rm]+=Math.round((+it.budget||0)*prog);
+    aIn[Math.min(rm+creditMonths(it,pl),dur-1)]+=Math.round(amt);}));
+  return {months:sc.months,cost,revenue:rev,planM,dur,aOut,aIn,actualIn:aIn};}
+function cfCalc(cf){const n=cf.months.length;const net=[],cum=[],cumR=[],cumC=[];let s=0,cr=0,cc=0;
+  for(let m=0;m<n;m++){const r=+cf.revenue[m]||0,c=+cf.cost[m]||0;net.push(r-c);s+=r-c;cum.push(s);cr+=r;cc+=c;cumR.push(cr);cumC.push(cc);}
+  const peak=Math.min(0,...cum);return {net,cum,cumR,cumC,totR:cr,totC:cc,peak,peakM:cum.indexOf(peak),posM:cum.findIndex(x=>x>=0)};}
+function renderCashflow(el){const p=proj();ensurePlan(p);const cf=buildCashflow(p);const dur=cf.dur;
+  const inA=cfMode==='actual'?cf.aIn:cf.revenue;const outA=cfMode==='actual'?cf.aOut:cf.cost;
+  const net=[],cum=[],cumR=[],cumC=[];let s=0,cr=0,cc=0;for(let m=0;m<dur;m++){net.push(inA[m]-outA[m]);s+=net[m];cum.push(s);cr+=inA[m];cc+=outA[m];cumR.push(cr);cumC.push(cc);}
+  const totIn=cr,totOut=cc,profit=totIn-totOut,peak=Math.min(0,...cum),peakM=cum.indexOf(peak);
+  const ready=projReady(p),claimed=projClaim(p);const segb=on=>on?'background:#4f46e5;color:#fff':'background:#eef1f6;color:#64748b';
+  el.innerHTML=`<div class="pagehead"><div><h2>Cash Flow &amp; S-Curve <span style="font-weight:500;font-size:12px;color:var(--muted)">· ${cfMode==='actual'?'Actual (L4 progress + claims)':'Plan basis'}</span></h2><p>${cfMode==='actual'?'Cash-in = Ready-to-Claim received (claim month + credit) · Cash-out = actual progress × cost':'Plan phasing · billing lag '+(p.plan.payLag||0)+' mo'}</p></div>
+     <div style="display:flex;gap:8px;align-items:center"><div style="display:inline-flex;border:1px solid var(--line);border-radius:9px;overflow:hidden"><button onclick="app.setCfMode('plan')" style="${segb(cfMode!=='actual')};border:none;padding:7px 14px;font-weight:700;font-size:12px;cursor:pointer">Plan</button><button onclick="app.setCfMode('actual')" style="${segb(cfMode==='actual')};border:none;padding:7px 14px;font-weight:700;font-size:12px;cursor:pointer">Actual</button></div><button class="btn" onclick="app.exportCashflow()">⬇ Excel</button></div></div>
+   <div class="kpis">
+     ${kpi('Cash-in ('+cfMode+')',cur()+' '+fmt(totIn),cfMode==='actual'?('claimed '+cur()+' '+fmt(claimed)):'plan billing','#eef2ff','#4f46e5',iW)}
+     ${kpi('Cash-out ('+cfMode+')',cur()+' '+fmt(totOut),'ready to claim '+cur()+' '+fmt(ready),'#ecfeff','#0ea5e9',iT)}
+     ${kpi('Gross Profit',cur()+' '+fmt(profit),(totIn?(profit/totIn*100).toFixed(1):'0')+'% margin','#ecfdf5',profit>=0?'#10b981':'#ef4444',iC,profit>=0?'up':'down')}
+     ${kpi('Peak Funding ('+cfMode+')',cur()+' '+fmt(Math.abs(peak)),'max outflow · '+(cf.months[peakM]||'-'),'#fff1f2','#ef4444',iF,'down')}
+   </div>
+   <div class="grid g2" style="margin-bottom:16px">
+     <div class="card"><h3>S-Curve — Cash-in vs Cash-out</h3><div class="body"><div class="chart-wrap"><canvas id="cS"></canvas></div><div style="font-size:11.5px;margin-top:8px;display:flex;gap:18px"><span style="color:#10b981;font-weight:700">— Cash-in</span><span style="color:#4f46e5;font-weight:700">— Cash-out</span></div></div></div>
+     <div class="card"><h3>Cash Position <span class="hint">${cfMode} · cumulative</span></h3><div class="body"><div class="chart-wrap"><canvas id="cPos"></canvas></div></div></div>
+   </div>
+   <div class="card" style="margin-bottom:16px"><h3>Monthly Net Cash Flow <span class="hint">${cfMode}</span></h3><div class="body"><div class="chart-wrap" style="height:230px"><canvas id="cNet"></canvas></div></div></div>
+   <div class="tbl-card"><table class="ct"><thead><tr><th class="l">Month</th><th>Cash-in</th><th>Cash-out</th><th>Net</th><th>Cumulative</th></tr></thead>
+     <tbody>${cf.months.map((mo,i)=>`<tr><td class="l" style="padding:9px 12px;font-weight:600">${esc(mo)}</td><td class="calc" style="color:#10b981">${inA[i]?fmt(inA[i]):''}</td><td class="calc">${outA[i]?fmt(outA[i]):''}</td><td class="calc ${net[i]>=0?'pos':'neg'}">${fmt(net[i])}</td><td class="calc ${cum[i]>=0?'pos':'neg'}">${fmt(cum[i])}</td></tr>`).join('')}</tbody>
+     <tfoot><tr><td class="l">TOTAL</td><td>${fmt(totIn)}</td><td>${fmt(totOut)}</td><td class="${profit>=0?'':'neg'}">${fmt(profit)}</td><td>${fmt(cum[cum.length-1]||0)}</td></tr></tfoot></table></div>`;
+  const xo={ticks:{font:{size:9},maxRotation:90,minRotation:90},grid:{display:false}};const yo={ticks:{callback:v=>fmtShort(v),font:{size:10}},grid:{color:'#eef1f6'}};
+  charts.s=new Chart(document.getElementById('cS'),{type:'line',data:{labels:cf.months,datasets:[{label:'In',data:cumR,borderColor:'#10b981',backgroundColor:'rgba(16,185,129,.10)',fill:true,tension:.35,pointRadius:0,borderWidth:2.5},{label:'Out',data:cumC,borderColor:'#4f46e5',backgroundColor:'rgba(79,70,229,.08)',fill:true,tension:.35,pointRadius:0,borderWidth:2.5}]},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false},tooltip:{callbacks:{label:c=>c.dataset.label+': '+cur()+' '+fmt(c.raw)}}},scales:{x:xo,y:yo}}});
+  charts.pos=new Chart(document.getElementById('cPos'),{type:'line',data:{labels:cf.months,datasets:[{data:cum,borderColor:'#0ea5e9',backgroundColor:'rgba(14,165,233,.12)',fill:true,tension:.3,pointRadius:0,borderWidth:2.5,segment:{borderColor:ctx=>ctx.p1.parsed.y<0?'#ef4444':'#10b981'}}]},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false},tooltip:{callbacks:{label:c=>cur()+' '+fmt(c.raw)}}},scales:{x:xo,y:yo}}});
+  charts.net=new Chart(document.getElementById('cNet'),{type:'bar',data:{labels:cf.months,datasets:[{data:net,backgroundColor:net.map(v=>v>=0?'#10b981':'#ef4444'),borderRadius:3}]},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false},tooltip:{callbacks:{label:c=>cur()+' '+fmt(c.raw)}}},scales:{x:xo,y:yo}}});
+}
+/* ===== SETTINGS ===== */
+function renderSettings(el){
+  const p=proj();
+  el.innerHTML=`<div class="pagehead"><div><h2>Settings</h2><p>Project details and data.</p></div></div>
+   <div class="settings">
+     <div class="sec"><h3>Project Details</h3><div class="body">
+       <div class="field"><label>Project name</label><input value="${esc(p.name)}" onchange="app.setProj('name',this.value)"></div>
+       <div class="field row"><div><label>Project code</label><input value="${esc(p.code||'')}" onchange="app.setProj('code',this.value)"></div>
+         <div><label>Client</label><input value="${esc(p.client||'')}" onchange="app.setProj('client',this.value)"></div></div>
+       <div class="field"><label>Currency</label><input value="${esc(p.currency)}" onchange="app.setProj('currency',this.value)"></div>
+     </div></div>
+     <div class="sec"><h3>Data</h3><div class="body" style="display:flex;gap:10px;flex-wrap:wrap">
+        <button class="btn" onclick="app.exportExcel()">Export CBS Excel</button>
+        <button class="btn" onclick="app.downloadTemplate()">Blank template</button>
+        <button class="btn" onclick="app.importExcel()">Upload CBS</button>
+        <button class="btn" onclick="app.exportJSON()">Backup JSON</button>
+        <button class="btn" onclick="app.importJSON()">Restore JSON</button>
+        <button class="btn" onclick="app.reseed()">Reload samples</button>
+     </div></div>
+     <div class="sec danger"><h3>Danger Zone</h3><div class="body" style="display:flex;gap:10px;flex-wrap:wrap">
+        <button class="btn danger-b" onclick="app.clearActuals()">Clear all Actuals</button>
+        <button class="btn danger-b" onclick="app.deleteProject()">Delete this project</button>
+     </div></div>
+   </div>`;
+}
+
+/* ===== ACTIONS ===== */
+/* ===== WBS L4 SCHEDULE + CASH-FLOW GENERATOR ===== */
+const MON=['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+function phaseWin(no){const Pm={'ENG':[0,.30],'MEL':[.10,.60],'MIN':[.10,.60],'BLK':[.15,.65],'STF':[.30,.95],'SUB':[.40,1],
+ 'TCF':[0,1],'TOL':[.30,.95],'RNT':[.30,.95],'TRN':[.30,.95],'SAF':[0,1],'ENV':[.30,.95],'UTL':[0,1],'DOC':[0,1]};
+ return Pm[no]||[.20,.90];}
+function genScheduleData(){}
+function regenCashflowFromSchedule(){}
+function schedStats(p){const sc=buildSchedule(p);const pl=p.plan;const dur=sc.dur;const totW=sc.acts.reduce((a,x)=>a+x.weight,0)||100;
+  const planM=Array(dur).fill(0);sc.acts.forEach(a=>{const n=a.me-a.ms+1;for(let m=a.ms;m<=a.me;m++)planM[m]+=a.weight/n;});
+  const planCum=[];let s=0;planM.forEach(v=>{s+=v;planCum.push(s);});
+  const dd=Math.min(pl.dataDate||0,dur-1);const earned=sc.acts.reduce((a,x)=>a+x.weight*(+x.actualPct||0)/100,0);
+  const actCum=[];for(let m=0;m<dur;m++){if(m>dd){actCum.push(null);continue;}const sh=planCum[dd]?planCum[m]/planCum[dd]:0;actCum.push(earned*sh);}
+  return {sc,dur,totW,planCum,actCum,dd,earned,planToDate:planCum[dd]||0,planPct:planCum[dd]||0,actPct:earned};}
+let expandedS={};
+function renderSchedule(el){const p=proj();ensurePlan(p);const k=schedStats(p);const sc=k.sc;
+  if(!sc.acts.length){el.innerHTML=`<div class="pagehead"><div><h2>L4 Weighted Schedule</h2><p>L4 activities are generated from your CBS items (weighted by value).</p></div></div>
+     <div class="card"><div class="body" style="text-align:center;padding:40px"><p class="mini" style="max-width:520px;margin:0 auto 16px">No CBS items with budget yet. Create a project from a quotation (CBS Cost), then set phase durations here — the schedule &amp; cash flow build automatically.</p>
+     <button class="btn primary" onclick="app.scheduleWizard()">🗓️ Set phase durations</button></div></div>`;return;}
+  const spi=k.planToDate?(k.earned/k.planToDate):0;
+  el.innerHTML=`<div class="pagehead"><div><h2>L4 Weighted Schedule <span style="font-weight:500;font-size:12px;color:var(--muted)">· derived from CBS</span></h2><p>${esc(p.name)} · ${sc.months[0]}–${sc.months[sc.dur-1]} · weight by value · progress feeds Cash Flow</p></div>
+     <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">Data date:
+       <select onchange="app.setDataDate(this.value)" style="border:1px solid var(--line);border-radius:8px;padding:6px 8px">${sc.months.map((m,i)=>`<option value="${i}" ${i===k.dd?'selected':''}>${m}</option>`).join('')}</select>
+       <button class="btn" onclick="app.scheduleWizard()">🗓️ Phase durations</button><button class="btn" onclick="app.exportSchedule()">⬇ Excel</button></div></div>
+   <div class="kpis">
+     ${kpi('Planned % (to date)',k.planPct.toFixed(1)+'%','by '+sc.months[k.dd],'#eef2ff','#4f46e5',iT)}
+     ${kpi('Actual % complete',k.actPct.toFixed(1)+'%','earned '+cur()+' '+fmt(k.earned/100*sc.tot),'#ecfeff','#0ea5e9',iC,k.actPct>=k.planPct?'up':'down')}
+     ${kpi('SPI',spi.toFixed(2),spi>=1?'On/ahead of plan':'Behind plan','#ecfdf5',spi>=1?'#10b981':'#ef4444',iD,spi>=1?'up':'down')}
+     ${kpi('Scheduled Value',cur()+' '+fmt(sc.tot),sc.acts.length+' L4 activities','#fffbeb','#f59e0b',iW)}
+   </div>
+   <div class="card" style="margin-bottom:16px"><h3>S-Curve — Plan vs Actual <span class="hint">% complete</span></h3><div class="body"><div class="chart-wrap"><canvas id="cSC"></canvas></div>
+     <div style="font-size:11.5px;margin-top:8px;display:flex;gap:18px"><span style="color:#c7d2fe;font-weight:700">■ Planned</span><span style="color:#4f46e5;font-weight:700">■ Actual</span></div></div></div>
+   <div class="tbl-card"><table class="ct">
+     <thead><tr><th style="width:30px"></th><th class="l">Phase / CBS Activity</th><th>Weight</th><th>Start</th><th>Dur</th><th>Timeline</th><th>Plan%</th><th>Actual%</th></tr></thead>
+     <tbody id="scBody"></tbody></table></div>`;
+  drawSchedule();
+  charts.sc=new Chart(document.getElementById('cSC'),{type:'line',data:{labels:sc.months,datasets:[
+    {label:'Plan',data:k.planCum,borderColor:'#94a3b8',backgroundColor:'rgba(199,210,254,.35)',fill:true,tension:.35,pointRadius:0,borderWidth:2},
+    {label:'Actual',data:k.actCum,borderColor:'#4f46e5',backgroundColor:'rgba(79,70,229,.10)',fill:true,tension:.35,pointRadius:0,borderWidth:2.5,spanGaps:false}]},
+    options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false},tooltip:{callbacks:{label:c=>c.dataset.label+': '+(c.raw==null?'-':(+c.raw).toFixed(1)+'%')}}},scales:{x:{ticks:{font:{size:9},maxRotation:90,minRotation:90},grid:{display:false}},y:{ticks:{callback:v=>v+'%',font:{size:10}},grid:{color:'#eef1f6'},max:100}}}});
+}
+function drawSchedule(){const p=proj();const sc=buildSchedule(p);let html='';const dur=sc.dur;const dd=p.plan.dataDate||0;
+  ['eng','proc','inst','comm','ind'].forEach((ph,pi)=>{const list=sc.acts.filter(a=>a.phase===ph);if(!list.length)return;
+    const pw=list.reduce((a,x)=>a+x.weight,0);const pe=list.reduce((a,x)=>a+x.weight*(+x.actualPct||0)/100,0);
+    let pp=0;list.forEach(a=>{const n=a.me-a.ms+1;for(let m=a.ms;m<=Math.min(a.me,dd);m++)pp+=a.weight/n;});
+    const open=expandedS[pi]!==false;
+    html+=`<tr class="grp"><td class="tog" style="color:#fff;cursor:pointer" onclick="app.togS(${pi})">${open?'▾':'▸'}</td><td class="l">${PHNAME[ph]}</td><td>${pw.toFixed(1)}%</td><td colspan="3"></td><td>${(pw?pp/pw*100:0).toFixed(2)}%</td><td>${(pw?pe/pw*100:0).toFixed(1)}%</td></tr>`;
+    if(open)list.forEach(a=>{const pl=(a.ms/dur*100),wd=((a.me-a.ms+1)/dur*100);const ap=+a.actualPct||0;
+      const pdt=a.me<dd?100:(a.ms>dd?0:(((dd-a.ms+1)/(a.me-a.ms+1))*100));
+      html+=`<tr class="act2"><td></td><td class="l">${esc(a.name)} <span style="color:#94a3b8;font-size:10px">${a.catNo}</span></td>
+        <td style="text-align:right">${a.weight.toFixed(2)}%</td>
+        <td style="text-align:center"><select onchange="app.setActF('${a.id}','ms',this.value)" style="border:1px solid var(--line);border-radius:6px;padding:2px">${sc.months.map((m,i)=>`<option value="${i}" ${i===a.ms?'selected':''}>${m}</option>`).join('')}</select></td>
+        <td class="pin" style="text-align:center"><input style="width:42px;text-align:center" value="${a.me-a.ms+1}" onchange="app.setActF('${a.id}','dur',this.value)"></td>
+        <td><div class="gtrack"><div class="gplan" style="left:${pl}%;width:${wd}%"></div><div class="gact" style="left:${pl}%;width:${wd*ap/100}%"></div></div></td>
+        <td style="text-align:right">${pdt.toFixed(2)}%</td><td class="pin"><input style="width:50px;text-align:right" value="${ap||''}" placeholder="0" onchange="app.setActual('${a.id}',this.value)"></td></tr>`;});
+  });
+  document.getElementById('scBody').innerHTML=html;
+}
+function buildScheduleExcel(){const p=proj();const sc=buildSchedule(p);const wb=XLSX.utils.book_new();const dur=sc.dur;
+  const head=['Phase','CBS','Activity','Weight %','Start','Finish','Dur',...sc.months,'Actual %'];const aoa=[head];
+  sc.acts.forEach(a=>{const n=a.me-a.ms+1;const row=[PHNAME[a.phase],a.catNo,a.name,+a.weight.toFixed(3),sc.months[a.ms],sc.months[a.me],n];for(let m=0;m<dur;m++)row.push((m>=a.ms&&m<=a.me)?+(a.weight/n).toFixed(3):'');row.push(+a.actualPct||0);aoa.push(row);});
+  const ws=XLSX.utils.aoa_to_sheet(aoa);ws['!cols']=[{wch:22},{wch:6},{wch:34},{wch:9},{wch:8},{wch:8},{wch:6},...sc.months.map(()=>({wch:8})),{wch:9}];
+  XLSX.utils.book_append_sheet(wb,ws,'L4 Weighted Schedule');
+  const k=schedStats(p);const cf=buildCashflow(p);const s2=[['Month','Plan cum %','Actual cum %','Cash-out','Cash-in']];
+  sc.months.forEach((m,i)=>{const ac=k.actCum[i];s2.push([m,+k.planCum[i].toFixed(2),ac==null?'':+ac.toFixed(2),cf.cost[i],cf.revenue[i]]);});
+  XLSX.utils.book_append_sheet(wb,XLSX.utils.aoa_to_sheet(s2),'S-Curve & Cash Flow');
+  XLSX.writeFile(wb,'L4-Schedule-'+(p.code||p.name).replace(/\s+/g,'_')+'-'+today()+'.xlsx');toast('Schedule exported');}
+/* ---- Project schedule import (Excel) ---- */
+function buildSchedTemplate(){const wb=XLSX.utils.book_new();
+  const aoa=[['WBS','Activity','Section','Start','Finish','Duration (d)','Weight %'],
+    ['1','Engineering','Engineering','2027-01-05','2027-02-01',27,2],
+    ['4','Construction — Berth & Trestle','Construction','2027-04-12','2028-01-25',288,''],
+    ['4.1','Cable Tray / Duct','Construction','2027-04-12','2027-09-30',171,2.2],
+    ['4.2','Cable Pulling & Termination','Construction','2027-05-01','2027-11-30',171,4.23],
+    ['9','Test & Commissioning','Commissioning','2029-01-13','2029-04-14',91,12]];
+  const ws=XLSX.utils.aoa_to_sheet(aoa);ws['!cols']=[{wch:8},{wch:40},{wch:16},{wch:12},{wch:12},{wch:12},{wch:10}];
+  XLSX.utils.book_append_sheet(wb,ws,'Schedule');
+  const info=[['PROJECT SCHEDULE IMPORT — how to use'],[],
+   ['1) One row per activity. Columns: WBS (optional), Activity, Section (optional), Start, Finish (or Duration), Weight % (optional).'],
+   ['2) Use real dates (YYYY-MM-DD). Weight % = physical progress weighting; blank = app splits by duration.'],
+   ['3) WBS like 4 / 4.1 / 4.1.1 builds hierarchy; parent rows become headings. Or use the Section column to group.'],
+   ['4) Save, then in the app: Upload Project Schedule. You can then add L4 sub-activities & weights inside the app.']];
+  XLSX.utils.book_append_sheet(wb,XLSX.utils.aoa_to_sheet(info),'READ ME');
+  XLSX.writeFile(wb,'Project-Schedule-Import-Template.xlsx');toast('Template downloaded');}
+document.getElementById('schedInput').onchange=function(e){const f=e.target.files[0];if(!f)return;const r=new FileReader();
+ r.onload=()=>{try{const wb=XLSX.read(r.result,{type:'array',cellDates:true});
+   let sn=wb.SheetNames.find(n=>skey(n)!=='read me')||wb.SheetNames[0];
+   const rows=XLSX.utils.sheet_to_json(wb.Sheets[sn],{header:1});
+   let hr=rows.findIndex(rw=>rw&&rw.some(x=>['activity','description','task','work'].includes(skey(x))));if(hr<0)hr=0;
+   const H=rows[hr]||[];const find=(...ks)=>{for(let i=0;i<H.length;i++)if(ks.includes(skey(H[i])))return i;return -1;};
+   const wi=find('wbs','no','no.','id'),ai=find('activity','description','task','work','name'),
+     si=find('start','start date','begin','plan start'),f2=find('finish','end','finish date','completion','plan finish'),
+     di=find('duration','duration (d)','dur','days'),gi=find('section','heading','group','area','phase','discipline'),wg=find('weight','weight %','weight%','wt');
+   if(ai<0)throw new Error('no "Activity" column found');
+   const toDate=v=>{if(v==null||v==='')return null;if(v instanceof Date)return v;if(typeof v==='number')return new Date(Date.UTC(1899,11,30)+Math.round(v)*86400000);const d=new Date(v);return isNaN(d.getTime())?null:d;};
+   const raw=[];
+   for(let k=hr+1;k<rows.length;k++){const rw=rows[k];if(!rw||!rw.length)continue;const nm=rw[ai];if(nm==null||String(nm).trim()===''||skey(nm)==='total')continue;
+     raw.push({wbs:wi>=0?String(rw[wi]==null?'':rw[wi]).trim():'',name:String(nm).trim(),start:toDate(rw[si]),finish:toDate(rw[f2]),dur:di>=0?parseFloat(rw[di]):null,grp:gi>=0?String(rw[gi]==null?'':rw[gi]).trim():'',weight:wg>=0?parseFloat(rw[wg]):null});}
+   if(!raw.length)throw new Error('no activity rows');
+   const codes=new Set(raw.map(x=>x.wbs).filter(Boolean));
+   const hasChild=w=>w&&[...codes].some(c=>c!==w&&c.indexOf(w+'.')===0);
+   const topName={};raw.forEach(x=>{if(x.wbs&&x.wbs.indexOf('.')<0)topName[x.wbs]=x.name;});
+   const leaves=raw.filter(x=>!hasChild(x.wbs));
+   let minD=null,maxD=null;leaves.forEach(x=>{if(x.start&&(!minD||x.start<minD))minD=x.start;const fd=x.finish||x.start;if(fd&&(!maxD||fd>maxD))maxD=fd;});
+   let months=[];if(minD&&maxD){const nM=(maxD.getFullYear()-minD.getFullYear())*12+(maxD.getMonth()-minD.getMonth())+1;for(let i=0;i<Math.max(1,nM);i++){const dt=new Date(minD.getFullYear(),minD.getMonth()+i,1);months.push(MON[dt.getMonth()]+'-'+String(dt.getFullYear()%100).padStart(2,'0'));}}else months=['M1'];
+   const mIdx=d=>{if(!d||!minD)return 0;return Math.max(0,Math.min(months.length-1,(d.getFullYear()-minD.getFullYear())*12+(d.getMonth()-minD.getMonth())));};
+   const acts=leaves.map(x=>{const ms=mIdx(x.start);let me=x.finish?mIdx(x.finish):(x.dur?Math.min(ms+Math.max(1,Math.round(x.dur/30))-1,months.length-1):ms);if(me<ms)me=ms;
+     const h1=(x.wbs&&x.wbs.indexOf('.')>=0)?(topName[x.wbs.split('.')[0]]||x.grp||'Schedule'):(x.grp||x.name);
+     return {id:uid(),wbs:x.wbs,name:x.name,h1name:h1,weight:(x.weight&&x.weight>0)?x.weight:0,ms,me,actualPct:0};});
+   let tw=acts.reduce((a,x)=>a+x.weight,0);
+   if(tw<=0){const td=acts.reduce((a,x)=>a+(x.me-x.ms+1),0)||1;acts.forEach(a=>a.weight=(a.me-a.ms+1)/td*100);}
+   else acts.forEach(a=>a.weight=a.weight/tw*100);
+   const p=proj();p.schedule={months,contract:totals().budget,acts,dataDate:0};expandedS={};
+   regenCashflowFor(p);save();nav('schedule');toast('Imported '+acts.length+' activities into L4 schedule');
+ }catch(err){toast('Import failed: '+(err.message||err));}};
+ r.readAsArrayBuffer(f);};
+/* ---- Auto-generate CBS from Quotation (rule-based mapping) ---- */
+let pendingQuoteMeta=null;
+function parseQuoteLines(wb){
+  const kw=s=>String(s==null?'':s).replace(/\s+/g,' ').trim().toLowerCase();
+  const isNum=v=>typeof v==='number'&&isFinite(v)&&Math.abs(v)>0;
+  let best=[],bestScore=-1;
+  wb.SheetNames.forEach(sn=>{ if(kw(sn)==='read me')return; const rows=XLSX.utils.sheet_to_json(wb.Sheets[sn],{header:1});if(!rows||!rows.length)return;
+    let hr=0,hb=-1;for(let i=0;i<Math.min(rows.length,15);i++){const rw=rows[i]||[];let s=0;rw.forEach(x=>{if(['description','item','no.','no','total','amount','material','labor','labour','unit','qty','price'].includes(kw(x)))s++;});if(s>hb){hb=s;hr=i;}}
+    const H=rows[hr]||[];const find=(...ks)=>{for(let i=0;i<H.length;i++)if(ks.includes(kw(H[i])))return i;return -1;};
+    let dc=find('description','item','activity','work','scope','detail','name');
+    let tc=find('total','amount','total amount','total price','grand total','total (thb)','total amount (thb)','price','total cost');
+    let mc=find('material','material cost','materials cost','material cost (thb)','materials');
+    let lc=find('labor','labour','labor cost','labour cost','labor cost (thb)');
+    if(dc<0){let bc=-1,bt=-1;for(let c=0;c<12;c++){let t=0;for(let k=hr+1;k<rows.length;k++){const v=rows[k]&&rows[k][c];if(typeof v==='string'&&v.trim().length>3)t++;}if(t>bt){bt=t;bc=c;}}dc=bc;}
+    if(tc<0&&mc<0&&lc<0){let bc=-1,bs=-1;for(let c=0;c<H.length;c++){let s=0;for(let k=hr+1;k<rows.length;k++){const v=rows[k]&&rows[k][c];if(isNum(v))s+=v;}if(s>bs){bs=s;bc=c;}}tc=bc;}
+    const lines=[];
+    for(let k=hr+1;k<rows.length;k++){const rw=rows[k];if(!rw)continue;const desc=rw[dc];if(desc==null||String(desc).trim()==='')continue;
+      const kd=kw(desc);if(['total','sub-total','subtotal','grand total','sub total','grand-total','gland total'].some(t=>kd.indexOf(t)===0))continue;
+      const mat=mc>=0?rw[mc]:null,lab=lc>=0?rw[lc]:null,tot=tc>=0?rw[tc]:null;
+      if((mc>=0||lc>=0)&&(isNum(mat)||isNum(lab))){
+        if(isNum(mat))lines.push({desc:String(desc).trim()+' — Material',amount:mat,mapText:String(desc).replace(/\b(install(ation)?|labou?r|erection|termination|pulling|manpower)\b/gi,' ').trim()});
+        if(isNum(lab))lines.push({desc:String(desc).trim()+' — Labor',amount:lab,force:'STF'});
+      }else if(isNum(tot)){lines.push({desc:String(desc).trim(),amount:tot});}
+    }
+    const named=/summary|cost|price|boq|quotation|quote|breakdown/.test(kw(sn));
+    const hasAmt=(tc>=0||mc>=0||lc>=0);
+    const score=(hasAmt?100000:0)+(named?40000:0)+Math.min(lines.length,500);
+    if(lines.length&&score>bestScore){bestScore=score;best=lines;}
+  });
+  return best;
+}
+document.getElementById('quoteInput').onchange=function(e){const f=e.target.files[0];if(!f)return;const r=new FileReader();
+ r.onload=()=>{try{const wb=XLSX.read(r.result,{type:'array'});const lines=parseQuoteLines(wb);
+   if(!lines.length)throw new Error('no priced line items found');
+   const cats={};CBS.forEach(c=>cats[c[1]]={id:uid(),grp:c[0],no:c[1],name:c[2],type:c[3],items:[]});
+   let mapped=0;
+   lines.forEach(ln=>{let code=ln.force||autoMapCode(ln.mapText||ln.desc);const review=!code;if(!code)code='OHC';if(!cats[code])code='OHC';
+     cats[code].items.push({id:uid(),name:ln.desc,budget:Math.round(ln.amount),actual:0,review:review});if(!review)mapped++;});
+   const meta=pendingQuoteMeta||{};pendingQuoteMeta=null;
+   const nm=(meta.name&&meta.name.trim())||(f.name||'New Project').replace(/\.(xlsx|xls)$/i,'').slice(0,60);
+   const p={id:uid(),name:nm,code:meta.code||'',client:'',currency:meta.currency||'THB',cats:CBS.map(c=>cats[c[1]]),cashflow:null};
+   state.projects.push(p);state.activeId=p.id;expanded={};p.cats.forEach(c=>{if(c.items.length)expanded[c.id]=true;});
+   save();nav('cost');
+   const total=lines.reduce((a,x)=>a+(+x.amount||0),0);const need=lines.length-mapped;
+   toast('Generated '+lines.length+' lines · '+cur()+' '+fmt(total)+(need?(' · '+need+' need review ⚠'):' · all auto-mapped'));
+ }catch(err){toast('Auto-generate failed: '+(err.message||err));}};
+ r.readAsArrayBuffer(f);};
+/* Cash-flow upload + template */
+function cashflowTemplateBuild(){const p=proj();const cf=p.cashflow;const wb=XLSX.utils.book_new();
+  const aoa=[['Month','Revenue','Cost']];
+  if(cf&&cf.months)cf.months.forEach((m,i)=>aoa.push([m,+cf.revenue[i]||0,+cf.cost[i]||0]));
+  else for(let i=0;i<24;i++)aoa.push(['M'+(i+1),'','']);
+  const ws=XLSX.utils.aoa_to_sheet(aoa);ws['!cols']=[{wch:12},{wch:16},{wch:16}];
+  XLSX.utils.book_append_sheet(wb,ws,'Cash Flow');
+  XLSX.writeFile(wb,'CashFlow-Template-'+(p.code||p.name).replace(/\s+/g,'_')+'.xlsx');toast('Cash flow template downloaded');}
+document.getElementById('cfInput').onchange=function(e){const f=e.target.files[0];if(!f)return;const r=new FileReader();
+ r.onload=()=>{try{const wb=XLSX.read(r.result,{type:'array'});let sn=wb.SheetNames.find(n=>skey(n)!=='read me')||wb.SheetNames[0];
+   const rows=XLSX.utils.sheet_to_json(wb.Sheets[sn],{header:1});
+   let hr=rows.findIndex(rw=>rw&&rw.some(x=>skey(x)==='month'));if(hr<0)hr=0;const H=rows[hr]||[];
+   let mi=H.findIndex(x=>skey(x)==='month');if(mi<0)mi=0;let ri=H.findIndex(x=>skey(x)==='revenue');if(ri<0)ri=1;let ci=H.findIndex(x=>skey(x)==='cost');if(ci<0)ci=2;
+   const months=[],rev=[],cost=[];
+   for(let k=hr+1;k<rows.length;k++){const rw=rows[k];if(!rw||!rw.length)continue;const mo=rw[mi];if(mo==null||String(mo).trim()===''||skey(mo)==='total')continue;
+     months.push(String(mo));rev.push(parseNum(rw[ri]));cost.push(parseNum(rw[ci]));}
+   if(!months.length)throw 0;proj().cashflow={months,revenue:rev,cost};save();nav('cashflow');toast('Cash flow uploaded ('+months.length+' months)');
+ }catch(err){toast('Could not read Cash Flow file');}};
+ r.readAsArrayBuffer(f);};
+
+function renderPortfolio(el){
+  const projs=state.projects;
+  const monKey=lab=>{const mm=MON.indexOf(lab.slice(0,3));const yy=2000+parseInt(lab.slice(4)||'0');return yy*12+mm;};
+  let minK=Infinity,maxK=-Infinity;const per=projs.map(p=>{const cf=buildCashflow(p);const idx=cf.months.map(monKey);idx.forEach(k=>{if(k<minK)minK=k;if(k>maxK)maxK=k;});return {p,cf,idx};});
+  if(!isFinite(minK)){minK=0;maxK=0;}
+  const N=Math.max(1,maxK-minK+1);const labels=[];for(let i=0;i<N;i++){const k=minK+i;labels.push(MON[((k%12)+12)%12]+"-"+String(Math.floor(k/12)%100).padStart(2,'0'));}
+  const cost=Array(N).fill(0),rev=Array(N).fill(0);
+  per.forEach(pp=>pp.cf.months.forEach((m,j)=>{const gi=pp.idx[j]-minK;if(gi>=0&&gi<N){cost[gi]+=pp.cf.cost[j];rev[gi]+=pp.cf.revenue[j];}}));
+  const net=[],cum=[],cumR=[],cumC=[];let s=0,cr=0,cc=0;for(let i=0;i<N;i++){net.push(rev[i]-cost[i]);s+=net[i];cum.push(s);cr+=rev[i];cc+=cost[i];cumR.push(cr);cumC.push(cc);}
+  const peak=Math.min(0,...cum);
+  const rows=projs.map(p=>{const kk=cfCalc(buildCashflow(p));return {name:p.name,contract:kk.totR,cost:kk.totC,profit:kk.totR-kk.totC,peak:kk.peak};});
+  const TC=rows.reduce((a,x)=>a+x.contract,0),TCo=rows.reduce((a,x)=>a+x.cost,0);
+  el.innerHTML=`<div class="pagehead"><div><h2>Portfolio — All Projects</h2><p>Company-wide cash flow across ${projs.length} project(s)</p></div></div>
+   <div class="kpis">
+     ${kpi('Projects',String(projs.length),'in workspace','#eef2ff','#4f46e5',iW)}
+     ${kpi('Total Contract',cur()+' '+fmt(TC),'combined billing','#ecfeff','#0ea5e9',iT)}
+     ${kpi('Total Profit',cur()+' '+fmt(TC-TCo),(TC?((TC-TCo)/TC*100).toFixed(1):'0')+'% margin','#ecfdf5',(TC-TCo)>=0?'#10b981':'#ef4444',iC,(TC-TCo)>=0?'up':'down')}
+     ${kpi('Company Peak Funding',cur()+' '+fmt(Math.abs(peak)),'max combined outflow','#fff1f2','#ef4444',iF,'down')}
+   </div>
+   <div class="grid g2" style="margin-bottom:16px">
+     <div class="card"><h3>Combined Cash Position <span class="hint">all projects</span></h3><div class="body"><div class="chart-wrap"><canvas id="pPos"></canvas></div></div></div>
+     <div class="card"><h3>Combined S-Curve <span class="hint">revenue vs cost</span></h3><div class="body"><div class="chart-wrap"><canvas id="pS"></canvas></div></div></div>
+   </div>
+   <div class="card" style="margin-bottom:16px"><h3>Monthly Net — Company</h3><div class="body"><div class="chart-wrap" style="height:230px"><canvas id="pNet"></canvas></div></div></div>
+   <div class="tbl-card"><table class="ct"><thead><tr><th class="l">Project</th><th>Contract</th><th>Cost</th><th>Profit</th><th>Margin</th><th>Peak Funding</th></tr></thead>
+     <tbody>${rows.map(r=>`<tr><td class="l" style="padding:10px 12px;font-weight:600">${esc(r.name)}</td><td class="calc">${fmt(r.contract)}</td><td class="calc">${fmt(r.cost)}</td><td class="calc ${r.profit>=0?'pos':'neg'}">${fmt(r.profit)}</td><td class="calc">${r.contract?(r.profit/r.contract*100).toFixed(1):'0'}%</td><td class="calc neg">${fmt(Math.abs(r.peak))}</td></tr>`).join('')}</tbody>
+     <tfoot><tr><td class="l">TOTAL</td><td>${fmt(TC)}</td><td>${fmt(TCo)}</td><td>${fmt(TC-TCo)}</td><td>${TC?((TC-TCo)/TC*100).toFixed(1):'0'}%</td><td>${fmt(Math.abs(peak))}</td></tr></tfoot></table></div>`;
+  const xo={ticks:{font:{size:9},maxRotation:90,minRotation:90},grid:{display:false}};const yo={ticks:{callback:v=>fmtShort(v),font:{size:10}},grid:{color:'#eef1f6'}};
+  charts.pPos=new Chart(document.getElementById('pPos'),{type:'line',data:{labels,datasets:[{data:cum,borderColor:'#0ea5e9',backgroundColor:'rgba(14,165,233,.12)',fill:true,tension:.3,pointRadius:0,borderWidth:2.5,segment:{borderColor:ctx=>ctx.p1.parsed.y<0?'#ef4444':'#10b981'}}]},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false},tooltip:{callbacks:{label:c=>cur()+' '+fmt(c.raw)}}},scales:{x:xo,y:yo}}});
+  charts.pS=new Chart(document.getElementById('pS'),{type:'line',data:{labels,datasets:[{label:'Rev',data:cumR,borderColor:'#10b981',backgroundColor:'rgba(16,185,129,.10)',fill:true,tension:.35,pointRadius:0,borderWidth:2.5},{label:'Cost',data:cumC,borderColor:'#4f46e5',backgroundColor:'rgba(79,70,229,.08)',fill:true,tension:.35,pointRadius:0,borderWidth:2.5}]},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false},tooltip:{callbacks:{label:c=>c.dataset.label+': '+cur()+' '+fmt(c.raw)}}},scales:{x:xo,y:yo}}});
+  charts.pNet=new Chart(document.getElementById('pNet'),{type:'bar',data:{labels,datasets:[{data:net,backgroundColor:net.map(v=>v>=0?'#10b981':'#ef4444'),borderRadius:3}]},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false},tooltip:{callbacks:{label:c=>cur()+' '+fmt(c.raw)}}},scales:{x:xo,y:yo}}});
+}
+const app={
+  switchProject(id){state.activeId=id;save();render();},
+  moveItem(fromId,itemId,toCode){const p=proj();const from=p.cats.find(c=>c.id===fromId);const to=p.cats.find(c=>c.no===toCode);if(!from||!to||from===to)return;const idx=from.items.findIndex(i=>i.id===itemId);if(idx<0)return;const it=from.items.splice(idx,1)[0];delete it.review;to.items.push(it);save();renderCost(document.getElementById('content'));},
+  autoGenCbs(){document.getElementById('dataMenu').classList.remove('open');const fi=document.getElementById('quoteInput');fi.value='';fi.click();},
+  setItemClaim(cid,iid,f,v){const it=proj().cats.find(c=>c.id===cid).items.find(i=>i.id===iid);if(!it)return;if(f==='claim')it.claim=(v===''||v==null)?undefined:parseNum(v);else if(f==='month')it.claimMonth=(v===''||v==null)?null:+v;else if(f==='credit')it.credit=(v===''||v==null)?null:Math.max(0,parseInt(v)||0);else if(f==='creditUnit')it.creditUnit=v;save();renderCost(document.getElementById('content'));},
+  togS(k){expandedS[k]=!expandedS[k];drawSchedule();},
+  setActual(aid,v){const it=findItem(aid);if(it){it.actualPct=Math.max(0,Math.min(100,parseNum(v)));save();renderSchedule(document.getElementById('content'));}},
+  setActF(id,f,v){const sc=buildSchedule(proj());const a=sc.acts.find(x=>x.id===id);if(!a)return;const it=a.ref;const end=sc.dur-1;
+    if(f==='ms'){it.ms=Math.max(0,Math.min(end,+v));if((it.me!=null?it.me:a.me)<it.ms)it.me=it.ms;}
+    else if(f==='dur'){const d=Math.max(1,parseInt(v)||1);const s=(it.ms!=null?it.ms:a.ms);it.ms=s;it.me=Math.min(s+d-1,end);}
+    save();renderSchedule(document.getElementById('content'));},
+  addSub(hEnc){const hh=decodeURIComponent(hEnc);const sc=proj().schedule;const same=sc.acts.filter(a=>(a.h1name||'Other')===hh);
+    const ms=same.length?Math.min(...same.map(a=>a.ms)):0;const me=same.length?Math.max(...same.map(a=>a.me)):Math.min(2,sc.months.length-1);
+    sc.acts.push({id:uid(),wbs:'',name:'New sub-activity',h1name:hh,weight:0,ms,me,actualPct:0});save();drawSchedule();},
+  delAct(id){const sc=proj().schedule;sc.acts=sc.acts.filter(a=>a.id!==id);save();regenCashflowFor(proj());renderSchedule(document.getElementById('content'));},
+  addMainActivity(){modal(`<h4>Add main activity</h4><div class="mbody wz"><label>Main activity / heading name</label><input id="maName" placeholder="e.g. Construction — Tankage Area"></div><div class="mfoot"><button class="btn" onclick="app.closeModal()">Cancel</button><button class="btn primary" onclick="app.doAddMain()">Add</button></div>`);},
+  doAddMain(){const nm=(document.getElementById('maName').value||'New Heading').trim();const sc=proj().schedule;if(!sc)return;
+    sc.acts.push({id:uid(),wbs:'',name:nm+' — activity 1',h1name:nm,weight:0,ms:0,me:Math.min(2,sc.months.length-1),actualPct:0});
+    app.closeModal();save();renderSchedule(document.getElementById('content'));toast('Main activity added — expand to add sub-activities');},
+  normalizeWeights(){const sc=proj().schedule;if(!sc)return;const s=sc.acts.reduce((a,x)=>a+(+x.weight||0),0);if(!s)return toast('No weights to normalize');
+    sc.acts.forEach(a=>a.weight=a.weight/s*100);save();regenCashflowFor(proj());renderSchedule(document.getElementById('content'));toast('Weights normalized to 100%');},
+  importSchedule(){document.getElementById('dataMenu').classList.remove('open');const fi=document.getElementById('schedInput');fi.value='';fi.click();},
+  scheduleTemplate(){document.getElementById('dataMenu').classList.remove('open');buildSchedTemplate();},
+  setDataDate(v){ensurePlan(proj()).dataDate=+v;save();renderSchedule(document.getElementById('content'));},
+  exportSchedule(){buildScheduleExcel();},
+  cashflowTemplate(){document.getElementById('dataMenu').classList.remove('open');cashflowTemplateBuild();},
+  uploadCashflow(){document.getElementById('dataMenu').classList.remove('open');const fi=document.getElementById('cfInput');fi.value='';fi.click();},
+  scheduleWizard(){document.getElementById('dataMenu').classList.remove('open');const p=proj();const pl=ensurePlan(p);
+    modal(`<h4>Project Schedule — Phase Durations</h4><div class="mbody wz">
+      <p class="mini">L4 activities come from your CBS (weighted by value). Set when each phase runs — Cash Flow updates automatically.</p>
+      <div class="field row" style="margin:0"><div><label>Start month</label><select id="wzM">${MON.map((m,i)=>`<option value="${i}" ${i===pl.startM?'selected':''}>${m}</option>`).join('')}</select></div><div><label>Start year</label><input id="wzY" type="number" value="${pl.startY}"></div></div>
+      ${PHKEYS.map(kk=>`<div class="field row" style="margin:8px 0 0"><div><label>${PHNAME[kk]} — start (month #)</label><input id="wzS_${kk}" type="number" min="1" value="${(pl.phases[kk].s|0)+1}"></div><div><label>Duration (months)</label><input id="wzD_${kk}" type="number" min="1" value="${pl.phases[kk].dur}"></div></div>`).join('')}
+      <div class="field" style="margin-top:10px"><label>Payment collection lag (months)</label><input id="wzLag" type="number" min="0" max="6" value="${pl.payLag||0}"></div>
+     </div><div class="mfoot"><button class="btn" onclick="app.closeModal()">Cancel</button><button class="btn primary" onclick="app.runWizard()">Apply</button></div>`);},
+  runWizard(){const p=proj();const pl=ensurePlan(p);pl.startM=+document.getElementById('wzM').value;pl.startY=+document.getElementById('wzY').value||pl.startY;pl.payLag=Math.max(0,+document.getElementById('wzLag').value||0);
+    PHKEYS.forEach(kk=>{pl.phases[kk]={s:Math.max(0,(+document.getElementById('wzS_'+kk).value||1)-1),dur:Math.max(1,+document.getElementById('wzD_'+kk).value||1)};});
+    save();app.closeModal();nav('schedule');toast('Schedule updated — cash flow recalculated');},
+  toggleMenu(e){e.stopPropagation();document.getElementById('dataMenu').classList.toggle('open');},
+  setProj(k,v){proj()[k]=v;save();if(k==='name'||k==='currency')render();},
+  tog(id){expanded[id]=!expanded[id];drawCBS();},
+  expandAll(v){proj().cats.forEach(c=>expanded[c.id]=v);drawCBS();},
+  setItem(cid,iid,f,v){const it=proj().cats.find(c=>c.id===cid).items.find(i=>i.id===iid);if(f==='name')it.name=v;else it[f]=parseNum(v);save();if(f!=='name'){renderCost(document.getElementById('content'));}},
+  addItem(cid){const c=proj().cats.find(x=>x.id===cid);c.items.push({id:uid(),name:'New sub-item',budget:0,actual:0});expanded[cid]=true;save();drawCBS();},
+  delItem(cid,iid){const c=proj().cats.find(x=>x.id===cid);c.items=c.items.filter(i=>i.id!==iid);save();renderCost(document.getElementById('content'));},
+  addCat(){const p=proj();p.cats.push({id:uid(),grp:'B',no:'+',name:'New Category',type:'O',items:[{id:uid(),name:'Item 1',budget:0,actual:0}]});save();renderCost(document.getElementById('content'));},
+  delCat(id){const p=proj();if(p.cats.length<=1)return toast('At least one category required');confirmBox('Delete this category and its sub-items?',()=>{p.cats=p.cats.filter(c=>c.id!==id);save();render();});},
+  clearActuals(){confirmBox('Set all Actual values to 0?',()=>{proj().cats.forEach(c=>c.items.forEach(i=>i.actual=0));save();render();toast('Actuals cleared');});},
+  deleteProject(){if(state.projects.length<=1)return toast('Cannot delete the only project');confirmBox('Delete this project?',()=>{state.projects=state.projects.filter(p=>p.id!==state.activeId);state.activeId=state.projects[0].id;save();render();toast('Deleted');});},
+  reseed(){document.getElementById('dataMenu').classList.remove('open');confirmBox('Reload MAP2 + GMTP samples? This replaces ALL current data.',()=>{state=freshState();save();render();toast('Samples reloaded');});},
+  newProjectModal(){modal(`<h4>New Project</h4><div class="mbody">
+      <div class="field"><label>Project name</label><input id="npName" placeholder="e.g. Rayong Substation E&I"></div>
+      <div class="field row"><div><label>Code</label><input id="npCode"></div><div><label>Currency</label><input id="npCur" value="THB"></div></div>
+      <div class="field"><label>Start with</label><select id="npTpl" onchange="var e=document.getElementById('npQhint');if(e)e.style.display=this.value==='quote'?'block':'none';">
+        <option value="quote">📄 Upload Quotation → auto-generate CBS (recommended)</option>
+        <option value="cbs">Blank CBS (15 categories, zero)</option>
+        <option value="map2">Copy MAP2 (sample)</option><option value="gmtp">Copy GMTP (sample)</option></select>
+        <div id="npQhint" class="mini" style="margin-top:8px;color:#64748b;line-height:1.5">After you click Create, choose your quotation Excel — the app auto-maps every priced line into the CBS and fills the budget. You can review &amp; edit any mapping afterward.</div></div>
+     </div><div class="mfoot"><button class="btn" onclick="app.closeModal()">Cancel</button><button class="btn primary" onclick="app.createProject()">Create</button></div>`);},
+  createProject(){const name=(document.getElementById('npName').value||'').trim();const tpl=document.getElementById('npTpl').value;
+    if(tpl==='quote'){pendingQuoteMeta={name:name,code:document.getElementById('npCode').value||'',currency:document.getElementById('npCur').value||'THB'};app.closeModal();const fi=document.getElementById('quoteInput');fi.value='';fi.click();return;}
+    const nm=name||'Untitled';let p;
+    if(tpl==='map2')p=mkProject(SEEDS.projects[0]);
+    else if(tpl==='gmtp')p=mkProject(SEEDS.projects[1]);
+    else{p={id:uid(),name:nm,code:'',client:'',currency:'THB',cats:CBS.map(c=>({id:uid(),grp:c[0],no:c[1],name:c[2],type:c[3],items:[]})),cashflow:null};}
+    p.name=nm;p.code=document.getElementById('npCode').value;p.currency=document.getElementById('npCur').value||'THB';
+    state.projects.push(p);state.activeId=p.id;save();app.closeModal();nav('cost');toast('Project created');},
+  closeModal(){document.getElementById('overlay').classList.remove('open');},
+  setLag(v){ensurePlan(proj()).payLag=Math.max(0,Math.min(6,parseInt(v)||0));save();renderCashflow(document.getElementById('content'));},
+  setCfMode(m){cfMode=m;renderCashflow(document.getElementById('content'));},
+  addClaim(){const p=proj();if(!p.claims)p.claims=[];const cd=p.claims.reduce((a,c)=>a+(+c.amount||0),0);const amt=Math.max(0,Math.round(projReady(p)-cd));p.claims.push({id:uid(),desc:'Progress claim #'+(p.claims.length+1),amount:amt,month:(p.plan.dataDate||0),credit:(p.plan.payLag||0)});save();renderCashflow(document.getElementById('content'));},
+  setClaim(i,f,v){const p=proj();const cl=(p.claims||[])[i];if(!cl)return;if(f==='desc')cl.desc=v;else if(f==='amount')cl.amount=parseNum(v);else if(f==='month')cl.month=+v;else if(f==='credit')cl.credit=Math.max(0,parseInt(v)||0);save();renderCashflow(document.getElementById('content'));},
+  delClaim(i){const p=proj();(p.claims||[]).splice(i,1);save();renderCashflow(document.getElementById('content'));},
+  genCashflow(){const p=proj();const t=totals();const N=24;const months=[];const d=new Date();
+    for(let i=0;i<N;i++){const dt=new Date(d.getFullYear(),d.getMonth()+i,1);months.push(['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'][dt.getMonth()]+"'"+String(dt.getFullYear()%100).padStart(2,'0'));}
+    const cost=grpB(p,'A')+grpB(p,'B');const rev=t.budget;
+    p.cashflow={months,revenue:months.map(()=>Math.round(rev/N)),cost:months.map(()=>Math.round(cost/N))};save();renderCashflow(document.getElementById('content'));toast('Model generated — edit as needed');},
+  exportCashflow(){buildCashflowExcel();},
+  exportJSON(){document.getElementById('dataMenu').classList.remove('open');dl(new Blob([JSON.stringify(state,null,2)],{type:'application/json'}),'costflow-backup-'+today()+'.json');toast('Backup downloaded');},
+  importJSON(){document.getElementById('dataMenu').classList.remove('open');const fi=document.getElementById('fileInput');fi.value='';fi.click();},
+  exportExcel(){document.getElementById('dataMenu').classList.remove('open');buildExcel(true);},
+  downloadTemplate(){document.getElementById('dataMenu').classList.remove('open');buildExcel(false);},
+  importExcel(){document.getElementById('dataMenu').classList.remove('open');const fi=document.getElementById('xlsxInput');fi.value='';fi.click();},
+  printReport(){document.getElementById('dataMenu').classList.remove('open');window.print();},
+};
+function dl(blob,name){const u=URL.createObjectURL(blob);const a=document.createElement('a');a.href=u;a.download=name;a.click();setTimeout(()=>URL.revokeObjectURL(u),1000);}
+document.getElementById('fileInput').onchange=function(e){const f=e.target.files[0];if(!f)return;const r=new FileReader();
+  r.onload=()=>{try{const d=JSON.parse(r.result);if(d.projects&&d.projects.length){state=d;}else throw 0;save();render();toast('Restored');}catch(err){toast('Invalid file');}};r.readAsText(f);};
+
+/* ===== Excel CBS export / template / import ===== */
+function buildExcel(withData){
+  const p=proj();const wb=XLSX.utils.book_new();
+  const aoa=[['Group','No.','Category','Sub-item','Type','Budget','Actual']];
+  ['A','B','C'].forEach(g=>{p.cats.filter(c=>c.grp===g).forEach(c=>{
+    if(c.items.length)c.items.forEach(it=>aoa.push([g,c.no,c.name,it.name,c.type,withData?(+it.budget||0):'',withData?(+it.actual||0):'']));
+    else aoa.push([g,c.no,c.name,'',c.type,'','']);
+  });});
+  const ws=XLSX.utils.aoa_to_sheet(aoa);ws['!cols']=[{wch:8},{wch:5},{wch:34},{wch:40},{wch:6},{wch:15},{wch:15}];
+  XLSX.utils.book_append_sheet(wb,ws,'CBS');
+  const info=[['E&I CBS — Cost Upload'],['Project',p.name],['Currency',p.currency],[],
+    ['How to upload:'],['1) Fill Budget (and Actual) for each sub-item row on the "CBS" sheet.'],
+    ['2) Match by Category name + Sub-item name. Add rows for new sub-items.'],
+    ['3) A row with Category but no Sub-item = a single lump for that category.'],['4) Save, then in the app: Upload CBS.']];
+  XLSX.utils.book_append_sheet(wb,XLSX.utils.aoa_to_sheet(info),'READ ME');
+  XLSX.writeFile(wb,(withData?'CBS-Cost-':'CBS-Template-')+(p.code||p.name).replace(/\s+/g,'_')+(withData?'-'+today():'')+'.xlsx');
+  toast(withData?'CBS exported':'Template downloaded');
+}
+function skey(n){return String(n==null?'':n).replace(/\s+/g,' ').trim().toLowerCase();}
+document.getElementById('xlsxInput').onchange=function(e){const f=e.target.files[0];if(!f)return;const r=new FileReader();
+ r.onload=()=>{try{const wb=XLSX.read(r.result,{type:'array'});const p=proj();
+   let sn=wb.SheetNames.find(n=>skey(n)==='cbs')||wb.SheetNames.find(n=>skey(n)!=='read me')||wb.SheetNames[0];
+   const rows=XLSX.utils.sheet_to_json(wb.Sheets[sn],{header:1});
+   let hr=rows.findIndex(rw=>rw&&rw.some(x=>skey(x)==='category'));if(hr<0)hr=0;
+   const H=rows[hr]||[];
+   const gi=H.findIndex(x=>skey(x)==='group'),ni=H.findIndex(x=>skey(x)==='no.'||skey(x)==='no'),
+     cti=H.findIndex(x=>skey(x)==='category'),si=H.findIndex(x=>skey(x)==='sub-item'||skey(x)==='subitem'||skey(x)==='item'),
+     ti=H.findIndex(x=>skey(x)==='type'),bi=H.findIndex(x=>skey(x)==='budget'),ai=H.findIndex(x=>skey(x)==='actual');
+   let n=0;
+   for(let k=hr+1;k<rows.length;k++){const rw=rows[k];if(!rw||!rw.length)continue;
+     const cn=cti>=0?rw[cti]:null;if(cn==null||String(cn).trim()===''||skey(cn).indexOf('total')===0)continue;
+     const cno=ni>=0?String(rw[ni]).trim():'';
+     let c=p.cats.find(x=>(cno&&String(x.no)===cno)||skey(x.name)===skey(cn));
+     if(!c){c={id:uid(),grp:(gi>=0&&rw[gi])?String(rw[gi]).trim().charAt(0).toUpperCase():'B',no:cno||'+',name:String(cn),type:(ti>=0&&rw[ti])?String(rw[ti]).trim():'O',items:[]};p.cats.push(c);}
+     const sname=si>=0?rw[si]:null;
+     const bud=bi>=0?rw[bi]:null, act=ai>=0?rw[ai]:null;
+     if(sname==null||String(sname).trim()===''){
+       // category lump -> single item
+       let it=c.items[0];if(!it){it={id:uid(),name:c.name,budget:0,actual:0};c.items.push(it);}
+       if(bud!=null&&String(bud).trim()!=='')it.budget=parseNum(bud);
+       if(act!=null&&String(act).trim()!=='')it.actual=parseNum(act);
+     }else{
+       let it=c.items.find(x=>skey(x.name)===skey(sname));
+       if(!it){it={id:uid(),name:String(sname),budget:0,actual:0};c.items.push(it);}
+       if(bud!=null&&String(bud).trim()!=='')it.budget=parseNum(bud);
+       if(act!=null&&String(act).trim()!=='')it.actual=parseNum(act);
+     }
+     n++;}
+   save();render();toast('Imported '+n+' rows');
+ }catch(err){toast('Could not read Excel file');}};
+ r.readAsArrayBuffer(f);};
+function buildCashflowExcel(){const p=proj();const cf=buildCashflow(p);const k=cfCalc(cf);const wb=XLSX.utils.book_new();
+  const aoa=[['Month','Cash-in','Cash-out','Net','Cumulative']];
+  cf.months.forEach((m,i)=>aoa.push([m,cf.revenue[i],cf.cost[i],k.net[i],k.cum[i]]));
+  aoa.push([]);aoa.push(['TOTAL',k.totR,k.totC,k.totR-k.totC]);aoa.push(['Peak funding',k.peak,'at',cf.months[k.peakM]||'']);
+  const ws=XLSX.utils.aoa_to_sheet(aoa);ws['!cols']=[{wch:10},{wch:15},{wch:15},{wch:15},{wch:16}];
+  XLSX.utils.book_append_sheet(wb,ws,'Cash Flow');XLSX.writeFile(wb,'CashFlow-'+(p.code||p.name).replace(/\s+/g,'_')+'-'+today()+'.xlsx');toast('Cash flow exported');}
+function modal(html){document.getElementById('modal').innerHTML=html;document.getElementById('overlay').classList.add('open');}
+function confirmBox(msg,onYes){modal(`<h4>Confirm</h4><div class="mbody">${esc(msg)}</div><div class="mfoot"><button class="btn" onclick="app.closeModal()">Cancel</button><button class="btn primary" id="cfY">Yes, continue</button></div>`);document.getElementById('cfY').onclick=()=>{app.closeModal();onYes();};}
+let tT;function toast(m){const el=document.getElementById('toast');el.textContent=m;el.classList.add('show');clearTimeout(tT);tT=setTimeout(()=>el.classList.remove('show'),2200);}
+document.addEventListener('click',()=>document.getElementById('dataMenu').classList.remove('open'));
+document.getElementById('overlay').onclick=e=>{if(e.target.id==='overlay')app.closeModal();};
+
+/* ===== Firebase Auth + Firestore cloud sync ===== */
+let fbUser=null,fbAuth=null,fbDb=null,cloudTimer=null;
+function cloudSave(){if(fbUser&&fbDb){clearTimeout(cloudTimer);cloudTimer=setTimeout(()=>{fbDb.collection('users').doc(fbUser.uid).set({state:state,updated:Date.now()}).catch(()=>{});},900);}}
+function authErr(m){const e=document.getElementById('authErr');if(e){e.textContent=(m||'').replace('Firebase: ','');e.style.display='block';}}
+function authLogin(){const em=(document.getElementById('authEmail').value||'').trim(),pw=document.getElementById('authPass').value;if(!em||!pw)return authErr('Enter email and password');fbAuth.signInWithEmailAndPassword(em,pw).catch(e=>authErr(e.message));}
+function authSignup(){const em=(document.getElementById('authEmail').value||'').trim(),pw=document.getElementById('authPass').value;if(!em||pw.length<6)return authErr('Enter email and a password of at least 6 characters');fbAuth.createUserWithEmailAndPassword(em,pw).catch(e=>authErr(e.message));}
+function authGoogle(){fbAuth.signInWithPopup(new firebase.auth.GoogleAuthProvider()).catch(e=>authErr(e.message));}
+function authLogout(){if(fbAuth)fbAuth.signOut();}
+function startLocal(){const s=document.getElementById('signOutBtn');if(s)s.style.display='none';document.getElementById('authScreen').style.display='none';document.getElementById('appRoot').style.display='flex';prevSnap=JSON.stringify(state);save();render();}
+function startFirebase(){
+  try{firebase.initializeApp(window.FIREBASE_CONFIG);}catch(e){}
+  fbAuth=firebase.auth();fbDb=firebase.firestore();
+  document.getElementById('authScreen').style.display='flex';
+  const s=document.getElementById('signOutBtn');if(s)s.style.display='';
+  fbAuth.onAuthStateChanged(async user=>{fbUser=user;
+    if(user){document.getElementById('authScreen').style.display='none';document.getElementById('appRoot').style.display='flex';
+      const uc=document.getElementById('userChip');if(uc)uc.textContent=user.email||'signed in';
+      try{const d=await fbDb.collection('users').doc(user.uid).get();
+        if(d.exists&&d.data()&&d.data().state){state=migrate(d.data().state);attachRefSchedules(state);}
+        else{await fbDb.collection('users').doc(user.uid).set({state:state,updated:Date.now()});}
+      }catch(e){console.warn('cloud load failed, using local',e);}
+      prevSnap=JSON.stringify(state);render();
+    }else{document.getElementById('appRoot').style.display='none';document.getElementById('authScreen').style.display='flex';}
+  });
+}
+(function boot(){const cfg=window.FIREBASE_CONFIG;
+  if(cfg&&cfg.apiKey&&!/PASTE|YOUR_/.test(cfg.apiKey)&&typeof firebase!=='undefined'){startFirebase();}
+  else{startLocal();}
+})();
+
+</script>
 </body>
 </html>
