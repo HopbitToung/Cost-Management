@@ -167,7 +167,7 @@ tr.act2 td.pin input{width:70px;border:1px solid var(--line);border-radius:7px;p
   <div class="main">
     <div class="topbar">
       <select class="projsel" id="projSel" onchange="app.switchProject(this.value)"></select>
-      <button class="btn ghost" title="New project" onclick="app.newProjectModal()"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg></button>
+      <button class="btn ghost" title="New project (upload quotation to auto-generate)" onclick="app.newProjectModal()"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg></button>
       <div class="spacer"></div>
       <span id="userChip" style="font-size:12px;color:#64748b;font-weight:600;margin-right:2px"></span>
       <button class="btn ghost" title="Sign out" onclick="authLogout()" id="signOutBtn" style="display:none"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:16px;height:16px"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg></button>
@@ -593,6 +593,7 @@ document.getElementById('schedInput').onchange=function(e){const f=e.target.file
  }catch(err){toast('Import failed: '+(err.message||err));}};
  r.readAsArrayBuffer(f);};
 /* ---- Auto-generate CBS from Quotation (rule-based mapping) ---- */
+let pendingQuoteMeta=null;
 function parseQuoteLines(wb){
   const kw=s=>String(s==null?'':s).replace(/\s+/g,' ').trim().toLowerCase();
   const isNum=v=>typeof v==='number'&&isFinite(v)&&Math.abs(v)>0;
@@ -629,8 +630,9 @@ document.getElementById('quoteInput').onchange=function(e){const f=e.target.file
    let mapped=0;
    lines.forEach(ln=>{let code=ln.force||autoMapCode(ln.mapText||ln.desc);const review=!code;if(!code)code='OHC';if(!cats[code])code='OHC';
      cats[code].items.push({id:uid(),name:ln.desc,budget:Math.round(ln.amount),actual:0,review:review});if(!review)mapped++;});
-   const nm=(f.name||'New Project').replace(/\.(xlsx|xls)$/i,'').slice(0,60);
-   const p={id:uid(),name:nm,code:'',client:'',currency:'THB',cats:CBS.map(c=>cats[c[1]]),cashflow:null};
+   const meta=pendingQuoteMeta||{};pendingQuoteMeta=null;
+   const nm=(meta.name&&meta.name.trim())||(f.name||'New Project').replace(/\.(xlsx|xls)$/i,'').slice(0,60);
+   const p={id:uid(),name:nm,code:meta.code||'',client:'',currency:meta.currency||'THB',cats:CBS.map(c=>cats[c[1]]),cashflow:null};
    state.projects.push(p);state.activeId=p.id;expanded={};p.cats.forEach(c=>{if(c.items.length)expanded[c.id]=true;});
    save();nav('cost');
    const total=lines.reduce((a,x)=>a+(+x.amount||0),0);const need=lines.length-mapped;
@@ -709,13 +711,19 @@ const app={
   newProjectModal(){modal(`<h4>New Project</h4><div class="mbody">
       <div class="field"><label>Project name</label><input id="npName" placeholder="e.g. Rayong Substation E&I"></div>
       <div class="field row"><div><label>Code</label><input id="npCode"></div><div><label>Currency</label><input id="npCur" value="THB"></div></div>
-      <div class="field"><label>Start with</label><select id="npTpl"><option value="cbs">Blank CBS (23 categories, zero)</option><option value="map2">Copy MAP2</option><option value="gmtp">Copy GMTP</option></select></div>
+      <div class="field"><label>Start with</label><select id="npTpl" onchange="var e=document.getElementById('npQhint');if(e)e.style.display=this.value==='quote'?'block':'none';">
+        <option value="quote">📄 Upload Quotation → auto-generate CBS (recommended)</option>
+        <option value="cbs">Blank CBS (15 categories, zero)</option>
+        <option value="map2">Copy MAP2 (sample)</option><option value="gmtp">Copy GMTP (sample)</option></select>
+        <div id="npQhint" class="mini" style="margin-top:8px;color:#64748b;line-height:1.5">After you click Create, choose your quotation Excel — the app auto-maps every priced line into the CBS and fills the budget. You can review &amp; edit any mapping afterward.</div></div>
      </div><div class="mfoot"><button class="btn" onclick="app.closeModal()">Cancel</button><button class="btn primary" onclick="app.createProject()">Create</button></div>`);},
-  createProject(){const name=(document.getElementById('npName').value||'Untitled').trim();const tpl=document.getElementById('npTpl').value;let p;
+  createProject(){const name=(document.getElementById('npName').value||'').trim();const tpl=document.getElementById('npTpl').value;
+    if(tpl==='quote'){pendingQuoteMeta={name:name,code:document.getElementById('npCode').value||'',currency:document.getElementById('npCur').value||'THB'};app.closeModal();const fi=document.getElementById('quoteInput');fi.value='';fi.click();return;}
+    const nm=name||'Untitled';let p;
     if(tpl==='map2')p=mkProject(SEEDS.projects[0]);
     else if(tpl==='gmtp')p=mkProject(SEEDS.projects[1]);
-    else{p={id:uid(),name,code:'',client:'',currency:'THB',cats:CBS.map(c=>({id:uid(),grp:c[0],no:c[1],name:c[2],type:c[3],items:[]})),cashflow:null};}
-    p.name=name;p.code=document.getElementById('npCode').value;p.currency=document.getElementById('npCur').value||'THB';
+    else{p={id:uid(),name:nm,code:'',client:'',currency:'THB',cats:CBS.map(c=>({id:uid(),grp:c[0],no:c[1],name:c[2],type:c[3],items:[]})),cashflow:null};}
+    p.name=nm;p.code=document.getElementById('npCode').value;p.currency=document.getElementById('npCur').value||'THB';
     state.projects.push(p);state.activeId=p.id;save();app.closeModal();nav('cost');toast('Project created');},
   closeModal(){document.getElementById('overlay').classList.remove('open');},
   setCF(w,i,v){const cf=proj().cashflow;(w==='rev'?cf.revenue:cf.cost)[i]=parseNum(v);save();renderCashflow(document.getElementById('content'));},
