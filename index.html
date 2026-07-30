@@ -156,8 +156,8 @@ tr.act2 td.pin input{width:70px;border:1px solid var(--line);border-radius:7px;p
     <div class="brand"><div class="logo">₵</div><div><h1>CostFlow</h1><span>E&I · CBS</span></div></div>
     <nav class="nav">
       <div class="lbl">Workspace</div>
-      <a data-view="dashboard" class="active"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="9"/><rect x="14" y="3" width="7" height="5"/><rect x="14" y="12" width="7" height="9"/><rect x="3" y="16" width="7" height="5"/></svg>Dashboard</a>
-      <a data-view="portfolio"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 3v18h18"/><rect x="7" y="10" width="3" height="8"/><rect x="12" y="6" width="3" height="12"/><rect x="17" y="13" width="3" height="5"/></svg>Portfolio (all projects)</a>
+      <a data-view="portfolio" class="active"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 3v18h18"/><rect x="7" y="10" width="3" height="8"/><rect x="12" y="6" width="3" height="12"/><rect x="17" y="13" width="3" height="5"/></svg>Portfolio (all projects)</a>
+      <a data-view="dashboard"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="9"/><rect x="14" y="3" width="7" height="5"/><rect x="14" y="12" width="7" height="9"/><rect x="3" y="16" width="7" height="5"/></svg>Dashboard</a>
       <a data-view="cost"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 3h18v18H3z"/><path d="M3 9h18M3 15h18M12 3v18"/></svg>CBS Cost</a>
       <a data-view="cashflow"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 3v18h18"/><path d="M7 14l4-4 4 3 5-6"/></svg>Cash Flow &amp; S-Curve</a>
       <a data-view="schedule"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="4" width="18" height="16" rx="2"/><path d="M8 4v16M3 10h5M8 8h4M8 13h7M8 16h9"/></svg>L4 Weighted Schedule</a>
@@ -236,13 +236,13 @@ function esc(s){return String(s==null?'':s).replace(/[&<>"]/g,m=>({'&':'&amp;','
 function parseNum(v){if(typeof v==='number')return v;return Math.round((parseFloat(String(v).replace(/[^0-9.\-]/g,''))||0)*100)/100;}
 function today(){return new Date().toISOString().slice(0,10);}
 function catB(c){return c.items.reduce((a,i)=>a+(+i.budget||0),0);}
-function catA(c){return c.items.reduce((a,i)=>a+(+i.actual||0),0);}
+function catA(c){return c.items.reduce((a,i)=>a+(+i.budget||0)*(+i.actualPct||0)/100,0);}
 function grpB(p,g){return p.cats.filter(c=>c.grp===g).reduce((a,c)=>a+catB(c),0);}
 function grpA(p,g){return p.cats.filter(c=>c.grp===g).reduce((a,c)=>a+catA(c),0);}
 function totals(){const p=proj();let b=0,a=0;p.cats.forEach(c=>{b+=catB(c);a+=catA(c);});return {budget:b,actual:a,diff:b-a,margin:b?((b-a)/b*100):0};}
 
 /* router */
-let current='dashboard';let charts={};
+let current='portfolio';let charts={};let cfMode='plan';
 function nav(v){current=v;document.querySelectorAll('.nav a').forEach(a=>a.classList.toggle('active',a.dataset.view===v));render();}
 document.querySelectorAll('.nav a').forEach(a=>a.onclick=()=>nav(a.dataset.view));
 function render(){
@@ -316,10 +316,10 @@ const iF='<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-widt
 let expanded={};
 function renderCost(el){
   const p=proj();const t=totals();
-  el.innerHTML=`<div class="pagehead"><div><h2>CBS Cost — Budget vs Actual</h2><p>3 groups → 23 categories → sub-items. Click ▸ to expand and edit sub-items.</p></div>
+  el.innerHTML=`<div class="pagehead"><div><h2>CBS Cost — Budget vs Ready-to-Claim</h2><p>15 categories · <b>Rdy to Claim</b> = Budget × L4 progress (earned). Update progress in L4.</p></div>
      <div style="display:flex;gap:8px"><button class="btn" onclick="app.expandAll(true)">Expand all</button><button class="btn" onclick="app.expandAll(false)">Collapse</button><button class="btn primary" onclick="app.importExcel()">⬆ Upload CBS</button></div></div>
    <div class="tbl-card"><table class="ct">
-     <thead><tr><th style="width:30px"></th><th class="l">CBS Category / Sub-item</th><th>Type</th><th>Budget</th><th>Actual</th><th>Diff</th><th>Margin</th><th></th></tr></thead>
+     <thead><tr><th style="width:30px"></th><th class="l">CBS Category / Sub-item</th><th>Type</th><th>Budget</th><th>Rdy to Claim</th><th>Diff</th><th>% Done</th><th></th></tr></thead>
      <tbody id="cbsBody"></tbody>
      <tfoot><tr><td></td><td class="l">GRAND TOTAL</td><td></td><td>${fmt(t.budget)}</td><td>${fmt(t.actual)}</td><td class="${t.diff>=0?'':'neg'}">${fmt(t.diff)}</td><td>${t.margin.toFixed(1)}%</td><td></td></tr></tfoot>
    </table><div class="addrow"><button onclick="app.addCat()">＋ Add category</button></div></div>`;
@@ -332,18 +332,18 @@ function drawCBS(){
     const gb=grpB(p,g),ga=grpA(p,g);
     html+=`<tr class="grp"><td></td><td class="l">${g}. ${GROUPS[g]}</td><td></td><td>${fmt(gb)}</td><td>${fmt(ga)}</td><td>${fmt(gb-ga)}</td><td>${gb?((gb-ga)/gb*100).toFixed(1):'0.0'}%</td><td></td></tr>`;
     cats.forEach(c=>{
-      const b=catB(c),a=catA(c),d=b-a,m=b?(d/b*100):0;const open=expanded[c.id];
+      const b=catB(c),a=catA(c),d=b-a,m=b?(a/b*100):0;const open=expanded[c.id];
       html+=`<tr class="cat"><td class="tog" onclick="app.tog('${c.id}')">${open?'▾':'▸'}</td>
         <td class="l">${c.no}. ${esc(c.name)}</td><td class="ty" style="color:${TYPECOL[c.type[0]]||'#94a3b8'}">${c.type}</td>
         <td>${fmt(b)}</td><td>${fmt(a)}</td><td class="${d>=0?'pos':'neg'}">${fmt(d)}</td><td>${m.toFixed(1)}%</td>
         <td class="act"><button title="Delete category" onclick="app.delCat('${c.id}')">×</button></td></tr>`;
       if(open){
-        c.items.forEach(it=>{const dd=(+it.budget||0)-(+it.actual||0);const rev=it.review?'<span title="Auto-mapped — please verify category" style="color:#f59e0b;font-weight:800;margin-right:3px">⚠</span>':'';
+        c.items.forEach(it=>{const rc=(+it.budget||0)*(+it.actualPct||0)/100;const dd=(+it.budget||0)-rc;const done=(+it.budget||0)?(rc/(+it.budget||0)*100):0;const rev=it.review?'<span title="Auto-mapped — please verify category" style="color:#f59e0b;font-weight:800;margin-right:3px">⚠</span>':'';
           html+=`<tr class="itm ${it.review?'rev':''}"><td></td><td class="l name">${rev}<input value="${esc(it.name)}" style="width:calc(100% - 18px)" onchange="app.setItem('${c.id}','${it.id}','name',this.value)"></td>
             <td style="text-align:center"><select title="Move to CBS category" style="font-size:10.5px;border:1px solid var(--line);border-radius:6px;padding:2px 1px;max-width:64px" onchange="app.moveItem('${c.id}','${it.id}',this.value)">${p.cats.map(x=>`<option value="${x.no}" ${x.id===c.id?'selected':''}>${x.no}</option>`).join('')}</select></td>
             <td class="num"><input value="${it.budget?fmt(it.budget):''}" placeholder="0" onchange="app.setItem('${c.id}','${it.id}','budget',this.value)"></td>
-            <td class="num"><input value="${it.actual?fmt(it.actual):''}" placeholder="0" onchange="app.setItem('${c.id}','${it.id}','actual',this.value)"></td>
-            <td class="calc ${dd>=0?'pos':'neg'}">${fmt(dd)}</td><td></td>
+            <td class="calc" style="text-align:right;color:#0ea5e9">${fmt(rc)}</td>
+            <td class="calc ${dd>=0?'pos':'neg'}">${fmt(dd)}</td><td style="text-align:right;color:#64748b;font-size:12px">${done.toFixed(0)}%</td>
             <td class="act"><button title="Delete sub-item" onclick="app.delItem('${c.id}','${it.id}')">×</button></td></tr>`;});
         html+=`<tr class="addi"><td></td><td colspan="7"><button onclick="app.addItem('${c.id}')">＋ Add sub-item</button></td></tr>`;
       }
@@ -357,12 +357,14 @@ const PHASE_OF={ENG:'eng',DOC:'eng',MEL:'proc',MIN:'proc',BLK:'proc',STF:'inst',
 const PHNAME={eng:'Engineering & Design',proc:'Procurement',inst:'Installation',comm:'Testing & Commissioning',ind:'Indirect / Site'};
 const PHKEYS=['eng','proc','inst','comm'];
 function defaultPlan(){const d=new Date();return {startY:d.getFullYear(),startM:d.getMonth(),dataDate:0,payLag:1,phases:{eng:{s:0,dur:3},proc:{s:2,dur:5},inst:{s:5,dur:9},comm:{s:13,dur:3}}};}
-function ensurePlan(p){if(!p.plan)p.plan=defaultPlan();if(!p.plan.phases)p.plan.phases=defaultPlan().phases;['eng','proc','inst','comm'].forEach(k=>{if(!p.plan.phases[k])p.plan.phases[k]={s:0,dur:3};});if(p.plan.payLag==null)p.plan.payLag=1;return p.plan;}
+function ensurePlan(p){if(!p.plan)p.plan=defaultPlan();if(!p.plan.phases)p.plan.phases=defaultPlan().phases;['eng','proc','inst','comm'].forEach(k=>{if(!p.plan.phases[k])p.plan.phases[k]={s:0,dur:3};});if(p.plan.payLag==null)p.plan.payLag=1;if(!p.claims)p.claims=[];return p.plan;}
 function planEnd(pl){let e=1;['eng','proc','inst','comm'].forEach(k=>{const ph=pl.phases[k];if(ph)e=Math.max(e,ph.s+ph.dur);});return e;}
 function planMonths(pl){const n=planEnd(pl);const out=[];for(let i=0;i<n;i++){const idx=pl.startM+i;const y=pl.startY+Math.floor(idx/12);const m=((idx%12)+12)%12;out.push(MON[m]+"-"+String(y%100).padStart(2,'0'));}return out;}
 function isMargin(it){const nm=(it.name||'').toLowerCase();return nm.indexOf('overhead & profit')>=0||nm.indexOf('o&p')>=0||nm.indexOf('overhead and profit')>=0||/(^|[^a-z])profit/.test(nm);}
 function marginTotal(p){let t=0;p.cats.forEach(c=>c.items.forEach(i=>{if(isMargin(i))t+=(+i.budget||0);}));return t;}
 function costTotal(p){return contractTotal(p)-marginTotal(p);}
+function projReady(p){let t=0;p.cats.forEach(c=>c.items.forEach(it=>t+=(+it.budget||0)*(+it.actualPct||0)/100));return t;}
+function claimReceipts(p){const dur=planMonths(ensurePlan(p)).length;const arr=Array(dur).fill(0);(p.claims||[]).forEach(cl=>{const amt=+cl.amount||0;if(!amt)return;const rm=(+cl.month||0)+(+cl.credit||0);if(rm<0)return;arr[Math.min(rm,dur-1)]+=amt;});return arr;}
 function contractTotal(p){let t=0;p.cats.forEach(c=>c.items.forEach(i=>t+=(+i.budget||0)));return t;}
 function findItem(id){const p=proj();for(const c of p.cats){const it=c.items.find(i=>i.id===id);if(it)return it;}return null;}
 function buildSchedule(p){const pl=ensurePlan(p);const months=planMonths(pl);const dur=months.length;const end=dur-1;const tot=costTotal(p)||1;const acts=[];
@@ -379,31 +381,46 @@ function buildCashflow(p){const sc=buildSchedule(p);const pl=p.plan;const dur=sc
   const cost=planM.map(v=>Math.round(v/100*cT));const billed=planM.map(v=>v/100*kT);const rev=Array(dur).fill(0);
   for(let m=0;m<dur;m++){const src=m-lag;if(src>=0)rev[m]=Math.round(billed[src]);}
   const sumR=rev.reduce((a,b)=>a+b,0),totB=Math.round(billed.reduce((a,b)=>a+b,0));if(dur>0)rev[dur-1]+=totB-sumR;
-  return {months:sc.months,cost,revenue:rev,planM,dur};}
+  return {months:sc.months,cost,revenue:rev,planM,dur,actualIn:claimReceipts(p)};}
 function cfCalc(cf){const n=cf.months.length;const net=[],cum=[],cumR=[],cumC=[];let s=0,cr=0,cc=0;
   for(let m=0;m<n;m++){const r=+cf.revenue[m]||0,c=+cf.cost[m]||0;net.push(r-c);s+=r-c;cum.push(s);cr+=r;cc+=c;cumR.push(cr);cumC.push(cc);}
   const peak=Math.min(0,...cum);return {net,cum,cumR,cumC,totR:cr,totC:cc,peak,peakM:cum.indexOf(peak),posM:cum.findIndex(x=>x>=0)};}
-function renderCashflow(el){const p=proj();const cf=buildCashflow(p);const k=cfCalc(cf);const profit=k.totR-k.totC;const margin=k.totR?(profit/k.totR*100):0;const pl=p.plan;
-  el.innerHTML=`<div class="pagehead"><div><h2>Cash Flow &amp; S-Curve <span style="font-weight:500;font-size:12px;color:var(--muted)">· derived from L4 progress</span></h2><p>Cash-out = progress × cost · Cash-in = billing collected after ${pl.payLag||0} mo lag</p></div>
-     <div style="display:flex;gap:8px;align-items:center">Collection lag (mo): <input type="number" min="0" max="6" value="${pl.payLag||0}" onchange="app.setLag(this.value)" style="width:52px;border:1px solid var(--line);border-radius:8px;padding:5px"><button class="btn" onclick="app.exportCashflow()">⬇ Excel</button></div></div>
+function renderCashflow(el){const p=proj();ensurePlan(p);if(!p.claims)p.claims=[];const cf=buildCashflow(p);const dur=cf.dur;
+  const planIn=cf.revenue,actIn=cf.actualIn,cost=cf.cost;const inSel=cfMode==='actual'?actIn:planIn;
+  const net=[],cum=[],cumR=[],cumC=[];let s=0,cr=0,cc=0;for(let m=0;m<dur;m++){net.push(inSel[m]-cost[m]);s+=net[m];cum.push(s);cr+=cf.revenue[m];cc+=cost[m];cumR.push(cr);cumC.push(cc);}
+  const totPlanIn=planIn.reduce((a,b)=>a+b,0),totCost=cost.reduce((a,b)=>a+b,0),profit=totPlanIn-totCost;
+  const peak=Math.min(0,...cum),peakM=cum.indexOf(peak);
+  const claimed=(p.claims||[]).reduce((a,c)=>a+(+c.amount||0),0);const dd=p.plan.dataDate||0;const received=actIn.slice(0,dd+1).reduce((a,b)=>a+b,0);const ready=projReady(p);
+  const segb=(on)=>on?'background:#4f46e5;color:#fff':'background:#eef1f6;color:#64748b';
+  el.innerHTML=`<div class="pagehead"><div><h2>Cash Flow &amp; S-Curve <span style="font-weight:500;font-size:12px;color:var(--muted)">· ${cfMode==='actual'?'Actual claims basis':'Plan basis'}</span></h2><p>Cash-out = progress × cost · Plan cash-in lagged ${p.plan.payLag||0} mo · Actual cash-in from claims (date + credit)</p></div>
+     <div style="display:flex;gap:8px;align-items:center"><div style="display:inline-flex;border:1px solid var(--line);border-radius:9px;overflow:hidden"><button onclick="app.setCfMode('plan')" style="${segb(cfMode!=='actual')};border:none;padding:7px 14px;font-weight:700;font-size:12px;cursor:pointer">Plan</button><button onclick="app.setCfMode('actual')" style="${segb(cfMode==='actual')};border:none;padding:7px 14px;font-weight:700;font-size:12px;cursor:pointer">Actual</button></div><button class="btn" onclick="app.exportCashflow()">⬇ Excel</button></div></div>
    <div class="kpis">
-     ${kpi('Contract / Cash-in',cur()+' '+fmt(k.totR),'Total billing','#eef2ff','#4f46e5',iW)}
-     ${kpi('Total Cost',cur()+' '+fmt(k.totC),'Cash-out','#ecfeff','#0ea5e9',iT)}
-     ${kpi('Gross Profit',cur()+' '+fmt(profit),margin.toFixed(1)+'% margin','#ecfdf5',profit>=0?'#10b981':'#ef4444',iC,profit>=0?'up':'down')}
-     ${kpi('Peak Funding Need',cur()+' '+fmt(Math.abs(k.peak)),'Max to finance · '+(cf.months[k.peakM]||'-'),'#fff1f2','#ef4444',iF,'down')}
+     ${kpi('Contract / Cash-in',cur()+' '+fmt(totPlanIn),'plan billing','#eef2ff','#4f46e5',iW)}
+     ${kpi('Ready to Claim',cur()+' '+fmt(ready),'earned from progress','#eef2ff','#6366f1',iC)}
+     ${kpi('Actual Claimed',cur()+' '+fmt(claimed),'received to date '+cur()+' '+fmt(received),'#ecfeff','#0ea5e9',iT)}
+     ${kpi('Peak Funding ('+cfMode+')',cur()+' '+fmt(Math.abs(peak)),'max outflow · '+(cf.months[peakM]||'-'),'#fff1f2','#ef4444',iF,'down')}
    </div>
    <div class="grid g2" style="margin-bottom:16px">
-     <div class="card"><h3>S-Curve — Revenue vs Cost</h3><div class="body"><div class="chart-wrap"><canvas id="cS"></canvas></div><div style="font-size:11.5px;margin-top:8px;display:flex;gap:18px"><span style="color:#10b981;font-weight:700">— Revenue</span><span style="color:#4f46e5;font-weight:700">— Cost</span></div></div></div>
-     <div class="card"><h3>Cash Position <span class="hint">cumulative net</span></h3><div class="body"><div class="chart-wrap"><canvas id="cPos"></canvas></div></div></div>
+     <div class="card"><h3>S-Curve — Revenue vs Cost</h3><div class="body"><div class="chart-wrap"><canvas id="cS"></canvas></div><div style="font-size:11.5px;margin-top:8px;display:flex;gap:18px"><span style="color:#10b981;font-weight:700">— Plan revenue</span><span style="color:#4f46e5;font-weight:700">— Cost</span></div></div></div>
+     <div class="card"><h3>Cash Position <span class="hint">${cfMode} · cumulative net</span></h3><div class="body"><div class="chart-wrap"><canvas id="cPos"></canvas></div></div></div>
    </div>
-   <div class="card" style="margin-bottom:16px"><h3>Monthly Net Cash Flow</h3><div class="body"><div class="chart-wrap" style="height:230px"><canvas id="cNet"></canvas></div></div></div>
-   <div class="tbl-card"><table class="ct"><thead><tr><th class="l">Month</th><th>Cash-in</th><th>Cash-out</th><th>Net</th><th>Cumulative</th></tr></thead>
-     <tbody>${cf.months.map((mo,i)=>`<tr><td class="l" style="padding:9px 12px;font-weight:600">${esc(mo)}</td><td class="calc">${fmt(cf.revenue[i])}</td><td class="calc">${fmt(cf.cost[i])}</td><td class="calc ${k.net[i]>=0?'pos':'neg'}">${fmt(k.net[i])}</td><td class="calc ${k.cum[i]>=0?'pos':'neg'}">${fmt(k.cum[i])}</td></tr>`).join('')}</tbody>
-     <tfoot><tr><td class="l">TOTAL</td><td>${fmt(k.totR)}</td><td>${fmt(k.totC)}</td><td class="${profit>=0?'':'neg'}">${fmt(profit)}</td><td>${fmt(k.cum[k.cum.length-1]||0)}</td></tr></tfoot></table></div>`;
+   <div class="card" style="margin-bottom:16px"><h3>Monthly Net Cash Flow <span class="hint">${cfMode}</span></h3><div class="body"><div class="chart-wrap" style="height:230px"><canvas id="cNet"></canvas></div></div></div>
+   <div class="tbl-card" style="margin-bottom:16px"><table class="ct"><thead><tr><th class="l">Month</th><th>Cash-in (Plan)</th><th>Cash-in (Actual)</th><th>Cash-out</th><th>Net (${cfMode})</th><th>Cumulative</th></tr></thead>
+     <tbody>${cf.months.map((mo,i)=>`<tr><td class="l" style="padding:9px 12px;font-weight:600">${esc(mo)}</td><td class="calc">${fmt(planIn[i])}</td><td class="calc" style="color:#0ea5e9">${actIn[i]?fmt(actIn[i]):''}</td><td class="calc">${fmt(cost[i])}</td><td class="calc ${net[i]>=0?'pos':'neg'}">${fmt(net[i])}</td><td class="calc ${cum[i]>=0?'pos':'neg'}">${fmt(cum[i])}</td></tr>`).join('')}</tbody>
+     <tfoot><tr><td class="l">TOTAL</td><td>${fmt(totPlanIn)}</td><td>${fmt(claimed)}</td><td>${fmt(totCost)}</td><td class="${profit>=0?'':'neg'}">${fmt(inSel.reduce((a,b)=>a+b,0)-totCost)}</td><td>${fmt(cum[cum.length-1]||0)}</td></tr></tfoot></table></div>
+   <div class="tbl-card"><div style="padding:14px 16px;border-bottom:1px solid var(--line);font-weight:700;font-size:14px">Progress Claims — Actual Cash-in <span class="hint" style="font-weight:500;color:var(--muted)">received = claim month + credit</span></div>
+     <table class="ct"><thead><tr><th class="l">Description</th><th>Amount</th><th>Claim month</th><th>Credit (mo)</th><th>Received</th><th></th></tr></thead>
+     <tbody>${(p.claims||[]).map((cl,i)=>{const rm=(+cl.month||0)+(+cl.credit||0);return `<tr><td class="l name"><input value="${esc(cl.desc||'')}" onchange="app.setClaim(${i},'desc',this.value)"></td>
+       <td class="num"><input value="${cl.amount?fmt(cl.amount):''}" placeholder="0" onchange="app.setClaim(${i},'amount',this.value)"></td>
+       <td style="text-align:center"><select onchange="app.setClaim(${i},'month',this.value)" style="border:1px solid var(--line);border-radius:6px;padding:3px">${cf.months.map((m,j)=>`<option value="${j}" ${j==(cl.month||0)?'selected':''}>${m}</option>`).join('')}</select></td>
+       <td class="pin" style="text-align:center"><input style="width:44px;text-align:center" value="${cl.credit!=null?cl.credit:(p.plan.payLag||0)}" onchange="app.setClaim(${i},'credit',this.value)"></td>
+       <td style="text-align:center;font-weight:600">${cf.months[Math.min(rm,dur-1)]||'-'}</td>
+       <td class="act"><button title="Delete claim" onclick="app.delClaim(${i})">×</button></td></tr>`;}).join('')}</tbody></table>
+     <div class="addrow"><button onclick="app.addClaim()">＋ Add claim (default = Ready-to-Claim not yet claimed)</button></div></div>`;
   const xo={ticks:{font:{size:9},maxRotation:90,minRotation:90},grid:{display:false}};const yo={ticks:{callback:v=>fmtShort(v),font:{size:10}},grid:{color:'#eef1f6'}};
-  charts.s=new Chart(document.getElementById('cS'),{type:'line',data:{labels:cf.months,datasets:[{label:'Rev',data:k.cumR,borderColor:'#10b981',backgroundColor:'rgba(16,185,129,.10)',fill:true,tension:.35,pointRadius:0,borderWidth:2.5},{label:'Cost',data:k.cumC,borderColor:'#4f46e5',backgroundColor:'rgba(79,70,229,.08)',fill:true,tension:.35,pointRadius:0,borderWidth:2.5}]},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false},tooltip:{callbacks:{label:c=>c.dataset.label+': '+cur()+' '+fmt(c.raw)}}},scales:{x:xo,y:yo}}});
-  charts.pos=new Chart(document.getElementById('cPos'),{type:'line',data:{labels:cf.months,datasets:[{data:k.cum,borderColor:'#0ea5e9',backgroundColor:'rgba(14,165,233,.12)',fill:true,tension:.3,pointRadius:0,borderWidth:2.5,segment:{borderColor:ctx=>ctx.p1.parsed.y<0?'#ef4444':'#10b981'}}]},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false},tooltip:{callbacks:{label:c=>cur()+' '+fmt(c.raw)}}},scales:{x:xo,y:yo}}});
-  charts.net=new Chart(document.getElementById('cNet'),{type:'bar',data:{labels:cf.months,datasets:[{data:k.net,backgroundColor:k.net.map(v=>v>=0?'#10b981':'#ef4444'),borderRadius:3}]},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false},tooltip:{callbacks:{label:c=>cur()+' '+fmt(c.raw)}}},scales:{x:xo,y:yo}}});
+  charts.s=new Chart(document.getElementById('cS'),{type:'line',data:{labels:cf.months,datasets:[{label:'Rev',data:cumR,borderColor:'#10b981',backgroundColor:'rgba(16,185,129,.10)',fill:true,tension:.35,pointRadius:0,borderWidth:2.5},{label:'Cost',data:cumC,borderColor:'#4f46e5',backgroundColor:'rgba(79,70,229,.08)',fill:true,tension:.35,pointRadius:0,borderWidth:2.5}]},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false},tooltip:{callbacks:{label:c=>c.dataset.label+': '+cur()+' '+fmt(c.raw)}}},scales:{x:xo,y:yo}}});
+  charts.pos=new Chart(document.getElementById('cPos'),{type:'line',data:{labels:cf.months,datasets:[{data:cum,borderColor:'#0ea5e9',backgroundColor:'rgba(14,165,233,.12)',fill:true,tension:.3,pointRadius:0,borderWidth:2.5,segment:{borderColor:ctx=>ctx.p1.parsed.y<0?'#ef4444':'#10b981'}}]},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false},tooltip:{callbacks:{label:c=>cur()+' '+fmt(c.raw)}}},scales:{x:xo,y:yo}}});
+  charts.net=new Chart(document.getElementById('cNet'),{type:'bar',data:{labels:cf.months,datasets:[{data:net,backgroundColor:net.map(v=>v>=0?'#10b981':'#ef4444'),borderRadius:3}]},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false},tooltip:{callbacks:{label:c=>cur()+' '+fmt(c.raw)}}},scales:{x:xo,y:yo}}});
 }
 /* ===== SETTINGS ===== */
 function renderSettings(el){
@@ -713,6 +730,10 @@ const app={
     state.projects.push(p);state.activeId=p.id;save();app.closeModal();nav('cost');toast('Project created');},
   closeModal(){document.getElementById('overlay').classList.remove('open');},
   setLag(v){ensurePlan(proj()).payLag=Math.max(0,Math.min(6,parseInt(v)||0));save();renderCashflow(document.getElementById('content'));},
+  setCfMode(m){cfMode=m;renderCashflow(document.getElementById('content'));},
+  addClaim(){const p=proj();if(!p.claims)p.claims=[];const cd=p.claims.reduce((a,c)=>a+(+c.amount||0),0);const amt=Math.max(0,Math.round(projReady(p)-cd));p.claims.push({id:uid(),desc:'Progress claim #'+(p.claims.length+1),amount:amt,month:(p.plan.dataDate||0),credit:(p.plan.payLag||0)});save();renderCashflow(document.getElementById('content'));},
+  setClaim(i,f,v){const p=proj();const cl=(p.claims||[])[i];if(!cl)return;if(f==='desc')cl.desc=v;else if(f==='amount')cl.amount=parseNum(v);else if(f==='month')cl.month=+v;else if(f==='credit')cl.credit=Math.max(0,parseInt(v)||0);save();renderCashflow(document.getElementById('content'));},
+  delClaim(i){const p=proj();(p.claims||[]).splice(i,1);save();renderCashflow(document.getElementById('content'));},
   genCashflow(){const p=proj();const t=totals();const N=24;const months=[];const d=new Date();
     for(let i=0;i<N;i++){const dt=new Date(d.getFullYear(),d.getMonth()+i,1);months.push(['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'][dt.getMonth()]+"'"+String(dt.getFullYear()%100).padStart(2,'0'));}
     const cost=grpB(p,'A')+grpB(p,'B');const rev=t.budget;
