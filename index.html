@@ -163,6 +163,7 @@ tr.act2 td.pin input{width:70px;border:1px solid var(--line);border-radius:7px;p
       <a data-view="cost"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 3h18v18H3z"/><path d="M3 9h18M3 15h18M12 3v18"/></svg>CBS Cost</a>
       <a data-view="cashflow"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 3v18h18"/><path d="M7 14l4-4 4 3 5-6"/></svg>Cash Flow &amp; S-Curve</a>
       <a data-view="schedule"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="4" width="18" height="16" rx="2"/><path d="M8 4v16M3 10h5M8 8h4M8 13h7M8 16h9"/></svg>L4 Weighted Schedule</a>
+      <a data-view="manpower"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="9" cy="7" r="3"/><path d="M2 21v-2a4 4 0 0 1 4-4h6a4 4 0 0 1 4 4v2"/><path d="M16 3.5a3 3 0 0 1 0 5.8M20 21v-2a4 4 0 0 0-3-3.85"/></svg>Manpower &amp; Equipment</a>
       <a data-view="settings"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1Z"/></svg>Settings</a>
     </nav>
     <div class="side-foot">CBS: 23 categories · 3 groups.<br>Saved <b>on this device</b>.</div>
@@ -203,6 +204,7 @@ tr.act2 td.pin input{width:70px;border:1px solid var(--line);border-radius:7px;p
 <div class="toast" id="toast"></div>
 <input type="file" id="fileInput" accept="application/json" class="hide">
 <input type="file" id="xlsxInput" accept=".xlsx,.xls" class="hide">
+<input type="file" id="payrollInput" accept=".xlsx,.xls" class="hide">
 <input type="file" id="cfInput" accept=".xlsx,.xls" class="hide">
 <input type="file" id="schedInput" accept=".xlsx,.xls" class="hide">
 <input type="file" id="quoteInput" accept=".xlsx,.xls" class="hide">
@@ -246,15 +248,64 @@ function esc(s){return String(s==null?'':s).replace(/[&<>"]/g,m=>({'&':'&amp;','
 function parseNum(v){if(typeof v==='number')return v;return Math.round((parseFloat(String(v).replace(/[^0-9.\-]/g,''))||0)*100)/100;}
 function today(){return new Date().toISOString().slice(0,10);}
 function catB(c){return c.items.reduce((a,i)=>a+(+i.budget||0),0);}
-function catA(c){return c.items.reduce((a,i)=>a+(+i.budget||0)*(+i.actualPct||0)/100,0);}
+function catA(c){return c.items.reduce((a,i)=>a+(+i.budget||0)*itemProgress(i)/100,0);}
 function grpB(p,g){return p.cats.filter(c=>c.grp===g).reduce((a,c)=>a+catB(c),0);}
 function grpA(p,g){return p.cats.filter(c=>c.grp===g).reduce((a,c)=>a+catA(c),0);}
 function totals(){const p=proj();let b=0,a=0;p.cats.forEach(c=>{b+=catB(c);a+=catA(c);});return {budget:b,actual:a,diff:b-a,margin:b?((b-a)/b*100):0};}
 
 /* router */
-let current='portfolio';let charts={};let cfMode='plan';let cfExpanded={};
+let current='portfolio';let charts={};let cfMode='plan';let cfExpanded={};let cbsMode='total';const WORKDAYS=26;
 function nav(v){current=v;document.querySelectorAll('.nav a').forEach(a=>a.classList.toggle('active',a.dataset.view===v));render();}
 document.querySelectorAll('.nav a').forEach(a=>a.onclick=()=>nav(a.dataset.view));
+function ensureRes(p){if(!p.res)p.res={labor:[],equip:[]};if(!p.res.labor)p.res.labor=[];if(!p.res.equip)p.res.equip=[];if(!p.roster)p.roster=[];return p.res;}
+function laborPerHead(l){return (+l.rate||0)*WORKDAYS+(+l.otMo||0);}
+function resMonthly(p){ensureRes(p);const months=planMonths(ensurePlan(p));const dur=months.length;const lab=Array(dur).fill(0),eq=Array(dur).fill(0);
+  p.res.labor.forEach(l=>{const per=laborPerHead(l);const mm=l.monthly||{};for(const k in mm){const i=+k;if(i>=0&&i<dur)lab[i]+=(+mm[k]||0)*per;}});
+  p.res.equip.forEach(e=>{const mm=e.monthly||{};for(const k in mm){const i=+k;if(i>=0&&i<dur)eq[i]+=(+mm[k]||0)*(+e.rate||0);}});
+  return {months,dur,labor:lab,equip:eq,total:lab.map((v,i)=>v+eq[i])};}
+function cbsLaborBudget(p){let t=0;p.cats.forEach(c=>c.items.forEach(it=>t+=(+it.budget||0)*labFrac(it,c.no)));return t;}
+function renderManpower(el){const p=proj();ensureRes(p);const rm=resMonthly(p);const dur=rm.dur;const months=rm.months;
+  const labT=rm.labor.reduce((a,b)=>a+b,0),eqT=rm.equip.reduce((a,b)=>a+b,0),tot=labT+eqT;const cbsLab=cbsLaborBudget(p);const diff=labT-cbsLab;
+  const catOpts=sel=>p.cats.map(c=>`<option value="${c.no}" ${c.no===sel?'selected':''}>${c.no}</option>`).join('');
+  const mhead=months.map(m=>`<th style="min-width:40px;font-size:9px;white-space:nowrap">${m}</th>`).join('');
+  const labRows=p.res.labor.length?p.res.labor.map(l=>{const per=laborPerHead(l);const mm=l.monthly||{};
+    const cells=months.map((m,i)=>`<td class="pin" style="padding:1px"><input style="width:34px;text-align:center;font-size:11px" value="${mm[i]?mm[i]:''}" placeholder="0" onchange="app.setResMonth('labor','${l.id}',${i},this.value)"></td>`).join('');
+    const rt=months.reduce((a,m,i)=>a+(mm[i]?+mm[i]:0)*per,0);
+    return `<tr><td class="l pin" style="position:sticky;left:0;background:#fff;z-index:1"><input value="${esc(l.role||'')}" placeholder="Role / team" style="width:130px" onchange="app.setRes('labor','${l.id}','role',this.value)"></td>
+      <td class="pin"><select onchange="app.setRes('labor','${l.id}','catNo',this.value)" style="font-size:10px;border:1px solid var(--line);border-radius:6px;padding:2px">${catOpts(l.catNo)}</select></td>
+      <td class="pin"><input value="${l.rate!=null?l.rate:''}" placeholder="0" title="Daily wage" style="width:56px;text-align:right" onchange="app.setRes('labor','${l.id}','rate',this.value)"></td>
+      <td class="pin"><input value="${l.otMo!=null?l.otMo:''}" placeholder="0" title="OT baht / head / month" style="width:52px;text-align:right" onchange="app.setRes('labor','${l.id}','otMo',this.value)"></td>
+      ${cells}<td class="calc" style="font-weight:600;position:sticky;right:26px;background:#fff">${fmt(Math.round(rt))}</td><td class="act" style="position:sticky;right:0;background:#fff"><button onclick="app.delRes('labor','${l.id}')">×</button></td></tr>`;}).join(''):`<tr><td colspan="${months.length+6}" style="text-align:center;color:var(--muted);padding:14px">No manpower lines yet — add one, or upload payroll to seed rates.</td></tr>`;
+  const eqRows=p.res.equip.length?p.res.equip.map(e=>{const mm=e.monthly||{};
+    const cells=months.map((m,i)=>`<td class="pin" style="padding:1px"><input style="width:34px;text-align:center;font-size:11px" value="${mm[i]?mm[i]:''}" placeholder="0" onchange="app.setResMonth('equip','${e.id}',${i},this.value)"></td>`).join('');
+    const rt=months.reduce((a,m,i)=>a+(mm[i]?+mm[i]:0)*(+e.rate||0),0);
+    return `<tr><td class="l pin" style="position:sticky;left:0;background:#fff;z-index:1"><input value="${esc(e.name||'')}" placeholder="Equipment / subcontract" style="width:130px" onchange="app.setRes('equip','${e.id}','name',this.value)"></td>
+      <td class="pin"><select onchange="app.setRes('equip','${e.id}','kind',this.value)" style="font-size:10px;border:1px solid var(--line);border-radius:6px;padding:2px"><option value="Rental" ${e.kind!=='Subcontract'?'selected':''}>Rental</option><option value="Subcontract" ${e.kind==='Subcontract'?'selected':''}>Sub</option></select></td>
+      <td class="pin"><input value="${e.rate!=null?e.rate:''}" placeholder="0" title="Rate / unit / month" style="width:56px;text-align:right" onchange="app.setRes('equip','${e.id}','rate',this.value)"></td>
+      <td class="pin" style="text-align:center;color:#94a3b8;font-size:10px">/mo</td>
+      ${cells}<td class="calc" style="font-weight:600;position:sticky;right:26px;background:#fff">${fmt(Math.round(rt))}</td><td class="act" style="position:sticky;right:0;background:#fff"><button onclick="app.delRes('equip','${e.id}')">×</button></td></tr>`;}).join(''):`<tr><td colspan="${months.length+6}" style="text-align:center;color:var(--muted);padding:14px">No equipment / subcontract lines yet.</td></tr>`;
+  const sumRow=(label,arr,color)=>`<tr><td class="l" style="position:sticky;left:0;background:#f8fafc;font-weight:700;color:${color}">${label}</td><td colspan="3" style="background:#f8fafc"></td>${arr.map(v=>`<td class="calc" style="font-size:10px;background:#f8fafc">${v?fmt(Math.round(v)):''}</td>`).join('')}<td class="calc" style="font-weight:700;background:#f8fafc;position:sticky;right:26px">${fmt(Math.round(arr.reduce((a,b)=>a+b,0)))}</td><td style="background:#f8fafc;position:sticky;right:0"></td></tr>`;
+  el.innerHTML=`<div class="pagehead"><div><h2>Manpower &amp; Equipment Loading</h2><p>Monthly head-count × wage (incl. OT) &amp; equipment rental / subcontract → labor &amp; equipment cost curve. Compare to CBS labor budget.</p></div>
+     <div style="display:flex;gap:8px;flex-wrap:wrap"><button class="btn" onclick="app.downloadPayrollTemplate()">⬇ Payroll template</button><button class="btn" onclick="app.uploadPayroll()">⬆ Upload payroll</button></div></div>
+   <div class="kpis">
+     ${kpi('Manpower cost (plan)',cur()+' '+fmt(Math.round(labT)),p.res.labor.length+' lines · '+WORKDAYS+' days/mo','#eef2ff','#4f46e5',iW)}
+     ${kpi('Equipment / Subcon',cur()+' '+fmt(Math.round(eqT)),p.res.equip.length+' lines','#ecfeff','#0ea5e9',iT)}
+     ${kpi('Total (M+E)',cur()+' '+fmt(Math.round(tot)),'loaded resource cost','#fffbeb','#f59e0b',iC)}
+     ${kpi('vs CBS Labor Budget',cur()+' '+fmt(Math.round(cbsLab)),(diff>=0?'over by ':'under by ')+cur()+' '+fmt(Math.abs(Math.round(diff))),'#ecfdf5',Math.abs(diff)<cbsLab*0.1?'#10b981':'#ef4444',iD,diff<=0?'up':'down')}
+   </div>
+   <div class="tbl-card scroll" style="margin-bottom:14px"><div style="padding:10px 14px;font-weight:700;font-size:13px;border-bottom:1px solid var(--line)">👷 Manpower loading <span style="font-weight:400;color:var(--muted);font-size:11px">· head-count per month</span></div>
+     <table class="ct"><thead><tr><th class="l" style="position:sticky;left:0;background:var(--card);z-index:2">Role / Team</th><th>CBS</th><th>Wage/day</th><th>OT/mo</th>${mhead}<th style="position:sticky;right:26px;background:var(--card)">Total</th><th style="position:sticky;right:0;background:var(--card)"></th></tr></thead>
+     <tbody>${labRows}${sumRow('Manpower ฿/mo',rm.labor,'#4f46e5')}</tbody></table>
+     <div class="addrow"><button onclick="app.addRes('labor')">＋ Add manpower line</button></div></div>
+   <div class="tbl-card scroll" style="margin-bottom:14px"><div style="padding:10px 14px;font-weight:700;font-size:13px;border-bottom:1px solid var(--line)">🏗️ Equipment &amp; Special-team loading <span style="font-weight:400;color:var(--muted);font-size:11px">· qty per month</span></div>
+     <table class="ct"><thead><tr><th class="l" style="position:sticky;left:0;background:var(--card);z-index:2">Equipment / Subcontract</th><th>Type</th><th>Rate/mo</th><th></th>${mhead}<th style="position:sticky;right:26px;background:var(--card)">Total</th><th style="position:sticky;right:0;background:var(--card)"></th></tr></thead>
+     <tbody>${eqRows}${sumRow('Equipment ฿/mo',rm.equip,'#0ea5e9')}${sumRow('TOTAL ฿/mo',rm.total,'#111')}</tbody></table>
+     <div class="addrow"><button onclick="app.addRes('equip')">＋ Add equipment / subcontract line</button></div></div>
+   ${p.roster.length?`<div class="tbl-card" style="margin-bottom:14px"><div style="padding:10px 14px;font-weight:700;font-size:13px;border-bottom:1px solid var(--line)">📇 Payroll roster <span style="font-weight:400;color:var(--muted);font-size:11px">· ${p.roster.length} employees</span></div>
+     <table class="ct"><thead><tr><th class="l">Code</th><th class="l">Name</th><th class="l">Position</th><th>Type</th><th>Base wage</th><th>Avg income/mo</th></tr></thead>
+     <tbody>${p.roster.slice(0,40).map(r=>`<tr><td class="l">${esc(r.code||'')}</td><td class="l">${esc((r.name||'')+' '+(r.surname||''))}</td><td class="l">${esc(r.position||'')}</td><td style="text-align:center">${esc(r.type||'')}</td><td class="calc">${r.base?fmt(r.base):''}</td><td class="calc">${r.avg?fmt(r.avg):''}</td></tr>`).join('')}</tbody></table>${p.roster.length>40?`<div style="padding:8px 14px;color:var(--muted);font-size:11px">…and ${p.roster.length-40} more</div>`:''}</div>`:''}`;
+}
+
 function render(){
   Object.values(charts).forEach(c=>{try{c.destroy()}catch(e){}});charts={};
   document.getElementById('projSel').innerHTML=state.projects.map(p=>`<option value="${p.id}" ${p.id===state.activeId?'selected':''}>${esc(p.name)}</option>`).join('');
@@ -264,6 +315,7 @@ function render(){
   else if(current==='cost')renderCost(el);
   else if(current==='cashflow')renderCashflow(el);
   else if(current==='schedule')renderSchedule(el);
+  else if(current==='manpower')renderManpower(el);
   else renderSettings(el);
 }
 
@@ -325,35 +377,49 @@ const iF='<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-widt
 /* ===== CBS COST ===== */
 let expanded={};
 function renderCost(el){
-  const p=proj();const t=totals();const claimT=p.cats.reduce((a,c)=>a+catClaim(c),0);
-  el.innerHTML=`<div class="pagehead"><div><h2>CBS Cost — Budget vs Ready-to-Claim</h2><p><b>Actual Cost</b> (editable · default = Budget × L4 progress) → Cash-out · <b>Rdy to Claim</b> = billable · <b>Actual Claim + date + credit</b> → Cash-in.</p></div>
-     <div style="display:flex;gap:8px"><button class="btn" onclick="app.expandAll(true)">Expand all</button><button class="btn" onclick="app.expandAll(false)">Collapse</button><button class="btn primary" onclick="app.importExcel()">⬆ Upload CBS</button></div></div>
+  const p=proj();const mode=cbsMode||'total';
+  const sl=(v,it,cno)=>mode==='labor'?v*labFrac(it,cno):(mode==='material'?v*(1-labFrac(it,cno)):v);
+  let tb=0,tc=0,tr=0,tk=0,totLab=0,totMat=0;
+  p.cats.forEach(c=>c.items.forEach(it=>{const f=labFrac(it,c.no);const b=+it.budget||0;totLab+=b*f;totMat+=b*(1-f);tb+=sl(b,it,c.no);tc+=sl(actualCost(it),it,c.no);tr+=sl(readyToClaim(it),it,c.no);tk+=sl(itemClaimAmt(it),it,c.no);}));
+  const seg=on=>on?'background:#4f46e5;color:#fff':'background:#eef1f6;color:#64748b';
+  const mtag=mode==='total'?'':(mode==='labor'?' · <b style="color:#4f46e5">LABOR view</b>':' · <b style="color:#0ea5e9">MATERIAL view</b>');
+  el.innerHTML=`<div class="pagehead"><div><h2>CBS Cost — Budget vs Ready-to-Claim${mtag}</h2><p>Labor <b>${cur()} ${fmt(totLab)}</b> · Material <b>${cur()} ${fmt(totMat)}</b> · split from quotation — edit <b>Lab%</b> per line. Actual Cost → Cash-out · Rdy to Claim = billable.</p></div>
+     <div style="display:flex;gap:8px;align-items:center"><div style="display:inline-flex;border:1px solid var(--line);border-radius:9px;overflow:hidden"><button onclick="app.setCbsMode('total')" style="${seg(mode==='total')};border:none;padding:7px 12px;font-weight:700;font-size:12px;cursor:pointer">Total</button><button onclick="app.setCbsMode('labor')" style="${seg(mode==='labor')};border:none;padding:7px 12px;font-weight:700;font-size:12px;cursor:pointer">Labor</button><button onclick="app.setCbsMode('material')" style="${seg(mode==='material')};border:none;padding:7px 12px;font-weight:700;font-size:12px;cursor:pointer">Material</button></div>
+       <button class="btn" onclick="app.expandAll(true)">Expand all</button><button class="btn" onclick="app.expandAll(false)">Collapse</button><button class="btn primary" onclick="app.importExcel()">⬆ Upload CBS</button></div></div>
    <div class="tbl-card scroll"><table class="ct">
-     <thead><tr><th style="width:26px"></th><th class="l">CBS Category / Sub-item</th><th>→</th><th>Budget</th><th>Actual Cost</th><th>Rdy to Claim</th><th>Actual Claim</th><th>Claim Date</th><th>Credit</th><th></th></tr></thead>
+     <thead><tr><th style="width:26px"></th><th class="l">CBS Category / Sub-item</th><th>→</th><th>Budget</th><th>Actual Cost</th><th>Lab%</th><th>Rdy to Claim</th><th>Actual Claim</th><th>Claim Date</th><th>Credit</th><th></th></tr></thead>
      <tbody id="cbsBody"></tbody>
-     <tfoot><tr><td></td><td class="l">GRAND TOTAL</td><td></td><td>${fmt(t.budget)}</td><td style="color:#4f46e5">${fmt(projCost(p))}</td><td>${fmt(t.actual)}</td><td>${fmt(claimT)}</td><td></td><td></td><td></td></tr></tfoot>
+     <tfoot><tr><td></td><td class="l">GRAND TOTAL${mode!=='total'?' ('+mode+')':''}</td><td></td><td>${fmt(tb)}</td><td style="color:#4f46e5">${fmt(tc)}</td><td></td><td>${fmt(tr)}</td><td>${fmt(tk)}</td><td></td><td></td><td></td></tr></tfoot>
    </table></div><div class="addrow" style="background:#fff;border:1px solid var(--line);border-radius:0 0 14px 14px;border-top:none;margin-top:-1px"><button onclick="app.addCat()">＋ Add category</button></div>`;
   drawCBS();
 }
 function drawCBS(){
-  const p=proj();const months=planMonths(ensurePlan(p));let html='';
+  const p=proj();const months=planMonths(ensurePlan(p));let html='';const mode=cbsMode||'total';
+  const lf=(it,cno)=>labFrac(it,cno);
+  const sl=(v,it,cno)=>mode==='labor'?v*lf(it,cno):(mode==='material'?v*(1-lf(it,cno)):v);
+  const bO=it=>+it.budget||0,kO=it=>actualCost(it),rO=it=>readyToClaim(it),mO=it=>itemClaimAmt(it);
+  const cSum=(c,fn)=>c.items.reduce((a,it)=>a+sl(fn(it),it,c.no),0);
   ['A','B','C'].forEach(g=>{const cats=p.cats.filter(c=>c.grp===g);if(!cats.length)return;
-    const gb=grpB(p,g),ga=cats.reduce((a,c)=>a+catA(c),0),gc=cats.reduce((a,c)=>a+catClaim(c),0),gcst=cats.reduce((a,c)=>a+catCost(c),0);
-    html+=`<tr class="grp"><td></td><td class="l">${g}. ${GROUPS[g]}</td><td></td><td>${fmt(gb)}</td><td style="color:#c7d2fe">${fmt(gcst)}</td><td>${fmt(ga)}</td><td>${fmt(gc)}</td><td></td><td></td><td></td></tr>`;
-    cats.forEach(c=>{const b=catB(c),a=catA(c),cc=catClaim(c),acst=catCost(c);const open=expanded[c.id];
-      html+=`<tr class="cat"><td class="tog" onclick="app.tog('${c.id}')">${open?'▾':'▸'}</td><td class="l">${c.no}. ${esc(c.name)} <span style="color:#94a3b8;font-size:10px">${c.type}</span></td><td></td><td>${fmt(b)}</td><td style="color:#4f46e5">${fmt(acst)}</td><td>${fmt(a)}</td><td>${fmt(cc)}</td><td></td><td></td><td class="act"><button title="Delete category" onclick="app.delCat('${c.id}')">×</button></td></tr>`;
-      if(open){c.items.forEach(it=>{const rc=(+it.budget||0)*(+it.actualPct||0)/100;const cm=(it.claimMonth==null?null:+it.claimMonth);const camt=(it.claim!=null&&it.claim!=='')?(+it.claim||0):(cm!=null?rc:'');const rev=it.review?'<span title="Auto-mapped — verify" style="color:#f59e0b;font-weight:800;margin-right:3px">⚠</span>':'';
+    const gb=cats.reduce((a,c)=>a+cSum(c,bO),0),gcst=cats.reduce((a,c)=>a+cSum(c,kO),0),ga=cats.reduce((a,c)=>a+cSum(c,rO),0),gc=cats.reduce((a,c)=>a+cSum(c,mO),0);
+    html+=`<tr class="grp"><td></td><td class="l">${g}. ${GROUPS[g]}</td><td></td><td>${fmt(gb)}</td><td style="color:#c7d2fe">${fmt(gcst)}</td><td></td><td>${fmt(ga)}</td><td>${fmt(gc)}</td><td></td><td></td><td></td></tr>`;
+    cats.forEach(c=>{const b=cSum(c,bO),acst=cSum(c,kO),a=cSum(c,rO),cc=cSum(c,mO);const open=expanded[c.id];
+      html+=`<tr class="cat"><td class="tog" onclick="app.tog('${c.id}')">${open?'▾':'▸'}</td><td class="l">${c.no}. ${esc(c.name)} <span style="color:#94a3b8;font-size:10px">${c.type}</span></td><td></td><td>${fmt(b)}</td><td style="color:#4f46e5">${fmt(acst)}</td><td></td><td>${fmt(a)}</td><td>${fmt(cc)}</td><td></td><td></td><td class="act"><button title="Delete category" onclick="app.delCat('${c.id}')">×</button></td></tr>`;
+      if(open){c.items.forEach(it=>{const rc=readyToClaim(it);const cm=(it.claimMonth==null?null:+it.claimMonth);const camt=(it.claim!=null&&it.claim!=='')?(+it.claim||0):(cm!=null?rc:'');const rev=it.review?'<span title="Auto-mapped — verify" style="color:#f59e0b;font-weight:800;margin-right:3px">⚠</span>':'';const f=lf(it,c.no);
+        const budCell=mode==='total'?`<td class="num"><input value="${it.budget?fmt(it.budget):''}" placeholder="0" onchange="app.setItem('${c.id}','${it.id}','budget',this.value)"></td>`:`<td class="calc" style="text-align:right;color:#334155">${fmt(sl(+it.budget||0,it,c.no))}</td>`;
+        const costCell=mode==='total'?`<td class="num"><input title="Actual cost incurred — default = Budget × L4 progress. Feeds Cash-out." value="${(it.actualCost!=null&&it.actualCost!='')?fmt(it.actualCost):''}" placeholder="${rc?fmt(rc):'0'}" onchange="app.setItem('${c.id}','${it.id}','actualCost',this.value)" style="color:#4f46e5"></td>`:`<td class="calc" style="text-align:right;color:#4f46e5">${fmt(sl(actualCost(it),it,c.no))}</td>`;
+        const claimCell=mode==='total'?`<td class="num"><input value="${camt!==''?fmt(camt):''}" placeholder="${rc?fmt(rc):'0'}" onchange="app.setItemClaim('${c.id}','${it.id}','claim',this.value)"></td>`:`<td class="calc" style="text-align:right">${fmt(sl(itemClaimAmt(it),it,c.no))}</td>`;
         html+=`<tr class="itm ${it.review?'rev':''}"><td></td>
           <td class="l name">${rev}<input value="${esc(it.name)}" style="width:calc(100% - 18px)" onchange="app.setItem('${c.id}','${it.id}','name',this.value)"></td>
           <td style="text-align:center"><select title="Move category" style="font-size:10px;border:1px solid var(--line);border-radius:6px;padding:2px 1px;max-width:52px" onchange="app.moveItem('${c.id}','${it.id}',this.value)">${p.cats.map(x=>`<option value="${x.no}" ${x.id===c.id?'selected':''}>${x.no}</option>`).join('')}</select></td>
-          <td class="num"><input value="${it.budget?fmt(it.budget):''}" placeholder="0" onchange="app.setItem('${c.id}','${it.id}','budget',this.value)"></td>
-          <td class="num"><input title="Actual cost incurred — default = Budget × L4 progress. Feeds Cash-out." value="${(it.actualCost!=null&&it.actualCost!='')?fmt(it.actualCost):''}" placeholder="${rc?fmt(rc):'0'}" onchange="app.setItem('${c.id}','${it.id}','actualCost',this.value)" style="color:#4f46e5"></td>
-          <td class="calc" style="text-align:right;color:${it.credit==null?'#10b981':'#0ea5e9'};font-weight:${it.credit==null?'700':'500'}">${fmt(rc)}</td>
-          <td class="num"><input value="${camt!==''?fmt(camt):''}" placeholder="${rc?fmt(rc):'0'}" onchange="app.setItemClaim('${c.id}','${it.id}','claim',this.value)"></td>
+          ${budCell}
+          ${costCell}
+          <td class="pin" style="text-align:center"><input title="Labor % of this line (default from quotation)" style="width:40px;text-align:center" value="${it.labPct!=null&&it.labPct!==''?it.labPct:''}" placeholder="${Math.round(f*100)}" onchange="app.setItem('${c.id}','${it.id}','labPct',this.value)"></td>
+          <td class="calc" style="text-align:right;color:${it.credit==null?'#10b981':'#0ea5e9'};font-weight:${it.credit==null?'700':'500'}">${fmt(sl(rc,it,c.no))}</td>
+          ${claimCell}
           <td style="text-align:center"><select onchange="app.setItemClaim('${c.id}','${it.id}','month',this.value)" style="border:1px solid var(--line);border-radius:6px;padding:2px;font-size:11px"><option value="" ${cm==null?'selected':''}>—</option>${months.map((m,j)=>`<option value="${j}" ${j===cm?'selected':''}>${m}</option>`).join('')}</select></td>
           <td class="pin" style="text-align:center;white-space:nowrap"><input style="width:34px;text-align:center" value="${it.credit!=null?it.credit:''}" placeholder="0" onchange="app.setItemClaim('${c.id}','${it.id}','credit',this.value)"><select style="font-size:10px;border:1px solid var(--line);border-radius:5px;padding:1px;margin-left:2px" onchange="app.setItemClaim('${c.id}','${it.id}','creditUnit',this.value)"><option value="d" ${(it.creditUnit||'d')==='d'?'selected':''}>d</option><option value="mo" ${it.creditUnit==='mo'?'selected':''}>mo</option></select></td>
           <td class="act"><button title="Delete sub-item" onclick="app.delItem('${c.id}','${it.id}')">×</button></td></tr>`;});
-        html+=`<tr class="addi"><td></td><td colspan="9"><button onclick="app.addItem('${c.id}')">＋ Add sub-item</button></td></tr>`;
+        html+=`<tr class="addi"><td></td><td colspan="10"><button onclick="app.addItem('${c.id}')">＋ Add sub-item</button></td></tr>`;
       }
     });
   });
@@ -363,6 +429,8 @@ function drawCBS(){
 const PHASE_OF={ENG:'eng',DOC:'eng',MEL:'proc',MIN:'proc',BLK:'proc',STF:'inst',SUB:'comm',TCF:'ind',TOL:'ind',RNT:'ind',TRN:'ind',SAF:'ind',ENV:'ind',UTL:'ind',OHC:'ind'};
 const PHNAME={eng:'Engineering & Design',proc:'Procurement',inst:'Installation',comm:'Testing & Commissioning',ind:'Indirect / Site'};
 const PHKEYS=['eng','proc','inst','comm'];
+const LABOR_FRAC={ENG:0.807,DOC:0.807,MEL:0,MIN:0,BLK:0,STF:0.954,SUB:0.954,TCF:0,TOL:0,RNT:0,TRN:0,SAF:0.30,ENV:0.30,UTL:0,OHC:0};
+function labFrac(it,cno){const lp=(it.labPct!=null&&it.labPct!=='')?(+it.labPct):((LABOR_FRAC[cno]!=null?LABOR_FRAC[cno]:0)*100);return Math.max(0,Math.min(100,lp))/100;}
 function defaultPlan(){const d=new Date();return {startY:d.getFullYear(),startM:d.getMonth(),dataDate:0,payLag:1,phases:{eng:{s:0,dur:3},proc:{s:2,dur:5},inst:{s:5,dur:9},comm:{s:13,dur:3}}};}
 function ensurePlan(p){if(!p.plan)p.plan=defaultPlan();if(!p.plan.phases)p.plan.phases=defaultPlan().phases;['eng','proc','inst','comm'].forEach(k=>{if(!p.plan.phases[k])p.plan.phases[k]={s:0,dur:3};});if(p.plan.payLag==null)p.plan.payLag=1;if(!p.claims)p.claims=[];return p.plan;}
 function planEnd(pl){let e=1;['eng','proc','inst','comm'].forEach(k=>{const ph=pl.phases[k];if(ph)e=Math.max(e,ph.s+ph.dur);});return e;}
@@ -370,9 +438,12 @@ function planMonths(pl){const n=planEnd(pl);const out=[];for(let i=0;i<n;i++){co
 function isMargin(it){const nm=(it.name||'').toLowerCase();return nm.indexOf('overhead & profit')>=0||nm.indexOf('o&p')>=0||nm.indexOf('overhead and profit')>=0||/(^|[^a-z])profit/.test(nm);}
 function marginTotal(p){let t=0;p.cats.forEach(c=>c.items.forEach(i=>{if(isMargin(i))t+=(+i.budget||0);}));return t;}
 function costTotal(p){return contractTotal(p)-marginTotal(p);}
-function projReady(p){let t=0;p.cats.forEach(c=>c.items.forEach(it=>t+=(+it.budget||0)*(+it.actualPct||0)/100));return t;}
-function readyToClaim(it){return (+it.budget||0)*(+it.actualPct||0)/100;}
-function actualCost(it){return (it.actualCost!=null&&it.actualCost!=='')?(+it.actualCost||0):(+it.budget||0)*(+it.actualPct||0)/100;}
+function projReady(p){let t=0;p.cats.forEach(c=>c.items.forEach(it=>t+=(+it.budget||0)*itemProgress(it)/100));return t;}
+function tid_(){return 't'+Math.random().toString(36).slice(2,9);}
+function itemTasks(it){return (it.tasks&&it.tasks.length)?it.tasks:null;}
+function itemProgress(it){const T=itemTasks(it);if(!T)return +it.actualPct||0;let w=0,pp=0;T.forEach(t=>{const ww=(+t.wt||0);w+=ww;pp+=ww*(+t.actualPct||0);});return w?pp/w:0;}
+function readyToClaim(it){return (+it.budget||0)*itemProgress(it)/100;}
+function actualCost(it){return (it.actualCost!=null&&it.actualCost!=='')?(+it.actualCost||0):(+it.budget||0)*itemProgress(it)/100;}
 function catCost(c){return c.items.reduce((a,it)=>a+actualCost(it),0);}
 function projCost(p){let t=0;p.cats.forEach(c=>c.items.forEach(it=>t+=actualCost(it)));return t;}
 function itemClaimAmt(it){const ready=readyToClaim(it);return (it.claim!=null&&it.claim!=='')?(+it.claim||0):ready;}
@@ -387,8 +458,15 @@ function buildSchedule(p){const pl=ensurePlan(p);const months=planMonths(pl);con
     let win=(ph==='ind')?{s:0,dur:dur}:pl.phases[ph];if(!win)win={s:0,dur:dur};
     let ws=Math.max(0,Math.min(end,win.s)),we=Math.max(ws,Math.min(end,win.s+win.dur-1));
     c.items.forEach(it=>{if(isMargin(it))return;const b=+it.budget||0;if(b<=0)return;
-      const ms=(it.ms!=null)?Math.max(0,Math.min(end,it.ms)):ws;const me=(it.me!=null)?Math.max(ms,Math.min(end,it.me)):we;
-      acts.push({id:it.id,catNo:c.no,catName:c.name,phase:ph,name:it.name,weight:b/tot*100,budget:b,ms,me,actualPct:+it.actualPct||0,ref:it});});});
+      const ws0=(it.ms!=null)?Math.max(0,Math.min(end,it.ms)):ws;const we0=(it.me!=null)?Math.max(ws0,Math.min(end,it.me)):we;
+      const T=itemTasks(it);
+      if(T){const sumw=T.reduce((a,t)=>a+(+t.wt||0),0)||1;
+        T.forEach(t=>{const tb=b*(+t.wt||0)/sumw;if(tb<=0)return;
+          const ms=(t.ms!=null)?Math.max(0,Math.min(end,+t.ms)):ws0;const d=(t.dur!=null)?Math.max(1,+t.dur):(we0-ms+1);const me=Math.max(ms,Math.min(end,ms+d-1));
+          acts.push({id:it.id,taskId:t.id,catNo:c.no,catName:c.name,phase:ph,name:it.name+' › '+t.name,itemName:it.name,taskName:t.name,weight:tb/tot*100,budget:tb,ms,me,actualPct:+t.actualPct||0,ref:it,tref:t});});
+      } else {
+        acts.push({id:it.id,taskId:null,catNo:c.no,catName:c.name,phase:ph,name:it.name,itemName:it.name,weight:b/tot*100,budget:b,ms:ws0,me:we0,actualPct:+it.actualPct||0,ref:it});
+      }});});
   return {months,acts,dur,tot};}
 function buildCashflow(p){const sc=buildSchedule(p);const pl=p.plan;const dur=sc.dur;
   const planM=Array(dur).fill(0);sc.acts.forEach(a=>{const n=a.me-a.ms+1;for(let m=a.ms;m<=a.me;m++)planM[m]+=a.weight/n;});
@@ -398,7 +476,7 @@ function buildCashflow(p){const sc=buildSchedule(p);const pl=p.plan;const dur=sc
   const sumR=rev.reduce((a,b)=>a+b,0),totB=Math.round(billed.reduce((a,b)=>a+b,0));if(dur>0)rev[dur-1]+=totB-sumR;
   for(let m=0;m<dur;m++){if(ovI[m]!=null)rev[m]=Math.round(+ovI[m]);}
   const aOut=Array(dur).fill(0),aIn=Array(dur).fill(0);
-  p.cats.forEach(c=>c.items.forEach(it=>{const prog=(+it.actualPct||0)/100;const amt=itemClaimAmt(it);const ac=isMargin(it)?0:actualCost(it);if(prog<=0&&amt<=0&&ac<=0)return;
+  p.cats.forEach(c=>c.items.forEach(it=>{const prog=itemProgress(it)/100;const amt=itemClaimAmt(it);const ac=isMargin(it)?0:actualCost(it);if(prog<=0&&amt<=0&&ac<=0)return;
     const rm=Math.min(Math.max((it.claimMonth!=null?+it.claimMonth:(pl.dataDate||0)),0),dur-1);
     aOut[rm]+=Math.round(ac);
     aIn[Math.min(rm+creditMonths(it,pl),dur-1)]+=Math.round(amt);}));
@@ -421,7 +499,7 @@ function renderCashflow(el){const p=proj();ensurePlan(p);const cf=buildCashflow(
   const sc=buildSchedule(p);const cT=costTotal(p),kT=contractTotal(p),lag=Math.max(0,p.plan.payLag||0);const ovI=p.plan.planIn||{},ovO=p.plan.planOut||{};
   const dOP=[],dIP=[],dOA=[],dIA=[];for(let m=0;m<dur;m++){dOP.push({});dIP.push({});dOA.push([]);dIA.push([]);}
   sc.acts.forEach(a=>{const n=a.me-a.ms+1;for(let m=a.ms;m<=a.me;m++){dOP[m][a.catName]=(dOP[m][a.catName]||0)+a.weight/n/100*cT;const bm=m+lag;if(bm<dur)dIP[bm][a.catName]=(dIP[bm][a.catName]||0)+a.weight/n/100*kT;}});
-  p.cats.forEach(c=>c.items.forEach(it=>{const prog=(+it.actualPct||0)/100;const amt=itemClaimAmt(it);const ac=isMargin(it)?0:actualCost(it);if(prog<=0&&amt<=0&&ac<=0)return;const rm=Math.min(Math.max(it.claimMonth!=null?+it.claimMonth:(p.plan.dataDate||0),0),dur-1);if(ac>0)dOA[rm].push({name:c.no+' '+it.name,amt:Math.round(ac)});if(amt>0)dIA[Math.min(rm+creditMonths(it,p.plan),dur-1)].push({name:c.no+' '+it.name,amt:Math.round(amt)});}));
+  p.cats.forEach(c=>c.items.forEach(it=>{const prog=itemProgress(it)/100;const amt=itemClaimAmt(it);const ac=isMargin(it)?0:actualCost(it);if(prog<=0&&amt<=0&&ac<=0)return;const rm=Math.min(Math.max(it.claimMonth!=null?+it.claimMonth:(p.plan.dataDate||0),0),dur-1);if(ac>0)dOA[rm].push({name:c.no+' '+it.name,amt:Math.round(ac)});if(amt>0)dIA[Math.min(rm+creditMonths(it,p.plan),dur-1)].push({name:c.no+' '+it.name,amt:Math.round(amt)});}));
   const catRows=(o,ov)=>{if(ov!=null)return `<div style="display:flex;justify-content:space-between"><span style="color:#f59e0b">Manual override</span><span>${fmt(Math.round(+ov))}</span></div>`;const ks=Object.keys(o).filter(k=>Math.round(o[k])>0).sort((x,y)=>o[y]-o[x]);return ks.length?ks.map(k=>`<div style="display:flex;justify-content:space-between;gap:14px"><span style="color:#64748b">${esc(k)}</span><span>${fmt(Math.round(o[k]))}</span></div>`).join(''):'<div style="color:#cbd5e1">—</div>';};
   const itRows=a=>a.length?a.map(x=>`<div style="display:flex;justify-content:space-between;gap:14px"><span style="color:#64748b">${esc(x.name)}</span><span>${fmt(x.amt)}</span></div>`).join(''):'<div style="color:#cbd5e1">—</div>';
   const blk=(title,color,body)=>`<div style="flex:1;min-width:190px"><div style="font-weight:700;font-size:10.5px;letter-spacing:.03em;color:${color};margin-bottom:4px">${title}</div><div style="font-size:11.5px;display:flex;flex-direction:column;gap:2px">${body}</div></div>`;
@@ -532,20 +610,41 @@ function renderSchedule(el){const p=proj();ensurePlan(p);const k=schedStats(p);c
     {label:'Actual',data:k.actCum,borderColor:'#4f46e5',backgroundColor:'rgba(79,70,229,.10)',fill:true,tension:.35,pointRadius:0,borderWidth:2.5,spanGaps:false}]},
     options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false},tooltip:{callbacks:{label:c=>c.dataset.label+': '+(c.raw==null?'-':(+c.raw).toFixed(1)+'%')}}},scales:{x:{ticks:{font:{size:9},maxRotation:90,minRotation:90},grid:{display:false}},y:{ticks:{callback:v=>v+'%',font:{size:10}},grid:{color:'#eef1f6'},max:100}}},plugins:[tnPlugin(k.dd)]});
 }
-function drawSchedule(){const p=proj();const sc=buildSchedule(p);let html='';const dur=sc.dur;const dd=p.plan.dataDate||0;
-  ['eng','proc','inst','comm','ind'].forEach((ph,pi)=>{const list=sc.acts.filter(a=>a.phase===ph);if(!list.length)return;
-    const pw=list.reduce((a,x)=>a+x.weight,0);const pe=list.reduce((a,x)=>a+x.weight*(+x.actualPct||0)/100,0);
+function drawSchedule(){const p=proj();const sc=buildSchedule(p);let html='';const dur=sc.dur;const end=dur-1;const dd=p.plan.dataDate||0;const pl=ensurePlan(p);
+  const msel=(cur,cb)=>`<select onchange="${cb}" style="border:1px solid var(--line);border-radius:6px;padding:2px">${sc.months.map((m,i)=>`<option value="${i}" ${i===cur?'selected':''}>${m}</option>`).join('')}</select>`;
+  const bar=a=>{const plx=(a.ms/dur*100),wd=((a.me-a.ms+1)/dur*100);const ap=+a.actualPct||0;return `<td><div class="gtrack"><div class="gplan" style="left:${plx}%;width:${wd}%"></div><div class="gact" style="left:${plx}%;width:${wd*ap/100}%"></div></div></td>`;};
+  const pdtc=a=>{const pdt=a.me<dd?100:(a.ms>dd?0:(((dd-a.ms+1)/(a.me-a.ms+1))*100));return `<td style="text-align:right">${pdt.toFixed(2)}%</td>`;};
+  ['eng','proc','inst','comm','ind'].forEach((ph,pi)=>{
+    const cats=p.cats.filter(c=>(PHASE_OF[c.no]||'ind')===ph);const items=[];cats.forEach(c=>c.items.forEach(it=>{if(!isMargin(it)&&(+it.budget||0)>0)items.push({it,catNo:c.no});}));if(!items.length)return;
+    let win=(ph==='ind')?{s:0,dur:dur}:pl.phases[ph];if(!win)win={s:0,dur:dur};const ws=Math.max(0,Math.min(end,win.s)),we=Math.max(ws,Math.min(end,win.s+win.dur-1));
+    const list=sc.acts.filter(a=>a.phase===ph);const pw=list.reduce((a,x)=>a+x.weight,0);const pe=list.reduce((a,x)=>a+x.weight*(+x.actualPct||0)/100,0);
     let pp=0;list.forEach(a=>{const n=a.me-a.ms+1;for(let m=a.ms;m<=Math.min(a.me,dd);m++)pp+=a.weight/n;});
-    const open=expandedS[pi]!==false;
-    html+=`<tr class="grp"><td class="tog" style="color:#fff;cursor:pointer" onclick="app.togS(${pi})">${open?'▾':'▸'}</td><td class="l">${PHNAME[ph]}</td><td>${pw.toFixed(1)}%</td><td colspan="3"></td><td>${(pw?pp/pw*100:0).toFixed(2)}%</td><td>${(pw?pe/pw*100:0).toFixed(2)}%</td></tr>`;
-    if(open)list.forEach(a=>{const pl=(a.ms/dur*100),wd=((a.me-a.ms+1)/dur*100);const ap=+a.actualPct||0;
-      const pdt=a.me<dd?100:(a.ms>dd?0:(((dd-a.ms+1)/(a.me-a.ms+1))*100));
-      html+=`<tr class="act2"><td></td><td class="l">${esc(a.name)} <span style="color:#94a3b8;font-size:10px">${a.catNo}</span></td>
-        <td style="text-align:right">${a.weight.toFixed(2)}%</td>
-        <td style="text-align:center"><select onchange="app.setActF('${a.id}','ms',this.value)" style="border:1px solid var(--line);border-radius:6px;padding:2px">${sc.months.map((m,i)=>`<option value="${i}" ${i===a.ms?'selected':''}>${m}</option>`).join('')}</select></td>
-        <td class="pin" style="text-align:center"><input style="width:42px;text-align:center" value="${a.me-a.ms+1}" onchange="app.setActF('${a.id}','dur',this.value)"></td>
-        <td><div class="gtrack"><div class="gplan" style="left:${pl}%;width:${wd}%"></div><div class="gact" style="left:${pl}%;width:${wd*ap/100}%"></div></div></td>
-        <td style="text-align:right">${pdt.toFixed(2)}%</td><td class="pin"><input style="width:50px;text-align:right" value="${ap||''}" placeholder="0" onchange="app.setActual('${a.id}',this.value)"></td></tr>`;});
+    const open=expandedS['ph_'+pi]!==false;
+    html+=`<tr class="grp"><td class="tog" style="color:#fff;cursor:pointer" onclick="app.togS('ph_'+${pi})">${open?'▾':'▸'}</td><td class="l">${PHNAME[ph]}</td><td>${pw.toFixed(1)}%</td><td colspan="3"></td><td>${(pw?pp/pw*100:0).toFixed(2)}%</td><td>${(pw?pe/pw*100:0).toFixed(2)}%</td></tr>`;
+    if(!open)return;
+    items.forEach(({it,catNo})=>{const b=+it.budget||0;const ws0=(it.ms!=null)?Math.max(0,Math.min(end,it.ms)):ws;const we0=(it.me!=null)?Math.max(ws0,Math.min(end,it.me)):we;const T=itemTasks(it);
+      if(!T){const a={id:it.id,name:it.name,weight:b/sc.tot*100,ms:ws0,me:we0,actualPct:+it.actualPct||0};
+        html+=`<tr class="act2"><td></td><td class="l">${esc(it.name)} <span style="color:#94a3b8;font-size:10px">${catNo}</span> <button title="Split into detailed L4 tasks" onclick="app.addTask('${it.id}')" style="border:none;background:#eef2ff;color:#4f46e5;border-radius:5px;padding:1px 6px;cursor:pointer;font-size:10px">＋ tasks</button></td>
+          <td style="text-align:right">${a.weight.toFixed(2)}%</td>
+          <td style="text-align:center">${msel(a.ms,`app.setActF('${it.id}','','ms',this.value)`)}</td>
+          <td class="pin" style="text-align:center"><input style="width:42px;text-align:center" value="${a.me-a.ms+1}" onchange="app.setActF('${it.id}','','dur',this.value)"></td>
+          ${bar(a)}${pdtc(a)}<td class="pin"><input style="width:50px;text-align:right" value="${(+it.actualPct||0)||''}" placeholder="0" onchange="app.setActual('${it.id}','',this.value)"></td></tr>`;
+      } else {
+        const sumw=T.reduce((s,t)=>s+(+t.wt||0),0)||1;
+        const tv=T.map(t=>{const tb=b*(+t.wt||0)/sumw;const ms=(t.ms!=null)?Math.max(0,Math.min(end,+t.ms)):ws0;const d=(t.dur!=null)?Math.max(1,+t.dur):(we0-ms+1);const me=Math.max(ms,Math.min(end,ms+d-1));return {t,weight:tb/sc.tot*100,ms,me,actualPct:+t.actualPct||0};});
+        const iw=tv.reduce((s,x)=>s+x.weight,0);let ipp=0;tv.forEach(x=>{const n=x.me-x.ms+1;for(let m=x.ms;m<=Math.min(x.me,dd);m++)ipp+=x.weight/n;});
+        const iexp=expandedS['it_'+it.id]!==false;const ip=itemProgress(it);
+        html+=`<tr class="itm" style="background:#eef2f8"><td class="tog" style="cursor:pointer" onclick="app.togS('it_'+'${it.id}')">${iexp?'▾':'▸'}</td><td class="l" style="font-weight:600">${esc(it.name)} <span style="color:#94a3b8;font-size:10px">${catNo}</span> <span style="color:#4f46e5;font-size:10px">· ${T.length} L4 tasks</span></td><td style="text-align:right;font-weight:600">${iw.toFixed(2)}%</td><td colspan="3"></td><td style="text-align:right">${(iw?ipp/iw*100:0).toFixed(2)}%</td><td style="text-align:right;font-weight:600">${ip.toFixed(2)}%</td></tr>`;
+        if(iexp){tv.forEach(x=>{const a=x;const t=x.t;
+          html+=`<tr class="act2"><td></td><td class="l" style="padding-left:20px"><input value="${esc(t.name)}" style="width:42%" onchange="app.setTaskField('${it.id}','${t.id}','name',this.value)"> <span style="color:#94a3b8;font-size:10px">wt</span> <input value="${t.wt!=null?t.wt:''}" placeholder="0" style="width:36px;text-align:center" onchange="app.setTaskField('${it.id}','${t.id}','wt',this.value)"><span style="font-size:10px;color:#94a3b8">%</span></td>
+            <td style="text-align:right;color:#64748b">${a.weight.toFixed(2)}%</td>
+            <td style="text-align:center">${msel(a.ms,`app.setActF('${it.id}','${t.id}','ms',this.value)`)}</td>
+            <td class="pin" style="text-align:center"><input style="width:42px;text-align:center" value="${a.me-a.ms+1}" onchange="app.setActF('${it.id}','${t.id}','dur',this.value)"></td>
+            ${bar(a)}${pdtc(a)}<td class="pin" style="white-space:nowrap"><input style="width:44px;text-align:right" value="${(+t.actualPct||0)||''}" placeholder="0" onchange="app.setActual('${it.id}','${t.id}',this.value)"><button title="Delete task" onclick="app.delTask('${it.id}','${t.id}')" style="border:none;background:none;color:#ef4444;cursor:pointer;margin-left:2px">×</button></td></tr>`;});
+          html+=`<tr class="addi"><td></td><td colspan="7"><button onclick="app.addTask('${it.id}')">＋ Add L4 task</button></td></tr>`;
+        }
+      }
+    });
   });
   document.getElementById('scBody').innerHTML=html;
 }
@@ -712,11 +811,11 @@ const app={
   autoGenCbs(){document.getElementById('dataMenu').classList.remove('open');const fi=document.getElementById('quoteInput');fi.value='';fi.click();},
   setItemClaim(cid,iid,f,v){const it=proj().cats.find(c=>c.id===cid).items.find(i=>i.id===iid);if(!it)return;if(f==='claim')it.claim=(v===''||v==null)?undefined:parseNum(v);else if(f==='month')it.claimMonth=(v===''||v==null)?null:+v;else if(f==='credit')it.credit=(v===''||v==null)?null:Math.max(0,parseInt(v)||0);else if(f==='creditUnit')it.creditUnit=v;save();renderCost(document.getElementById('content'));},
   togS(k){expandedS[k]=!expandedS[k];drawSchedule();},
-  setActual(aid,v){const it=findItem(aid);if(it){it.actualPct=Math.max(0,Math.min(100,parseNum(v)));save();renderSchedule(document.getElementById('content'));}},
-  setActF(id,f,v){const sc=buildSchedule(proj());const a=sc.acts.find(x=>x.id===id);if(!a)return;const it=a.ref;const end=sc.dur-1;
-    if(f==='ms'){it.ms=Math.max(0,Math.min(end,+v));if((it.me!=null?it.me:a.me)<it.ms)it.me=it.ms;}
-    else if(f==='dur'){const d=Math.max(1,parseInt(v)||1);const s=(it.ms!=null?it.ms:a.ms);it.ms=s;it.me=Math.min(s+d-1,end);}
-    save();renderSchedule(document.getElementById('content'));},
+  setActual(id,tid,v){const it=findItem(id);if(!it)return;const val=Math.max(0,Math.min(100,parseNum(v)));if(tid){const t=(it.tasks||[]).find(x=>x.id===tid);if(t)t.actualPct=val;}else it.actualPct=val;save();renderSchedule(document.getElementById('content'));},
+  setTaskField(id,tid,f,v){const it=findItem(id);if(!it||!it.tasks)return;const t=it.tasks.find(x=>x.id===tid);if(!t)return;if(f==='name')t.name=v;else if(f==='wt')t.wt=Math.max(0,parseNum(v));save();renderSchedule(document.getElementById('content'));},
+  addTask(id){const it=findItem(id);if(!it)return;const sc=buildSchedule(proj());const end=sc.dur-1;const s=(it.ms!=null?it.ms:0);const e=(it.me!=null?it.me:Math.min(s+2,end));const dur=Math.max(1,e-s+1);if(!it.tasks||!it.tasks.length){it.tasks=[{id:tid_(),name:it.name,wt:100,ms:s,dur:dur,actualPct:+it.actualPct||0}];}it.tasks.push({id:tid_(),name:'Task '+(it.tasks.length+1),wt:0,ms:s,dur:dur,actualPct:0});save();expandedS['it_'+id]=true;renderSchedule(document.getElementById('content'));},
+  delTask(id,tid){const it=findItem(id);if(!it||!it.tasks)return;it.tasks=it.tasks.filter(x=>x.id!==tid);if(!it.tasks.length)delete it.tasks;save();renderSchedule(document.getElementById('content'));},
+  setActF(id,tid,f,v){const it=findItem(id);if(!it)return;const sc=buildSchedule(proj());const end=sc.dur-1;if(tid){const t=(it.tasks||[]).find(x=>x.id===tid);if(!t)return;if(f==='ms')t.ms=Math.max(0,Math.min(end,+v));else if(f==='dur')t.dur=Math.max(1,parseInt(v)||1);}else{if(f==='ms'){it.ms=Math.max(0,Math.min(end,+v));if((it.me!=null?it.me:end)<it.ms)it.me=it.ms;}else if(f==='dur'){const d=Math.max(1,parseInt(v)||1);const s=(it.ms!=null?it.ms:0);it.ms=s;it.me=Math.min(s+d-1,end);}}save();renderSchedule(document.getElementById('content'));},
   addSub(hEnc){const hh=decodeURIComponent(hEnc);const sc=proj().schedule;const same=sc.acts.filter(a=>(a.h1name||'Other')===hh);
     const ms=same.length?Math.min(...same.map(a=>a.ms)):0;const me=same.length?Math.max(...same.map(a=>a.me)):Math.min(2,sc.months.length-1);
     sc.acts.push({id:uid(),wbs:'',name:'New sub-activity',h1name:hh,weight:0,ms,me,actualPct:0});save();drawSchedule();},
@@ -747,7 +846,7 @@ const app={
   setProj(k,v){proj()[k]=v;save();if(k==='name'||k==='currency')render();},
   tog(id){expanded[id]=!expanded[id];drawCBS();},
   expandAll(v){proj().cats.forEach(c=>expanded[c.id]=v);drawCBS();},
-  setItem(cid,iid,f,v){const it=proj().cats.find(c=>c.id===cid).items.find(i=>i.id===iid);if(f==='name')it.name=v;else if(f==='actualCost')it.actualCost=(v===''||v==null)?undefined:parseNum(v);else it[f]=parseNum(v);save();if(f!=='name'){renderCost(document.getElementById('content'));}},
+  setItem(cid,iid,f,v){const it=proj().cats.find(c=>c.id===cid).items.find(i=>i.id===iid);if(f==='name')it.name=v;else if(f==='actualCost')it.actualCost=(v===''||v==null)?undefined:parseNum(v);else if(f==='labPct')it.labPct=(v===''||v==null)?undefined:Math.max(0,Math.min(100,parseNum(v)));else it[f]=parseNum(v);save();if(f!=='name'){renderCost(document.getElementById('content'));}},
   setCfPlan(kind,m,v){const p=proj();ensurePlan(p);if(!p.plan.planIn)p.plan.planIn={};if(!p.plan.planOut)p.plan.planOut={};const t=kind==='in'?p.plan.planIn:p.plan.planOut;const num=(v===''||v==null)?null:parseNum(v);if(num==null)delete t[m];else t[m]=num;save();renderCashflow(document.getElementById('content'));},
   resetCfPlan(){const p=proj();ensurePlan(p);p.plan.planIn={};p.plan.planOut={};save();renderCashflow(document.getElementById('content'));},
   addItem(cid){const c=proj().cats.find(x=>x.id===cid);c.items.push({id:uid(),name:'New sub-item',budget:0,actual:0});expanded[cid]=true;save();drawCBS();},
@@ -777,6 +876,14 @@ const app={
   closeModal(){document.getElementById('overlay').classList.remove('open');},
   setLag(v){ensurePlan(proj()).payLag=Math.max(0,Math.min(6,parseInt(v)||0));save();renderCashflow(document.getElementById('content'));},
   setCfMode(m){cfMode=m;renderCashflow(document.getElementById('content'));},
+  setCbsMode(m){cbsMode=m;renderCost(document.getElementById('content'));},
+  addRes(kind){const p=proj();ensureRes(p);const o=kind==='labor'?{id:tid_(),role:'',catNo:(p.cats[0]&&p.cats[0].no)||'STF',rate:0,otMo:0,monthly:{}}:{id:tid_(),name:'',kind:'Rental',rate:0,monthly:{}};p.res[kind].push(o);save();renderManpower(document.getElementById('content'));},
+  delRes(kind,id){const p=proj();ensureRes(p);p.res[kind]=p.res[kind].filter(x=>x.id!==id);save();renderManpower(document.getElementById('content'));},
+  setRes(kind,id,f,v){const p=proj();ensureRes(p);const o=p.res[kind].find(x=>x.id===id);if(!o)return;if(f==='role'||f==='name'||f==='catNo'||f==='kind')o[f]=v;else o[f]=Math.max(0,parseNum(v));save();renderManpower(document.getElementById('content'));},
+  setResMonth(kind,id,m,v){const p=proj();ensureRes(p);const o=p.res[kind].find(x=>x.id===id);if(!o)return;if(!o.monthly)o.monthly={};const n=parseNum(v);if(!n)delete o.monthly[m];else o.monthly[m]=n;save();renderManpower(document.getElementById('content'));},
+  uploadPayroll(){const fi=document.getElementById('payrollInput');fi.value='';fi.click();},
+  downloadPayrollTemplate(){const p=proj();ensureRes(p);const hdr=['ลำดับที่','รหัสพนักงาน','คำนำหน้า','ชื่อ','นามสกุล','ตำแหน่ง','วันที่เริ่มงาน','รายวัน/รายเดือน','สถานะ','ค่าแรง (ฐาน)','ค่าตำแหน่ง','ค่าประสบการณ์','ค่าโทรศัพท์','ค่าน้ำมัน','เฉลี่ยรวมรายรับ/เดือน'];const aoa=[hdr];if(p.roster.length)p.roster.forEach((r,i)=>aoa.push([i+1,r.code||'',r.prefix||'',r.name||'',r.surname||'',r.position||'',r.start||'',r.type||'',r.status||'',r.base||'',r.posAllow||0,r.expAllow||0,r.phone||0,r.fuel||0,r.avg||'']));else aoa.push([1,'SEUS000','นาย','ชื่อ','นามสกุล','ช่างทั่วไป','','รายวัน','ประจำ',600,0,0,0,0,'']);const ws=XLSX.utils.aoa_to_sheet(aoa);const wb=XLSX.utils.book_new();XLSX.utils.book_append_sheet(wb,ws,'Payroll');XLSX.writeFile(wb,'SEUS_Payroll_Template.xlsx');},
+
   togCf(i){cfExpanded[i]=!cfExpanded[i];renderCashflow(document.getElementById('content'));},
   addClaim(){const p=proj();if(!p.claims)p.claims=[];const cd=p.claims.reduce((a,c)=>a+(+c.amount||0),0);const amt=Math.max(0,Math.round(projReady(p)-cd));p.claims.push({id:uid(),desc:'Progress claim #'+(p.claims.length+1),amount:amt,month:(p.plan.dataDate||0),credit:(p.plan.payLag||0)});save();renderCashflow(document.getElementById('content'));},
   setClaim(i,f,v){const p=proj();const cl=(p.claims||[])[i];if(!cl)return;if(f==='desc')cl.desc=v;else if(f==='amount')cl.amount=parseNum(v);else if(f==='month')cl.month=+v;else if(f==='credit')cl.credit=Math.max(0,parseInt(v)||0);save();renderCashflow(document.getElementById('content'));},
@@ -816,6 +923,14 @@ function buildExcel(withData){
   toast(withData?'CBS exported':'Template downloaded');
 }
 function skey(n){return String(n==null?'':n).replace(/\s+/g,' ').trim().toLowerCase();}
+document.getElementById('payrollInput').onchange=function(e){const f=e.target.files[0];if(!f)return;const r=new FileReader();
+  r.onload=function(ev){try{const wb=XLSX.read(ev.target.result,{type:'array',cellDates:true});const sn=wb.SheetNames[0];const rows=XLSX.utils.sheet_to_json(wb.Sheets[sn],{header:1});
+    let hr=rows.findIndex(rw=>rw&&rw.some(c=>(''+c).includes('รหัส')||(''+c).toLowerCase().includes('code')||(''+c).includes('ค่าแรง')));if(hr<0)hr=0;const H=rows[hr].map(c=>(''+(c==null?'':c)));
+    const col=(...ks)=>H.findIndex(x=>ks.some(k=>x.includes(k)));
+    const cCode=col('รหัส','code'),cPre=col('คำนำหน้า'),cName=H.findIndex(x=>x==='ชื่อ'),cSur=col('นามสกุล'),cPos=col('ตำแหน่ง'),cType=col('รายวัน','รายเดือน'),cStat=col('สถานะ'),cBase=col('ค่าแรง'),cAvg=col('เฉลี่ย'),cPosA=col('ค่าตำแหน่ง'),cExp=col('ประสบการณ์');
+    const rost=[];for(let i=hr+1;i<rows.length;i++){const rw=rows[i];if(!rw)continue;const code=cCode>=0?rw[cCode]:'';const nm=cName>=0?rw[cName]:'';if(!code&&!nm)continue;rost.push({code:''+(code||''),prefix:cPre>=0?''+(rw[cPre]||''):'',name:''+(nm||''),surname:cSur>=0?''+(rw[cSur]||''):'',position:cPos>=0?''+(rw[cPos]||''):'',type:cType>=0?''+(rw[cType]||''):'',status:cStat>=0?''+(rw[cStat]||''):'',base:cBase>=0?(+rw[cBase]||0):0,posAllow:cPosA>=0?(+rw[cPosA]||0):0,expAllow:cExp>=0?(+rw[cExp]||0):0,avg:cAvg>=0?(+rw[cAvg]||0):0});}
+    const p=proj();ensureRes(p);p.roster=rost;save();toast(rost.length+' employees loaded');renderManpower(document.getElementById('content'));}catch(err){alert('Payroll read error: '+err.message);}};r.readAsArrayBuffer(f);};
+
 document.getElementById('xlsxInput').onchange=function(e){const f=e.target.files[0];if(!f)return;const r=new FileReader();
  r.onload=()=>{try{const wb=XLSX.read(r.result,{type:'array'});const p=proj();
    let sn=wb.SheetNames.find(n=>skey(n)==='cbs')||wb.SheetNames.find(n=>skey(n)!=='read me')||wb.SheetNames[0];
