@@ -164,6 +164,7 @@ tr.act2 td.pin input{width:70px;border:1px solid var(--line);border-radius:7px;p
       <a data-view="cashflow"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 3v18h18"/><path d="M7 14l4-4 4 3 5-6"/></svg>Cash Flow &amp; S-Curve</a>
       <a data-view="schedule"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="4" width="18" height="16" rx="2"/><path d="M8 4v16M3 10h5M8 8h4M8 13h7M8 16h9"/></svg>L4 Weighted Schedule</a>
       <a data-view="manpower"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="9" cy="7" r="3"/><path d="M2 21v-2a4 4 0 0 1 4-4h6a4 4 0 0 1 4 4v2"/><path d="M16 3.5a3 3 0 0 1 0 5.8M20 21v-2a4 4 0 0 0-3-3.85"/></svg>Manpower &amp; Equipment</a>
+      <a data-view="timesheet"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg>Timesheet &amp; OT</a>
       <a data-view="settings"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1Z"/></svg>Settings</a>
     </nav>
     <div class="side-foot">CBS: 23 categories · 3 groups.<br>Saved <b>on this device</b>.</div>
@@ -306,6 +307,40 @@ function renderManpower(el){const p=proj();ensureRes(p);const rm=resMonthly(p);c
      <tbody>${p.roster.slice(0,40).map(r=>`<tr><td class="l">${esc(r.code||'')}</td><td class="l">${esc((r.name||'')+' '+(r.surname||''))}</td><td class="l">${esc(r.position||'')}</td><td style="text-align:center">${esc(r.type||'')}</td><td class="calc">${r.base?fmt(r.base):''}</td><td class="calc">${r.avg?fmt(r.avg):''}</td></tr>`).join('')}</tbody></table>${p.roster.length>40?`<div style="padding:8px 14px;color:var(--muted);font-size:11px">…and ${p.roster.length-40} more</div>`:''}</div>`:''}`;
 }
 
+function ensureTs(p){if(!p.ts)p.ts={period:'',rows:{}};if(!p.ts.rows)p.ts.rows={};return p.ts;}
+function empDaily(e){const base=+e.base||0;return (''+(e.type||'')).includes('วัน')?base:base/WORKDAYS;}
+function tsRow(p,code){const ts=ensureTs(p);if(!ts.rows[code])ts.rows[code]={days:0,otH:0,holH:0,approved:false,log:[]};return ts.rows[code];}
+function tsPay(e,r){const daily=empDaily(e);const hourly=daily/8;const normal=daily*(+r.days||0);const otRaw=(+r.otH||0)*hourly*3+(+r.holH||0)*hourly*2;const otPay=r.approved?otRaw:0;return {daily,hourly,normal,otRaw,otPay,total:normal+otPay};}
+function renderTimesheet(el){const p=proj();ensureTs(p);const ts=p.ts;const R=p.roster||[];
+  if(!R.length){el.innerHTML=`<div class="pagehead"><div><h2>Timesheet &amp; OT</h2><p>Clock-in attendance → wage by actual time · Thai OT rules · approval before pay.</p></div></div>
+    <div class="card"><div class="body" style="text-align:center;padding:40px"><p class="mini" style="max-width:520px;margin:0 auto 16px">No payroll roster yet. Upload the employee/wage file in the Manpower &amp; Equipment page, then employees appear here for attendance &amp; OT.</p><button class="btn primary" onclick="nav('manpower')">Go to Manpower &amp; Equipment</button></div></div>`;return;}
+  let tN=0,tOTapp=0,tOTpend=0,tTot=0;
+  const rows=R.map(e=>{const code=e.code||e.name;const r=tsRow(p,code);const pay=tsPay(e,r);tN+=pay.normal;if(r.approved)tOTapp+=pay.otRaw;else tOTpend+=pay.otRaw;tTot+=pay.total;const open=(r.log||[]).some(x=>!x.out);
+    return `<tr><td class="l" style="white-space:nowrap"><b>${esc(code)}</b> ${esc((e.name||'')+' '+(e.surname||''))}</td>
+      <td style="text-align:center;font-size:10px;color:#64748b">${esc(e.type||'')}</td>
+      <td class="calc">${fmt(Math.round(pay.daily))}</td>
+      <td class="pin"><input style="width:44px;text-align:center" value="${r.days||''}" placeholder="0" onchange="app.setTs('${code}','days',this.value)"></td>
+      <td class="pin"><input style="width:44px;text-align:center" title="OT hours after 17:00 (×3)" value="${r.otH||''}" placeholder="0" onchange="app.setTs('${code}','otH',this.value)"></td>
+      <td class="pin"><input style="width:44px;text-align:center" title="Holiday hours (×2)" value="${r.holH||''}" placeholder="0" onchange="app.setTs('${code}','holH',this.value)"></td>
+      <td style="text-align:center;white-space:nowrap">${open?`<button class="btn" style="padding:3px 7px;background:#fef2f2;color:#ef4444;border-color:#fecaca" onclick="app.clockOut('${code}')">■ Out</button>`:`<button class="btn" style="padding:3px 7px;background:#ecfdf5;color:#10b981;border-color:#a7f3d0" onclick="app.clockIn('${code}')">▶ In</button>`}</td>
+      <td style="text-align:center"><label style="cursor:pointer;font-size:11px;font-weight:700;color:${r.approved?'#10b981':'#f59e0b'}"><input type="checkbox" ${r.approved?'checked':''} onchange="app.toggleApprove('${code}')" style="vertical-align:middle"> ${r.approved?'Approved':'Pending'}</label></td>
+      <td class="calc">${fmt(Math.round(pay.normal))}</td>
+      <td class="calc" style="color:${r.approved?'#10b981':'#94a3b8'}">${fmt(Math.round(r.approved?pay.otPay:pay.otRaw))}${r.approved?'':' *'}</td>
+      <td class="calc" style="font-weight:700">${fmt(Math.round(pay.total))}</td></tr>`;}).join('');
+  el.innerHTML=`<div class="pagehead"><div><h2>Timesheet &amp; OT <span style="font-weight:500;font-size:12px;color:var(--muted)">· ${R.length} employees</span></h2><p>Thai OT: weekday after 17:00 = <b>×3</b> · holiday = <b>×2</b> · 6-day week · hourly = daily wage ÷ 8. <b>OT paid only after approval.</b> <span style="color:#94a3b8">* = pending, not yet in total</span></p></div>
+     <div style="display:flex;gap:8px;align-items:center">Period <input value="${esc(ts.period||'')}" placeholder="2026-07" style="width:90px;border:1px solid var(--line);border-radius:8px;padding:6px 8px" onchange="app.setTsPeriod(this.value)"><button class="btn" onclick="app.approveAllOT()">✓ Approve all OT</button></div></div>
+   <div class="kpis">
+     ${kpi('Normal wage',cur()+' '+fmt(Math.round(tN)),'days × daily wage','#eef2ff','#4f46e5',iW)}
+     ${kpi('OT approved',cur()+' '+fmt(Math.round(tOTapp)),'included in payroll','#ecfdf5','#10b981',iC,'up')}
+     ${kpi('OT pending',cur()+' '+fmt(Math.round(tOTpend)),'awaiting approval','#fffbeb','#f59e0b',iD,'down')}
+     ${kpi('Month payroll',cur()+' '+fmt(Math.round(tTot)),'normal + approved OT','#ecfeff','#0ea5e9',iT)}
+   </div>
+   <div class="tbl-card scroll"><table class="ct"><thead><tr><th class="l">Employee</th><th>Type</th><th>Daily</th><th>Days</th><th>OT h ×3</th><th>Hol h ×2</th><th>Clock</th><th>OT approval</th><th>Normal ฿</th><th>OT ฿</th><th>Total ฿</th></tr></thead>
+     <tbody>${rows}</tbody>
+     <tfoot><tr><td class="l">TOTAL</td><td colspan="7"></td><td>${fmt(Math.round(tN))}</td><td>${fmt(Math.round(tOTapp))}</td><td>${fmt(Math.round(tTot))}</td></tr></tfoot></table></div>
+   <p class="mini" style="margin-top:10px;color:var(--muted)">▶ In / ■ Out records real timestamps and auto-fills Days / OT (after 17:00) / Holiday hours (Sunday). You can also type the values directly.</p>`;
+}
+
 function render(){
   Object.values(charts).forEach(c=>{try{c.destroy()}catch(e){}});charts={};
   document.getElementById('projSel').innerHTML=state.projects.map(p=>`<option value="${p.id}" ${p.id===state.activeId?'selected':''}>${esc(p.name)}</option>`).join('');
@@ -316,6 +351,7 @@ function render(){
   else if(current==='cashflow')renderCashflow(el);
   else if(current==='schedule')renderSchedule(el);
   else if(current==='manpower')renderManpower(el);
+  else if(current==='timesheet')renderTimesheet(el);
   else renderSettings(el);
 }
 
@@ -490,6 +526,7 @@ function renderCashflow(el){const p=proj();ensurePlan(p);const cf=buildCashflow(
   const inP=cf.revenue,inA=cf.aIn,outP=cf.cost,outA=cf.aOut;
   const cum=a=>{const r=[];let s=0;a.forEach(v=>{s+=v;r.push(s);});return r;};
   const inPc=cum(inP),outPc=cum(outP);
+  const _rm=resMonthly(p);let _s=0;const meC=_rm.total.map(v=>{_s+=v;return _s;});
   const inAc=[],outAc=[];let si=0,so=0;for(let m=0;m<dur;m++){si+=inA[m];so+=outA[m];inAc.push(m>dd?null:si);outAc.push(m>dd?null:so);}
   const netP=inP.map((v,i)=>v-outP[i]),netA=inA.map((v,i)=>v-outA[i]);
   const posP=cum(netP);let sp=0;const posA=[];for(let m=0;m<dur;m++){sp+=netA[m];posA.push(m>dd?null:sp);}
@@ -518,7 +555,7 @@ function renderCashflow(el){const p=proj();ensurePlan(p);const cf=buildCashflow(
      ${kpi('Peak Funding · Plan',cur()+' '+fmt(Math.abs(peakP)),'max outflow · '+(cf.months[peakM]||'-'),'#fff1f2','#ef4444',iF,'down')}
    </div>
    <div class="grid g2" style="margin-bottom:16px">
-     <div class="card"><h3>S-Curve — Cash-in vs Cash-out <span class="hint">plan (dashed) vs actual (solid)</span></h3><div class="body"><div class="chart-wrap"><canvas id="cS"></canvas></div><div style="font-size:11px;margin-top:8px;display:flex;gap:14px;flex-wrap:wrap"><span style="color:#10b981;font-weight:700">— In Actual</span><span style="color:#86efac;font-weight:700">– In Plan</span><span style="color:#4f46e5;font-weight:700">— Out Actual</span><span style="color:#c7d2fe;font-weight:700">– Out Plan</span></div></div></div>
+     <div class="card"><h3>S-Curve — Cash-in vs Cash-out <span class="hint">plan (dashed) vs actual (solid)</span></h3><div class="body"><div class="chart-wrap"><canvas id="cS"></canvas></div><div style="font-size:11px;margin-top:8px;display:flex;gap:14px;flex-wrap:wrap"><span style="color:#10b981;font-weight:700">— In Actual</span><span style="color:#86efac;font-weight:700">– In Plan</span><span style="color:#4f46e5;font-weight:700">— Out Actual</span><span style="color:#c7d2fe;font-weight:700">– Out Plan</span> <span style="color:#f59e0b;font-weight:700">·· M+E loaded</span></div></div></div>
      <div class="card"><h3>Cash Position <span class="hint">cumulative · plan vs actual</span></h3><div class="body"><div class="chart-wrap"><canvas id="cPos"></canvas></div></div></div>
    </div>
    <div class="card" style="margin-bottom:16px"><h3>Monthly Net Cash Flow <span class="hint">plan vs actual</span></h3><div class="body"><div class="chart-wrap" style="height:230px"><canvas id="cNet"></canvas></div></div></div>
@@ -532,7 +569,7 @@ function renderCashflow(el){const p=proj();ensurePlan(p);const cf=buildCashflow(
     {label:'In Plan',data:inPc,borderColor:'#86efac',borderDash:[5,4],fill:false,tension:.35,pointRadius:0,borderWidth:2},
     {label:'In Actual',data:inAc,borderColor:'#10b981',backgroundColor:'rgba(16,185,129,.10)',fill:true,tension:.35,pointRadius:0,borderWidth:2.5,spanGaps:false},
     {label:'Out Plan',data:outPc,borderColor:'#c7d2fe',borderDash:[5,4],fill:false,tension:.35,pointRadius:0,borderWidth:2},
-    {label:'Out Actual',data:outAc,borderColor:'#4f46e5',fill:false,tension:.35,pointRadius:0,borderWidth:2.5,spanGaps:false}]},
+    {label:'Out Actual',data:outAc,borderColor:'#4f46e5',fill:false,tension:.35,pointRadius:0,borderWidth:2.5,spanGaps:false},{label:'M+E loaded',data:meC,borderColor:'#f59e0b',borderDash:[2,3],fill:false,tension:.35,pointRadius:0,borderWidth:1.8}]},
     options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false},tooltip:{callbacks:{label:c=>c.dataset.label+': '+cur()+' '+fmt(c.raw)}}},scales:{x:xo,y:yo}},plugins:[tnPlugin(dd)]});
   charts.pos=new Chart(document.getElementById('cPos'),{type:'line',data:{labels:cf.months,datasets:[
     {label:'Plan',data:posP,borderColor:'#94a3b8',borderDash:[5,4],fill:false,tension:.3,pointRadius:0,borderWidth:2},
@@ -883,6 +920,13 @@ const app={
   setResMonth(kind,id,m,v){const p=proj();ensureRes(p);const o=p.res[kind].find(x=>x.id===id);if(!o)return;if(!o.monthly)o.monthly={};const n=parseNum(v);if(!n)delete o.monthly[m];else o.monthly[m]=n;save();renderManpower(document.getElementById('content'));},
   uploadPayroll(){const fi=document.getElementById('payrollInput');fi.value='';fi.click();},
   downloadPayrollTemplate(){const p=proj();ensureRes(p);const hdr=['ลำดับที่','รหัสพนักงาน','คำนำหน้า','ชื่อ','นามสกุล','ตำแหน่ง','วันที่เริ่มงาน','รายวัน/รายเดือน','สถานะ','ค่าแรง (ฐาน)','ค่าตำแหน่ง','ค่าประสบการณ์','ค่าโทรศัพท์','ค่าน้ำมัน','เฉลี่ยรวมรายรับ/เดือน'];const aoa=[hdr];if(p.roster.length)p.roster.forEach((r,i)=>aoa.push([i+1,r.code||'',r.prefix||'',r.name||'',r.surname||'',r.position||'',r.start||'',r.type||'',r.status||'',r.base||'',r.posAllow||0,r.expAllow||0,r.phone||0,r.fuel||0,r.avg||'']));else aoa.push([1,'SEUS000','นาย','ชื่อ','นามสกุล','ช่างทั่วไป','','รายวัน','ประจำ',600,0,0,0,0,'']);const ws=XLSX.utils.aoa_to_sheet(aoa);const wb=XLSX.utils.book_new();XLSX.utils.book_append_sheet(wb,ws,'Payroll');XLSX.writeFile(wb,'SEUS_Payroll_Template.xlsx');},
+  setTsPeriod(v){const p=proj();ensureTs(p);p.ts.period=v;save();},
+  setTs(code,f,v){const p=proj();const r=tsRow(p,code);r[f]=Math.max(0,parseNum(v));save();renderTimesheet(document.getElementById('content'));},
+  toggleApprove(code){const p=proj();const r=tsRow(p,code);r.approved=!r.approved;save();renderTimesheet(document.getElementById('content'));},
+  approveAllOT(){const p=proj();const ts=ensureTs(p);(p.roster||[]).forEach(e=>{const r=tsRow(p,e.code||e.name);r.approved=true;});save();renderTimesheet(document.getElementById('content'));toast('All OT approved');},
+  clockIn(code){const p=proj();const r=tsRow(p,code);const now=Date.now();r.log=r.log||[];r.log.push({d:new Date().toISOString().slice(0,10),in:now,out:null});save();renderTimesheet(document.getElementById('content'));toast('Clocked in');},
+  clockOut(code){const p=proj();const r=tsRow(p,code);const open=(r.log||[]).slice().reverse().find(x=>!x.out);if(!open){toast('No open clock-in');return;}const now=Date.now();open.out=now;const inD=new Date(open.in),outD=new Date(now);let h=(outD-inD)/3600000;if(inD.getHours()<13&&outD.getHours()>=13)h-=1;h=Math.max(0,Math.round(h*100)/100);const dow=inD.getDay();if(dow===0){r.holH=Math.round(((+r.holH||0)+h)*100)/100;}else{r.days=(+r.days||0)+1;const c17=new Date(inD.getFullYear(),inD.getMonth(),inD.getDate(),17,0,0);const after=(outD-c17)/3600000;if(after>0)r.otH=Math.round(((+r.otH||0)+after)*100)/100;}r.approved=false;save();renderTimesheet(document.getElementById('content'));toast('Clocked out · '+h+'h');},
+
 
   togCf(i){cfExpanded[i]=!cfExpanded[i];renderCashflow(document.getElementById('content'));},
   addClaim(){const p=proj();if(!p.claims)p.claims=[];const cd=p.claims.reduce((a,c)=>a+(+c.amount||0),0);const amt=Math.max(0,Math.round(projReady(p)-cd));p.claims.push({id:uid(),desc:'Progress claim #'+(p.claims.length+1),amount:amt,month:(p.plan.dataDate||0),credit:(p.plan.payLag||0)});save();renderCashflow(document.getElementById('content'));},
