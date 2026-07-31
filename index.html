@@ -401,31 +401,50 @@ function buildCashflow(p){const sc=buildSchedule(p);const pl=p.plan;const dur=sc
 function cfCalc(cf){const n=cf.months.length;const net=[],cum=[],cumR=[],cumC=[];let s=0,cr=0,cc=0;
   for(let m=0;m<n;m++){const r=+cf.revenue[m]||0,c=+cf.cost[m]||0;net.push(r-c);s+=r-c;cum.push(s);cr+=r;cc+=c;cumR.push(cr);cumC.push(cc);}
   const peak=Math.min(0,...cum);return {net,cum,cumR,cumC,totR:cr,totC:cc,peak,peakM:cum.indexOf(peak),posM:cum.findIndex(x=>x>=0)};}
-function renderCashflow(el){const p=proj();ensurePlan(p);const cf=buildCashflow(p);const dur=cf.dur;
-  const inA=cfMode==='actual'?cf.aIn:cf.revenue;const outA=cfMode==='actual'?cf.aOut:cf.cost;
-  const net=[],cum=[],cumR=[],cumC=[];let s=0,cr=0,cc=0;for(let m=0;m<dur;m++){net.push(inA[m]-outA[m]);s+=net[m];cum.push(s);cr+=inA[m];cc+=outA[m];cumR.push(cr);cumC.push(cc);}
-  const totIn=cr,totOut=cc,profit=totIn-totOut,peak=Math.min(0,...cum),peakM=cum.indexOf(peak);
-  const ready=projReady(p),claimed=projClaim(p);const segb=on=>on?'background:#4f46e5;color:#fff':'background:#eef1f6;color:#64748b';
-  el.innerHTML=`<div class="pagehead"><div><h2>Cash Flow &amp; S-Curve <span style="font-weight:500;font-size:12px;color:var(--muted)">· ${cfMode==='actual'?'Actual (L4 progress + claims)':'Plan basis'}</span></h2><p>${cfMode==='actual'?'Cash-in = Ready-to-Claim received (claim month + credit) · Cash-out = actual progress × cost':'Plan phasing · billing lag '+(p.plan.payLag||0)+' mo'}</p></div>
-     <div style="display:flex;gap:8px;align-items:center"><div style="display:inline-flex;border:1px solid var(--line);border-radius:9px;overflow:hidden"><button onclick="app.setCfMode('plan')" style="${segb(cfMode!=='actual')};border:none;padding:7px 14px;font-weight:700;font-size:12px;cursor:pointer">Plan</button><button onclick="app.setCfMode('actual')" style="${segb(cfMode==='actual')};border:none;padding:7px 14px;font-weight:700;font-size:12px;cursor:pointer">Actual</button></div><button class="btn" onclick="app.exportCashflow()">⬇ Excel</button></div></div>
+function tnPlugin(idx){return {id:'tn'+idx,afterDatasetsDraw(ch){if(idx==null||idx<0)return;const sx=ch.scales.x;if(!sx)return;const x=sx.getPixelForValue(idx);const yt=ch.scales.y.top,yb=ch.scales.y.bottom,cx=ch.ctx;cx.save();cx.strokeStyle='#ef4444';cx.setLineDash([5,4]);cx.lineWidth=1.5;cx.beginPath();cx.moveTo(x,yt);cx.lineTo(x,yb);cx.stroke();cx.setLineDash([]);cx.fillStyle='#ef4444';cx.font='700 10px system-ui,sans-serif';cx.fillText('Now',x+3,yt+11);cx.restore();}};}
+
+function renderCashflow(el){const p=proj();ensurePlan(p);const cf=buildCashflow(p);const dur=cf.dur;const dd=Math.min(p.plan.dataDate||0,dur-1);
+  const inP=cf.revenue,inA=cf.aIn,outP=cf.cost,outA=cf.aOut;
+  const cum=a=>{const r=[];let s=0;a.forEach(v=>{s+=v;r.push(s);});return r;};
+  const inPc=cum(inP),outPc=cum(outP);
+  const inAc=[],outAc=[];let si=0,so=0;for(let m=0;m<dur;m++){si+=inA[m];so+=outA[m];inAc.push(m>dd?null:si);outAc.push(m>dd?null:so);}
+  const netP=inP.map((v,i)=>v-outP[i]),netA=inA.map((v,i)=>v-outA[i]);
+  const posP=cum(netP);let sp=0;const posA=[];for(let m=0;m<dur;m++){sp+=netA[m];posA.push(m>dd?null:sp);}
+  const tInP=inPc[dur-1]||0,tOutP=outPc[dur-1]||0,profP=tInP-tOutP;const tInA=si,tOutA=so,profA=tInA-tOutA;
+  const peakP=Math.min(0,...posP),peakM=posP.indexOf(peakP);const ready=projReady(p),claimed=projClaim(p);
+  el.innerHTML=`<div class="pagehead"><div><h2>Cash Flow &amp; S-Curve <span style="font-weight:500;font-size:12px;color:var(--muted)">· Plan vs Actual</span></h2><p>Cash-in = billing received (progress × contract, lag ${p.plan.payLag||0} mo) · Cash-out = progress × cost · <b style="color:#ef4444">Actual</b> up to data date <b>${esc(cf.months[dd]||'-')}</b> (set in L4)</p></div>
+     <div style="display:flex;gap:8px;align-items:center"><button class="btn" onclick="app.exportCashflow()">⬇ Excel</button></div></div>
    <div class="kpis">
-     ${kpi('Cash-in ('+cfMode+')',cur()+' '+fmt(totIn),cfMode==='actual'?('claimed '+cur()+' '+fmt(claimed)):'plan billing','#eef2ff','#4f46e5',iW)}
-     ${kpi('Cash-out ('+cfMode+')',cur()+' '+fmt(totOut),'ready to claim '+cur()+' '+fmt(ready),'#ecfeff','#0ea5e9',iT)}
-     ${kpi('Gross Profit',cur()+' '+fmt(profit),(totIn?(profit/totIn*100).toFixed(1):'0')+'% margin','#ecfdf5',profit>=0?'#10b981':'#ef4444',iC,profit>=0?'up':'down')}
-     ${kpi('Peak Funding ('+cfMode+')',cur()+' '+fmt(Math.abs(peak)),'max outflow · '+(cf.months[peakM]||'-'),'#fff1f2','#ef4444',iF,'down')}
+     ${kpi('Cash-in · Plan',cur()+' '+fmt(tInP),'actual to date '+cur()+' '+fmt(tInA),'#eef2ff','#4f46e5',iW)}
+     ${kpi('Cash-out · Plan',cur()+' '+fmt(tOutP),'actual to date '+cur()+' '+fmt(tOutA),'#ecfeff','#0ea5e9',iT)}
+     ${kpi('Gross Profit · Plan',cur()+' '+fmt(profP),(tInP?(profP/tInP*100).toFixed(2):'0')+'% margin','#ecfdf5',profP>=0?'#10b981':'#ef4444',iC,profP>=0?'up':'down')}
+     ${kpi('Peak Funding · Plan',cur()+' '+fmt(Math.abs(peakP)),'max outflow · '+(cf.months[peakM]||'-'),'#fff1f2','#ef4444',iF,'down')}
    </div>
    <div class="grid g2" style="margin-bottom:16px">
-     <div class="card"><h3>S-Curve — Cash-in vs Cash-out</h3><div class="body"><div class="chart-wrap"><canvas id="cS"></canvas></div><div style="font-size:11.5px;margin-top:8px;display:flex;gap:18px"><span style="color:#10b981;font-weight:700">— Cash-in</span><span style="color:#4f46e5;font-weight:700">— Cash-out</span></div></div></div>
-     <div class="card"><h3>Cash Position <span class="hint">${cfMode} · cumulative</span></h3><div class="body"><div class="chart-wrap"><canvas id="cPos"></canvas></div></div></div>
+     <div class="card"><h3>S-Curve — Cash-in vs Cash-out <span class="hint">plan (dashed) vs actual (solid)</span></h3><div class="body"><div class="chart-wrap"><canvas id="cS"></canvas></div><div style="font-size:11px;margin-top:8px;display:flex;gap:14px;flex-wrap:wrap"><span style="color:#10b981;font-weight:700">— In Actual</span><span style="color:#86efac;font-weight:700">– In Plan</span><span style="color:#4f46e5;font-weight:700">— Out Actual</span><span style="color:#c7d2fe;font-weight:700">– Out Plan</span></div></div></div>
+     <div class="card"><h3>Cash Position <span class="hint">cumulative · plan vs actual</span></h3><div class="body"><div class="chart-wrap"><canvas id="cPos"></canvas></div></div></div>
    </div>
-   <div class="card" style="margin-bottom:16px"><h3>Monthly Net Cash Flow <span class="hint">${cfMode}</span></h3><div class="body"><div class="chart-wrap" style="height:230px"><canvas id="cNet"></canvas></div></div></div>
-   <div class="tbl-card"><table class="ct"><thead><tr><th class="l">Month</th><th>Cash-in</th><th>Cash-out</th><th>Net</th><th>Cumulative</th></tr></thead>
-     <tbody>${cf.months.map((mo,i)=>`<tr><td class="l" style="padding:9px 12px;font-weight:600">${esc(mo)}</td><td class="calc" style="color:#10b981">${inA[i]?fmt(inA[i]):''}</td><td class="calc">${outA[i]?fmt(outA[i]):''}</td><td class="calc ${net[i]>=0?'pos':'neg'}">${fmt(net[i])}</td><td class="calc ${cum[i]>=0?'pos':'neg'}">${fmt(cum[i])}</td></tr>`).join('')}</tbody>
-     <tfoot><tr><td class="l">TOTAL</td><td>${fmt(totIn)}</td><td>${fmt(totOut)}</td><td class="${profit>=0?'':'neg'}">${fmt(profit)}</td><td>${fmt(cum[cum.length-1]||0)}</td></tr></tfoot></table></div>`;
+   <div class="card" style="margin-bottom:16px"><h3>Monthly Net Cash Flow <span class="hint">plan vs actual</span></h3><div class="body"><div class="chart-wrap" style="height:230px"><canvas id="cNet"></canvas></div></div></div>
+   <div class="tbl-card"><table class="ct"><thead>
+     <tr><th class="l" rowspan="2" style="vertical-align:bottom">Month</th><th colspan="2">Cash-in</th><th colspan="2">Cash-out</th><th colspan="2">Net</th></tr>
+     <tr><th>Plan</th><th>Actual</th><th>Plan</th><th>Actual</th><th>Plan</th><th>Actual</th></tr></thead>
+     <tbody>${cf.months.map((mo,i)=>`<tr><td class="l" style="padding:8px 12px;font-weight:600">${esc(mo)}${i===dd?' <span style="color:#ef4444;font-size:9px;font-weight:700">◀ Now</span>':''}</td><td class="calc" style="color:#94a3b8">${inP[i]?fmt(inP[i]):''}</td><td class="calc" style="color:#10b981">${i<=dd&&inA[i]?fmt(inA[i]):''}</td><td class="calc" style="color:#94a3b8">${outP[i]?fmt(outP[i]):''}</td><td class="calc" style="color:#4f46e5">${i<=dd&&outA[i]?fmt(outA[i]):''}</td><td class="calc ${netP[i]>=0?'pos':'neg'}">${fmt(netP[i])}</td><td class="calc ${i<=dd?(netA[i]>=0?'pos':'neg'):''}">${i<=dd?fmt(netA[i]):''}</td></tr>`).join('')}</tbody>
+     <tfoot><tr><td class="l">TOTAL</td><td>${fmt(tInP)}</td><td>${fmt(tInA)}</td><td>${fmt(tOutP)}</td><td>${fmt(tOutA)}</td><td class="${profP>=0?'':'neg'}">${fmt(profP)}</td><td class="${profA>=0?'':'neg'}">${fmt(profA)}</td></tr></tfoot></table></div>`;
   const xo={ticks:{font:{size:9},maxRotation:90,minRotation:90},grid:{display:false}};const yo={ticks:{callback:v=>fmtShort(v),font:{size:10}},grid:{color:'#eef1f6'}};
-  charts.s=new Chart(document.getElementById('cS'),{type:'line',data:{labels:cf.months,datasets:[{label:'In',data:cumR,borderColor:'#10b981',backgroundColor:'rgba(16,185,129,.10)',fill:true,tension:.35,pointRadius:0,borderWidth:2.5},{label:'Out',data:cumC,borderColor:'#4f46e5',backgroundColor:'rgba(79,70,229,.08)',fill:true,tension:.35,pointRadius:0,borderWidth:2.5}]},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false},tooltip:{callbacks:{label:c=>c.dataset.label+': '+cur()+' '+fmt(c.raw)}}},scales:{x:xo,y:yo}}});
-  charts.pos=new Chart(document.getElementById('cPos'),{type:'line',data:{labels:cf.months,datasets:[{data:cum,borderColor:'#0ea5e9',backgroundColor:'rgba(14,165,233,.12)',fill:true,tension:.3,pointRadius:0,borderWidth:2.5,segment:{borderColor:ctx=>ctx.p1.parsed.y<0?'#ef4444':'#10b981'}}]},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false},tooltip:{callbacks:{label:c=>cur()+' '+fmt(c.raw)}}},scales:{x:xo,y:yo}}});
-  charts.net=new Chart(document.getElementById('cNet'),{type:'bar',data:{labels:cf.months,datasets:[{data:net,backgroundColor:net.map(v=>v>=0?'#10b981':'#ef4444'),borderRadius:3}]},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false},tooltip:{callbacks:{label:c=>cur()+' '+fmt(c.raw)}}},scales:{x:xo,y:yo}}});
+  charts.s=new Chart(document.getElementById('cS'),{type:'line',data:{labels:cf.months,datasets:[
+    {label:'In Plan',data:inPc,borderColor:'#86efac',borderDash:[5,4],fill:false,tension:.35,pointRadius:0,borderWidth:2},
+    {label:'In Actual',data:inAc,borderColor:'#10b981',backgroundColor:'rgba(16,185,129,.10)',fill:true,tension:.35,pointRadius:0,borderWidth:2.5,spanGaps:false},
+    {label:'Out Plan',data:outPc,borderColor:'#c7d2fe',borderDash:[5,4],fill:false,tension:.35,pointRadius:0,borderWidth:2},
+    {label:'Out Actual',data:outAc,borderColor:'#4f46e5',fill:false,tension:.35,pointRadius:0,borderWidth:2.5,spanGaps:false}]},
+    options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false},tooltip:{callbacks:{label:c=>c.dataset.label+': '+cur()+' '+fmt(c.raw)}}},scales:{x:xo,y:yo}},plugins:[tnPlugin(dd)]});
+  charts.pos=new Chart(document.getElementById('cPos'),{type:'line',data:{labels:cf.months,datasets:[
+    {label:'Plan',data:posP,borderColor:'#94a3b8',borderDash:[5,4],fill:false,tension:.3,pointRadius:0,borderWidth:2},
+    {label:'Actual',data:posA,borderColor:'#0ea5e9',backgroundColor:'rgba(14,165,233,.12)',fill:true,tension:.3,pointRadius:0,borderWidth:2.5,spanGaps:false,segment:{borderColor:ctx=>ctx.p1.parsed.y<0?'#ef4444':'#0ea5e9'}}]},
+    options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false},tooltip:{callbacks:{label:c=>c.dataset.label+': '+cur()+' '+fmt(c.raw)}}},scales:{x:xo,y:yo}},plugins:[tnPlugin(dd)]});
+  charts.net=new Chart(document.getElementById('cNet'),{type:'bar',data:{labels:cf.months,datasets:[
+    {label:'Plan',data:netP,backgroundColor:'#c7d2fe',borderRadius:2},
+    {label:'Actual',data:netA.map((v,i)=>i<=dd?v:null),backgroundColor:netA.map(v=>v>=0?'#10b981':'#ef4444'),borderRadius:2}]},
+    options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false},tooltip:{callbacks:{label:c=>c.dataset.label+': '+cur()+' '+fmt(c.raw)}}},scales:{x:xo,y:yo}},plugins:[tnPlugin(dd)]});
 }
 /* ===== SETTINGS ===== */
 function renderSettings(el){
@@ -478,28 +497,28 @@ function renderSchedule(el){const p=proj();ensurePlan(p);const k=schedStats(p);c
        <select onchange="app.setDataDate(this.value)" style="border:1px solid var(--line);border-radius:8px;padding:6px 8px">${sc.months.map((m,i)=>`<option value="${i}" ${i===k.dd?'selected':''}>${m}</option>`).join('')}</select>
        <button class="btn" onclick="app.scheduleWizard()">🗓️ Phase durations</button><button class="btn" onclick="app.exportSchedule()">⬇ Excel</button></div></div>
    <div class="kpis">
-     ${kpi('Planned % (to date)',k.planPct.toFixed(1)+'%','by '+sc.months[k.dd],'#eef2ff','#4f46e5',iT)}
-     ${kpi('Actual % complete',k.actPct.toFixed(1)+'%','earned '+cur()+' '+fmt(k.earned/100*sc.tot),'#ecfeff','#0ea5e9',iC,k.actPct>=k.planPct?'up':'down')}
+     ${kpi('Planned % (to date)',k.planPct.toFixed(2)+'%','by '+sc.months[k.dd],'#eef2ff','#4f46e5',iT)}
+     ${kpi('Actual % complete',k.actPct.toFixed(2)+'%','earned '+cur()+' '+fmt(k.earned/100*sc.tot),'#ecfeff','#0ea5e9',iC,k.actPct>=k.planPct?'up':'down')}
      ${kpi('SPI',spi.toFixed(2),spi>=1?'On/ahead of plan':'Behind plan','#ecfdf5',spi>=1?'#10b981':'#ef4444',iD,spi>=1?'up':'down')}
      ${kpi('Scheduled Value',cur()+' '+fmt(sc.tot),sc.acts.length+' L4 activities','#fffbeb','#f59e0b',iW)}
    </div>
-   <div class="card" style="margin-bottom:16px"><h3>S-Curve — Plan vs Actual <span class="hint">% complete</span></h3><div class="body"><div class="chart-wrap"><canvas id="cSC"></canvas></div>
+   <div class="card" style="margin-bottom:16px"><h3>S-Curve — Plan vs Actual <span class="hint">% complete · red line = data date (Now)</span></h3><div class="body"><div class="chart-wrap"><canvas id="cSC"></canvas></div>
      <div style="font-size:11.5px;margin-top:8px;display:flex;gap:18px"><span style="color:#c7d2fe;font-weight:700">■ Planned</span><span style="color:#4f46e5;font-weight:700">■ Actual</span></div></div></div>
    <div class="tbl-card"><table class="ct">
-     <thead><tr><th style="width:30px"></th><th class="l">Phase / CBS Activity</th><th>Weight</th><th>Start</th><th>Dur</th><th>Timeline</th><th>Plan%</th><th>Actual%</th></tr></thead>
+     <thead><tr><th style="width:30px"></th><th class="l">Phase / CBS Activity</th><th>Weight</th><th>Start</th><th>Dur</th><th>Timeline</th><th>Plan% @Now</th><th>Actual%</th></tr></thead>
      <tbody id="scBody"></tbody></table></div>`;
   drawSchedule();
   charts.sc=new Chart(document.getElementById('cSC'),{type:'line',data:{labels:sc.months,datasets:[
     {label:'Plan',data:k.planCum,borderColor:'#94a3b8',backgroundColor:'rgba(199,210,254,.35)',fill:true,tension:.35,pointRadius:0,borderWidth:2},
     {label:'Actual',data:k.actCum,borderColor:'#4f46e5',backgroundColor:'rgba(79,70,229,.10)',fill:true,tension:.35,pointRadius:0,borderWidth:2.5,spanGaps:false}]},
-    options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false},tooltip:{callbacks:{label:c=>c.dataset.label+': '+(c.raw==null?'-':(+c.raw).toFixed(1)+'%')}}},scales:{x:{ticks:{font:{size:9},maxRotation:90,minRotation:90},grid:{display:false}},y:{ticks:{callback:v=>v+'%',font:{size:10}},grid:{color:'#eef1f6'},max:100}}}});
+    options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false},tooltip:{callbacks:{label:c=>c.dataset.label+': '+(c.raw==null?'-':(+c.raw).toFixed(1)+'%')}}},scales:{x:{ticks:{font:{size:9},maxRotation:90,minRotation:90},grid:{display:false}},y:{ticks:{callback:v=>v+'%',font:{size:10}},grid:{color:'#eef1f6'},max:100}}},plugins:[tnPlugin(k.dd)]});
 }
 function drawSchedule(){const p=proj();const sc=buildSchedule(p);let html='';const dur=sc.dur;const dd=p.plan.dataDate||0;
   ['eng','proc','inst','comm','ind'].forEach((ph,pi)=>{const list=sc.acts.filter(a=>a.phase===ph);if(!list.length)return;
     const pw=list.reduce((a,x)=>a+x.weight,0);const pe=list.reduce((a,x)=>a+x.weight*(+x.actualPct||0)/100,0);
     let pp=0;list.forEach(a=>{const n=a.me-a.ms+1;for(let m=a.ms;m<=Math.min(a.me,dd);m++)pp+=a.weight/n;});
     const open=expandedS[pi]!==false;
-    html+=`<tr class="grp"><td class="tog" style="color:#fff;cursor:pointer" onclick="app.togS(${pi})">${open?'▾':'▸'}</td><td class="l">${PHNAME[ph]}</td><td>${pw.toFixed(1)}%</td><td colspan="3"></td><td>${(pw?pp/pw*100:0).toFixed(2)}%</td><td>${(pw?pe/pw*100:0).toFixed(1)}%</td></tr>`;
+    html+=`<tr class="grp"><td class="tog" style="color:#fff;cursor:pointer" onclick="app.togS(${pi})">${open?'▾':'▸'}</td><td class="l">${PHNAME[ph]}</td><td>${pw.toFixed(1)}%</td><td colspan="3"></td><td>${(pw?pp/pw*100:0).toFixed(2)}%</td><td>${(pw?pe/pw*100:0).toFixed(2)}%</td></tr>`;
     if(open)list.forEach(a=>{const pl=(a.ms/dur*100),wd=((a.me-a.ms+1)/dur*100);const ap=+a.actualPct||0;
       const pdt=a.me<dd?100:(a.ms>dd?0:(((dd-a.ms+1)/(a.me-a.ms+1))*100));
       html+=`<tr class="act2"><td></td><td class="l">${esc(a.name)} <span style="color:#94a3b8;font-size:10px">${a.catNo}</span></td>
