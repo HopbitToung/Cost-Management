@@ -326,33 +326,34 @@ const iF='<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-widt
 let expanded={};
 function renderCost(el){
   const p=proj();const t=totals();const claimT=p.cats.reduce((a,c)=>a+catClaim(c),0);
-  el.innerHTML=`<div class="pagehead"><div><h2>CBS Cost — Budget vs Ready-to-Claim</h2><p>15 categories · <b>Rdy to Claim</b> = Budget × L4 progress · set <b>Actual Claim + date + credit</b> per line → feeds Cash Flow.</p></div>
+  el.innerHTML=`<div class="pagehead"><div><h2>CBS Cost — Budget vs Ready-to-Claim</h2><p><b>Actual Cost</b> (editable · default = Budget × L4 progress) → Cash-out · <b>Rdy to Claim</b> = billable · <b>Actual Claim + date + credit</b> → Cash-in.</p></div>
      <div style="display:flex;gap:8px"><button class="btn" onclick="app.expandAll(true)">Expand all</button><button class="btn" onclick="app.expandAll(false)">Collapse</button><button class="btn primary" onclick="app.importExcel()">⬆ Upload CBS</button></div></div>
    <div class="tbl-card scroll"><table class="ct">
-     <thead><tr><th style="width:26px"></th><th class="l">CBS Category / Sub-item</th><th>→</th><th>Budget</th><th>Rdy to Claim</th><th>Actual Claim</th><th>Claim Date</th><th>Credit</th><th></th></tr></thead>
+     <thead><tr><th style="width:26px"></th><th class="l">CBS Category / Sub-item</th><th>→</th><th>Budget</th><th>Actual Cost</th><th>Rdy to Claim</th><th>Actual Claim</th><th>Claim Date</th><th>Credit</th><th></th></tr></thead>
      <tbody id="cbsBody"></tbody>
-     <tfoot><tr><td></td><td class="l">GRAND TOTAL</td><td></td><td>${fmt(t.budget)}</td><td>${fmt(t.actual)}</td><td>${fmt(claimT)}</td><td></td><td></td><td></td></tr></tfoot>
+     <tfoot><tr><td></td><td class="l">GRAND TOTAL</td><td></td><td>${fmt(t.budget)}</td><td style="color:#4f46e5">${fmt(projCost(p))}</td><td>${fmt(t.actual)}</td><td>${fmt(claimT)}</td><td></td><td></td><td></td></tr></tfoot>
    </table></div><div class="addrow" style="background:#fff;border:1px solid var(--line);border-radius:0 0 14px 14px;border-top:none;margin-top:-1px"><button onclick="app.addCat()">＋ Add category</button></div>`;
   drawCBS();
 }
 function drawCBS(){
   const p=proj();const months=planMonths(ensurePlan(p));let html='';
   ['A','B','C'].forEach(g=>{const cats=p.cats.filter(c=>c.grp===g);if(!cats.length)return;
-    const gb=grpB(p,g),ga=cats.reduce((a,c)=>a+catA(c),0),gc=cats.reduce((a,c)=>a+catClaim(c),0);
-    html+=`<tr class="grp"><td></td><td class="l">${g}. ${GROUPS[g]}</td><td></td><td>${fmt(gb)}</td><td>${fmt(ga)}</td><td>${fmt(gc)}</td><td></td><td></td><td></td></tr>`;
-    cats.forEach(c=>{const b=catB(c),a=catA(c),cc=catClaim(c);const open=expanded[c.id];
-      html+=`<tr class="cat"><td class="tog" onclick="app.tog('${c.id}')">${open?'▾':'▸'}</td><td class="l">${c.no}. ${esc(c.name)} <span style="color:#94a3b8;font-size:10px">${c.type}</span></td><td></td><td>${fmt(b)}</td><td>${fmt(a)}</td><td>${fmt(cc)}</td><td></td><td></td><td class="act"><button title="Delete category" onclick="app.delCat('${c.id}')">×</button></td></tr>`;
+    const gb=grpB(p,g),ga=cats.reduce((a,c)=>a+catA(c),0),gc=cats.reduce((a,c)=>a+catClaim(c),0),gcst=cats.reduce((a,c)=>a+catCost(c),0);
+    html+=`<tr class="grp"><td></td><td class="l">${g}. ${GROUPS[g]}</td><td></td><td>${fmt(gb)}</td><td style="color:#c7d2fe">${fmt(gcst)}</td><td>${fmt(ga)}</td><td>${fmt(gc)}</td><td></td><td></td><td></td></tr>`;
+    cats.forEach(c=>{const b=catB(c),a=catA(c),cc=catClaim(c),acst=catCost(c);const open=expanded[c.id];
+      html+=`<tr class="cat"><td class="tog" onclick="app.tog('${c.id}')">${open?'▾':'▸'}</td><td class="l">${c.no}. ${esc(c.name)} <span style="color:#94a3b8;font-size:10px">${c.type}</span></td><td></td><td>${fmt(b)}</td><td style="color:#4f46e5">${fmt(acst)}</td><td>${fmt(a)}</td><td>${fmt(cc)}</td><td></td><td></td><td class="act"><button title="Delete category" onclick="app.delCat('${c.id}')">×</button></td></tr>`;
       if(open){c.items.forEach(it=>{const rc=(+it.budget||0)*(+it.actualPct||0)/100;const cm=(it.claimMonth==null?null:+it.claimMonth);const camt=(it.claim!=null&&it.claim!=='')?(+it.claim||0):(cm!=null?rc:'');const rev=it.review?'<span title="Auto-mapped — verify" style="color:#f59e0b;font-weight:800;margin-right:3px">⚠</span>':'';
         html+=`<tr class="itm ${it.review?'rev':''}"><td></td>
           <td class="l name">${rev}<input value="${esc(it.name)}" style="width:calc(100% - 18px)" onchange="app.setItem('${c.id}','${it.id}','name',this.value)"></td>
           <td style="text-align:center"><select title="Move category" style="font-size:10px;border:1px solid var(--line);border-radius:6px;padding:2px 1px;max-width:52px" onchange="app.moveItem('${c.id}','${it.id}',this.value)">${p.cats.map(x=>`<option value="${x.no}" ${x.id===c.id?'selected':''}>${x.no}</option>`).join('')}</select></td>
           <td class="num"><input value="${it.budget?fmt(it.budget):''}" placeholder="0" onchange="app.setItem('${c.id}','${it.id}','budget',this.value)"></td>
+          <td class="num"><input title="Actual cost incurred — default = Budget × L4 progress. Feeds Cash-out." value="${(it.actualCost!=null&&it.actualCost!='')?fmt(it.actualCost):''}" placeholder="${rc?fmt(rc):'0'}" onchange="app.setItem('${c.id}','${it.id}','actualCost',this.value)" style="color:#4f46e5"></td>
           <td class="calc" style="text-align:right;color:${it.credit==null?'#10b981':'#0ea5e9'};font-weight:${it.credit==null?'700':'500'}">${fmt(rc)}</td>
           <td class="num"><input value="${camt!==''?fmt(camt):''}" placeholder="${rc?fmt(rc):'0'}" onchange="app.setItemClaim('${c.id}','${it.id}','claim',this.value)"></td>
           <td style="text-align:center"><select onchange="app.setItemClaim('${c.id}','${it.id}','month',this.value)" style="border:1px solid var(--line);border-radius:6px;padding:2px;font-size:11px"><option value="" ${cm==null?'selected':''}>—</option>${months.map((m,j)=>`<option value="${j}" ${j===cm?'selected':''}>${m}</option>`).join('')}</select></td>
           <td class="pin" style="text-align:center;white-space:nowrap"><input style="width:34px;text-align:center" value="${it.credit!=null?it.credit:''}" placeholder="0" onchange="app.setItemClaim('${c.id}','${it.id}','credit',this.value)"><select style="font-size:10px;border:1px solid var(--line);border-radius:5px;padding:1px;margin-left:2px" onchange="app.setItemClaim('${c.id}','${it.id}','creditUnit',this.value)"><option value="d" ${(it.creditUnit||'d')==='d'?'selected':''}>d</option><option value="mo" ${it.creditUnit==='mo'?'selected':''}>mo</option></select></td>
           <td class="act"><button title="Delete sub-item" onclick="app.delItem('${c.id}','${it.id}')">×</button></td></tr>`;});
-        html+=`<tr class="addi"><td></td><td colspan="8"><button onclick="app.addItem('${c.id}')">＋ Add sub-item</button></td></tr>`;
+        html+=`<tr class="addi"><td></td><td colspan="9"><button onclick="app.addItem('${c.id}')">＋ Add sub-item</button></td></tr>`;
       }
     });
   });
@@ -371,6 +372,9 @@ function marginTotal(p){let t=0;p.cats.forEach(c=>c.items.forEach(i=>{if(isMargi
 function costTotal(p){return contractTotal(p)-marginTotal(p);}
 function projReady(p){let t=0;p.cats.forEach(c=>c.items.forEach(it=>t+=(+it.budget||0)*(+it.actualPct||0)/100));return t;}
 function readyToClaim(it){return (+it.budget||0)*(+it.actualPct||0)/100;}
+function actualCost(it){return (it.actualCost!=null&&it.actualCost!=='')?(+it.actualCost||0):(+it.budget||0)*(+it.actualPct||0)/100;}
+function catCost(c){return c.items.reduce((a,it)=>a+actualCost(it),0);}
+function projCost(p){let t=0;p.cats.forEach(c=>c.items.forEach(it=>t+=actualCost(it)));return t;}
 function itemClaimAmt(it){const ready=readyToClaim(it);return (it.claim!=null&&it.claim!=='')?(+it.claim||0):ready;}
 function creditMonths(it,pl){if(it.credit==null||it.credit==='')return 0;const v=+it.credit||0;return (it.creditUnit==='mo')?v:Math.round(v/30);}
 function catClaim(c){return c.items.reduce((a,it)=>a+itemClaimAmt(it),0);}
@@ -389,13 +393,14 @@ function buildSchedule(p){const pl=ensurePlan(p);const months=planMonths(pl);con
 function buildCashflow(p){const sc=buildSchedule(p);const pl=p.plan;const dur=sc.dur;
   const planM=Array(dur).fill(0);sc.acts.forEach(a=>{const n=a.me-a.ms+1;for(let m=a.ms;m<=a.me;m++)planM[m]+=a.weight/n;});
   const cT=costTotal(p),kT=contractTotal(p),lag=Math.max(0,pl.payLag||0);
-  const cost=planM.map(v=>Math.round(v/100*cT));
+  const ovO=pl.planOut||{},ovI=pl.planIn||{};const cost=planM.map((v,m)=>ovO[m]!=null?Math.round(+ovO[m]):Math.round(v/100*cT));
   const billed=planM.map(v=>v/100*kT);const rev=Array(dur).fill(0);for(let m=0;m<dur;m++){const src=m-lag;if(src>=0)rev[m]=Math.round(billed[src]);}
   const sumR=rev.reduce((a,b)=>a+b,0),totB=Math.round(billed.reduce((a,b)=>a+b,0));if(dur>0)rev[dur-1]+=totB-sumR;
+  for(let m=0;m<dur;m++){if(ovI[m]!=null)rev[m]=Math.round(+ovI[m]);}
   const aOut=Array(dur).fill(0),aIn=Array(dur).fill(0);
-  p.cats.forEach(c=>c.items.forEach(it=>{const prog=(+it.actualPct||0)/100;const amt=itemClaimAmt(it);if(prog<=0&&amt<=0)return;
+  p.cats.forEach(c=>c.items.forEach(it=>{const prog=(+it.actualPct||0)/100;const amt=itemClaimAmt(it);const ac=isMargin(it)?0:actualCost(it);if(prog<=0&&amt<=0&&ac<=0)return;
     const rm=Math.min(Math.max((it.claimMonth!=null?+it.claimMonth:(pl.dataDate||0)),0),dur-1);
-    if(!isMargin(it))aOut[rm]+=Math.round((+it.budget||0)*prog);
+    aOut[rm]+=Math.round(ac);
     aIn[Math.min(rm+creditMonths(it,pl),dur-1)]+=Math.round(amt);}));
   return {months:sc.months,cost,revenue:rev,planM,dur,aOut,aIn,actualIn:aIn};}
 function cfCalc(cf){const n=cf.months.length;const net=[],cum=[],cumR=[],cumC=[];let s=0,cr=0,cc=0;
@@ -412,8 +417,8 @@ function renderCashflow(el){const p=proj();ensurePlan(p);const cf=buildCashflow(
   const posP=cum(netP);let sp=0;const posA=[];for(let m=0;m<dur;m++){sp+=netA[m];posA.push(m>dd?null:sp);}
   const tInP=inPc[dur-1]||0,tOutP=outPc[dur-1]||0,profP=tInP-tOutP;const tInA=si,tOutA=so,profA=tInA-tOutA;
   const peakP=Math.min(0,...posP),peakM=posP.indexOf(peakP);const ready=projReady(p),claimed=projClaim(p);
-  el.innerHTML=`<div class="pagehead"><div><h2>Cash Flow &amp; S-Curve <span style="font-weight:500;font-size:12px;color:var(--muted)">· Plan vs Actual</span></h2><p>Cash-in = billing received (progress × contract, lag ${p.plan.payLag||0} mo) · Cash-out = progress × cost · <b style="color:#ef4444">Actual</b> up to data date <b>${esc(cf.months[dd]||'-')}</b> (set in L4)</p></div>
-     <div style="display:flex;gap:8px;align-items:center"><button class="btn" onclick="app.exportCashflow()">⬇ Excel</button></div></div>
+  el.innerHTML=`<div class="pagehead"><div><h2>Cash Flow &amp; S-Curve <span style="font-weight:500;font-size:12px;color:var(--muted)">· Plan vs Actual</span></h2><p>Cash-in = billing received (progress × contract, lag ${p.plan.payLag||0} mo) · Cash-out = progress × cost · <b style="color:#ef4444">Actual</b> up to data date <b>${esc(cf.months[dd]||'-')}</b> · <b>Plan</b> columns are editable (↺ Auto plan to reset)</p></div>
+     <div style="display:flex;gap:8px;align-items:center"><button class="btn" onclick="app.resetCfPlan()" title="Clear manual plan overrides, revert to auto">↺ Auto plan</button><button class="btn" onclick="app.exportCashflow()">⬇ Excel</button></div></div>
    <div class="kpis">
      ${kpi('Cash-in · Plan',cur()+' '+fmt(tInP),'actual to date '+cur()+' '+fmt(tInA),'#eef2ff','#4f46e5',iW)}
      ${kpi('Cash-out · Plan',cur()+' '+fmt(tOutP),'actual to date '+cur()+' '+fmt(tOutA),'#ecfeff','#0ea5e9',iT)}
@@ -428,7 +433,7 @@ function renderCashflow(el){const p=proj();ensurePlan(p);const cf=buildCashflow(
    <div class="tbl-card"><table class="ct"><thead>
      <tr><th class="l" rowspan="2" style="vertical-align:bottom">Month</th><th colspan="2">Cash-in</th><th colspan="2">Cash-out</th><th colspan="2">Net</th></tr>
      <tr><th>Plan</th><th>Actual</th><th>Plan</th><th>Actual</th><th>Plan</th><th>Actual</th></tr></thead>
-     <tbody>${cf.months.map((mo,i)=>`<tr><td class="l" style="padding:8px 12px;font-weight:600">${esc(mo)}${i===dd?' <span style="color:#ef4444;font-size:9px;font-weight:700">◀ Now</span>':''}</td><td class="calc" style="color:#94a3b8">${inP[i]?fmt(inP[i]):''}</td><td class="calc" style="color:#10b981">${i<=dd&&inA[i]?fmt(inA[i]):''}</td><td class="calc" style="color:#94a3b8">${outP[i]?fmt(outP[i]):''}</td><td class="calc" style="color:#4f46e5">${i<=dd&&outA[i]?fmt(outA[i]):''}</td><td class="calc ${netP[i]>=0?'pos':'neg'}">${fmt(netP[i])}</td><td class="calc ${i<=dd?(netA[i]>=0?'pos':'neg'):''}">${i<=dd?fmt(netA[i]):''}</td></tr>`).join('')}</tbody>
+     <tbody>${cf.months.map((mo,i)=>`<tr><td class="l" style="padding:8px 12px;font-weight:600">${esc(mo)}${i===dd?' <span style="color:#ef4444;font-size:9px;font-weight:700">◀ Now</span>':''}</td><td class="num" style="padding:2px 6px"><input style="width:84px;text-align:right;color:#475569;font-size:11.5px" value="${inP[i]?fmt(inP[i]):''}" placeholder="0" title="Editable plan cash-in" onchange="app.setCfPlan('in',${i},this.value)"></td><td class="calc" style="color:#10b981">${i<=dd&&inA[i]?fmt(inA[i]):''}</td><td class="num" style="padding:2px 6px"><input style="width:84px;text-align:right;color:#475569;font-size:11.5px" value="${outP[i]?fmt(outP[i]):''}" placeholder="0" title="Editable plan cash-out" onchange="app.setCfPlan('out',${i},this.value)"></td><td class="calc" style="color:#4f46e5">${i<=dd&&outA[i]?fmt(outA[i]):''}</td><td class="calc ${netP[i]>=0?'pos':'neg'}">${fmt(netP[i])}</td><td class="calc ${i<=dd?(netA[i]>=0?'pos':'neg'):''}">${i<=dd?fmt(netA[i]):''}</td></tr>`).join('')}</tbody>
      <tfoot><tr><td class="l">TOTAL</td><td>${fmt(tInP)}</td><td>${fmt(tInA)}</td><td>${fmt(tOutP)}</td><td>${fmt(tOutA)}</td><td class="${profP>=0?'':'neg'}">${fmt(profP)}</td><td class="${profA>=0?'':'neg'}">${fmt(profA)}</td></tr></tfoot></table></div>`;
   const xo={ticks:{font:{size:9},maxRotation:90,minRotation:90},grid:{display:false}};const yo={ticks:{callback:v=>fmtShort(v),font:{size:10}},grid:{color:'#eef1f6'}};
   charts.s=new Chart(document.getElementById('cS'),{type:'line',data:{labels:cf.months,datasets:[
@@ -728,7 +733,9 @@ const app={
   setProj(k,v){proj()[k]=v;save();if(k==='name'||k==='currency')render();},
   tog(id){expanded[id]=!expanded[id];drawCBS();},
   expandAll(v){proj().cats.forEach(c=>expanded[c.id]=v);drawCBS();},
-  setItem(cid,iid,f,v){const it=proj().cats.find(c=>c.id===cid).items.find(i=>i.id===iid);if(f==='name')it.name=v;else it[f]=parseNum(v);save();if(f!=='name'){renderCost(document.getElementById('content'));}},
+  setItem(cid,iid,f,v){const it=proj().cats.find(c=>c.id===cid).items.find(i=>i.id===iid);if(f==='name')it.name=v;else if(f==='actualCost')it.actualCost=(v===''||v==null)?undefined:parseNum(v);else it[f]=parseNum(v);save();if(f!=='name'){renderCost(document.getElementById('content'));}},
+  setCfPlan(kind,m,v){const p=proj();ensurePlan(p);if(!p.plan.planIn)p.plan.planIn={};if(!p.plan.planOut)p.plan.planOut={};const t=kind==='in'?p.plan.planIn:p.plan.planOut;const num=(v===''||v==null)?null:parseNum(v);if(num==null)delete t[m];else t[m]=num;save();renderCashflow(document.getElementById('content'));},
+  resetCfPlan(){const p=proj();ensurePlan(p);p.plan.planIn={};p.plan.planOut={};save();renderCashflow(document.getElementById('content'));},
   addItem(cid){const c=proj().cats.find(x=>x.id===cid);c.items.push({id:uid(),name:'New sub-item',budget:0,actual:0});expanded[cid]=true;save();drawCBS();},
   delItem(cid,iid){const c=proj().cats.find(x=>x.id===cid);c.items=c.items.filter(i=>i.id!==iid);save();renderCost(document.getElementById('content'));},
   addCat(){const p=proj();p.cats.push({id:uid(),grp:'B',no:'+',name:'New Category',type:'O',items:[{id:uid(),name:'Item 1',budget:0,actual:0}]});save();renderCost(document.getElementById('content'));},
