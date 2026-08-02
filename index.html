@@ -188,6 +188,7 @@ tr.act2 td.pin input{width:70px;border:1px solid var(--line);border-radius:7px;p
       <a data-view="manpower"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="9" cy="7" r="3"/><path d="M2 21v-2a4 4 0 0 1 4-4h6a4 4 0 0 1 4 4v2"/><path d="M16 3.5a3 3 0 0 1 0 5.8M20 21v-2a4 4 0 0 0-3-3.85"/></svg>Manpower &amp; Equipment</a>
       <a data-view="timesheet"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg>Timesheet &amp; OT</a>
       <a data-view="report"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><path d="M14 2v6h6M8 13h8M8 17h8M8 9h2"/></svg>Daily Report</a>
+      <a data-view="guide"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/><path d="M9 7h7M9 11h5"/></svg>วิธีการใช้งานระบบ</a>
       <a data-view="settings"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1Z"/></svg>Settings</a>
     </nav>
     <div class="side-foot">CBS: 23 categories · 3 groups.<br>Saved <b>on this device</b>.</div>
@@ -278,7 +279,7 @@ function grpA(p,g){return p.cats.filter(c=>c.grp===g).reduce((a,c)=>a+catA(c),0)
 function totals(){const p=proj();let b=0,a=0;p.cats.forEach(c=>{b+=catB(c);a+=catA(c);});return {budget:b,actual:a,diff:b-a,margin:b?((b-a)/b*100):0};}
 
 /* router */
-let current='portfolio';let charts={};let cfMode='plan';let cfExpanded={};let cbsMode='total';const WORKDAYS=26;let mpTab='daily';let mpDate=new Date().toISOString().slice(0,10);let ganttExp={};let tsMonth='';let rptDate='';
+let current='portfolio';let charts={};let cfMode='plan';let cfExpanded={};let cbsMode='total';const WORKDAYS=26;let mpTab='daily';let mpDate=new Date().toISOString().slice(0,10);let ganttExp={};let tsMonth='';let rptDate='';let guideOpen=0;
 function nav(v){current=v;document.querySelectorAll('.nav a').forEach(a=>a.classList.toggle('active',a.dataset.view===v));render();}
 document.querySelectorAll('.nav a').forEach(a=>a.onclick=()=>nav(a.dataset.view));
 function ensureRes(p){if(!p.res)p.res={labor:[],equip:[]};if(!p.res.labor)p.res.labor=[];if(!p.res.equip)p.res.equip=[];if(!p.roster)p.roster=[];return p.res;}
@@ -478,6 +479,86 @@ function renderReport(el){const p=proj();ensureMP(p);const pl=ensurePlan(p);
   </div>`;
 }
 
+function renderGuide(el){
+  const S=[
+    {ic:'🚀',t:'1. เริ่มต้นใช้งาน',d:'ภาพรวมและการตั้งค่าเริ่มต้น',
+     steps:['เข้าสู่ระบบด้วย Email/Google (หรือใช้แบบ Local ในเครื่องได้เลยถ้ายังไม่ตั้งค่า Firebase)',
+       'เลือกโครงการจาก Dropdown ด้านบนสุด — หรือกดปุ่ม + เพื่อสร้างโครงการใหม่จากใบเสนอราคา',
+       'เมนูด้านซ้าย = โมดูลต่างๆ ทำงานเชื่อมกันทั้งหมด (แก้ที่หนึ่งกระทบทุกที่)',
+       'มุมขวาบนมีปุ่ม Undo (↶) / Redo (↷) / Save (💾) / Print (🖨️) / Data (อัปโหลด-ดาวน์โหลด)'],
+     tips:['ลำดับการทำงานที่แนะนำ: CBS Cost → L4 Schedule → Cash Flow → Manpower/Equipment → Daily Report','ข้อมูลเซฟอัตโนมัติทุกครั้งที่แก้ (localStorage + Cloud ถ้าล็อกอิน)']},
+    {ic:'📊',t:'2. Portfolio (ภาพรวมทุกโครงการ)',d:'สรุปทุกโครงการรวมกันในหน้าเดียว',
+     steps:['ดูมูลค่ารวม, ความคืบหน้าเฉลี่ย, กระแสเงินสดรวมของทุกโครงการ',
+       'เปรียบเทียบแต่ละโครงการเคียงกัน ใช้สำหรับผู้บริหารดูภาพรวมบริษัท'],
+     tips:['ถ้ามีโครงการเดียว ดู Dashboard จะเหมาะกว่า']},
+    {ic:'📈',t:'3. Dashboard (แดชบอร์ดโครงการ)',d:'KPI และกราฟของโครงการที่เลือก',
+     steps:['ดูงบประมาณ vs ต้นทุนจริง, กำไร, %ความคืบหน้า, การกระจายต้นทุนตามหมวด',
+       'ใช้ติดตามสุขภาพโครงการแบบรวดเร็ว'],
+     tips:[]},
+    {ic:'🧾',t:'4. CBS Cost (โครงสร้างต้นทุน — จุดเริ่มต้น)',d:'ต้นทุนแยกค่าของ/ค่าแรง Plan · Actual · Rdy-to-Claim',
+     steps:['เริ่มจากอัปโหลดใบเสนอราคา: กด "⬆ Upload CBS" เลือกไฟล์ Excel ที่มีคอลัมน์ Material/Labour (ระบบจะแทนที่ข้อมูลเดิม)',
+       'หรือกรอกเอง: กด ▸ ขยายหมวด → กรอก "ค่าของ" และ "ค่าแรง" ทั้งฝั่ง Plan (Budget) และ Actual',
+       'ช่อง Rdy to Claim = คำนวณจากความคืบหน้า L4 อัตโนมัติ (เขียว = ไม่มีเครดิต เข้าเงินทันที)',
+       'กรอก Actual Claim + Claim Date + Credit (วัน/เดือน) ต่อรายการ → ป้อนเข้า Cash Flow ฝั่งเงินเข้า',
+       'เพิ่ม/ลบ รายการด้วยปุ่ม ＋ Add sub-item และย้ายหมวดด้วย dropdown ข้างชื่อ'],
+     tips:['ทุกอย่างเริ่มจากที่นี่ — มูลค่างานไปกำหนดน้ำหนักใน L4 และไหลเข้า Cash Flow','ค่าแรงรวมจากที่นี่คือฐานเทียบกับ Manpower loading']},
+    {ic:'📅',t:'5. L4 Schedule / Gantt (แผนงาน + ติดตามความคืบหน้า)',d:'ตารางงานแบบ MS Project เทียบแผน vs จริง',
+     steps:['ระบบสร้างกิจกรรม L4 จาก CBS อัตโนมัติ (ถ่วงน้ำหนักตามมูลค่า)',
+       'กด "🗓️ Phase durations" ตั้งช่วงเวลาแต่ละเฟส (Engineering/Procurement/Installation/Testing)',
+       'แก้รายรายการในคอลัมน์ซ้าย: Start (เดือนเริ่ม), Dur (ระยะเวลา), Act% (กรอกความคืบหน้าจริง)',
+       'กด ＋ เพื่อแตกงานเป็น task ย่อย (ตั้งชื่อ/น้ำหนัก/วัน/ความคืบหน้าของแต่ละ task)',
+       'เลื่อน "📍 Data date" (สไลเดอร์ใหญ่) เพื่อกำหนด "วันนี้" → คอลัมน์ Plan% = แผนควรเสร็จกี่% ณ วันนั้น',
+       'แถบ Gantt: บน = แผน (จาง=เต็มช่วง เข้ม=ถึงวันนี้) · ล่าง = ผลงานจริง · เส้นแดง = Data date'],
+     tips:['Plan% ของงานที่ยังไม่ถึงคิว (เช่น Procurement) จะเป็น 0% จนกว่าจะเลื่อน Data date ไปถึง — ถูกต้องแล้ว','กรอก Act% ที่นี่ → Rdy to Claim, ต้นทุนจริง และ Cash Flow อัปเดตตามทันที','แก้แล้วหน้าไม่เด้งขึ้นบน ค้างที่เดิม']},
+    {ic:'💵',t:'6. Cash Flow & S-Curve (กระแสเงินสด)',d:'เงินเข้า-ออก รายเดือน แผน vs จริง',
+     steps:['ระบบคำนวณจากความคืบหน้า L4 อัตโนมัติ: เงินออก = งาน×ต้นทุน · เงินเข้า = การวางบิล (ตาม credit)',
+       'สลับดู Plan vs Actual ในกราฟ S-curve และตาราง',
+       'คลิกที่ชื่อเดือนเพื่อกางรายละเอียด → แก้ไขได้: กด "＋ เพิ่มรายการ" เลือกงานจาก dropdown (ดึงจาก L4) + ใส่จำนวนเงิน',
+       'ดู Peak Funding (เงินจมสูงสุด) เพื่อวางแผนวงเงินหมุนเวียน'],
+     tips:['เดือนที่ใส่รายการเองจะแทนค่าคำนวณอัตโนมัติ (ช่อง Plan เดือนนั้นจะล็อก แก้ที่รายละเอียดแทน)','เส้นส้มประ = ต้นทุน Manpower+Equipment ที่โหลดจริง เทียบกับแผน']},
+    {ic:'👷',t:'7. Manpower & Equipment (กำลังคน/เครื่องมือ รายวัน)',d:'บันทึกคน-เครื่องมือต่อวัน → ต้นทุนจริง',
+     steps:['แท็บ "Setup": สร้างฐานข้อมูล — ตำแหน่งงาน + ค่าแรง/วัน (ผูกหมวด CBS) และ อุปกรณ์ + ค่าเช่า/วัน',
+       'กด "↺ Seed from roster" ดึงตำแหน่งจากไฟล์เงินเดือนที่อัปโหลด (คนรายเดือนแปลงเป็นค่าแรง/วันให้)',
+       'แท็บ "Daily log": เลือกวัน (◀ ▶) → กรอกจำนวนคน + ชั่วโมง OT ต่อตำแหน่ง / จำนวนอุปกรณ์ที่ใช้',
+       'ระบบคูณให้อัตโนมัติ = ค่าใช้จ่ายจริงรายวัน → รวมเป็นรายเดือน → เข้า Cash Flow',
+       'อัปโหลด/ดาวน์โหลดไฟล์เงินเดือน: ปุ่ม ⬆ Upload / ⬇ Payroll'],
+     tips:['KPI "vs CBS Labor Budget" บอกว่ากำลังคนที่ลงจริงเกิน/ต่ำกว่างบค่าแรงในสัญญาเท่าไร','วันอาทิตย์คิด ×2 · OT หลัง 17:00 ×3 (กฎหมายไทย)']},
+    {ic:'⏱️',t:'8. Timesheet & OT (ลงเวลารายวัน)',d:'ตารางคน+OT รายวัน (ข้อมูลชุดเดียวกับ Manpower)',
+     steps:['เลือกเดือน (◀ ▶) → ตาราง: แถว = ตำแหน่ง, คอลัมน์ = วันที่ 1–31',
+       'แต่ละช่อง: บน = จำนวนคน, ล่าง = ชั่วโมง OT (วันอาทิตย์แถบแดง ×2)',
+       'ค่าแรงคำนวณให้อัตโนมัติ พร้อม KPI ยืนยัน "ตรงกับ Manpower ✓"'],
+     tips:['ใช้ข้อมูลชุดเดียวกับ Manpower loading — แก้ที่ไหนก็ได้ ตัวเลขตรงกันเสมอ','พิกัด GPS โครงการใช้เป็นฐานลงเวลา (ต่อยอด geofence เช็คอินได้ในอนาคต)']},
+    {ic:'📄',t:'9. Daily Report (รายงานประจำวัน)',d:'สรุปทุกโมดูล พิมพ์/PDF ได้',
+     steps:['เลือกวันที่ (◀ ▶ หรือปฏิทิน)',
+       'กด "📍 ตั้งพิกัด GPS" ครั้งแรกเพื่อบันทึกพิกัดโครงการ แล้วกด "🌤️ ดึงอากาศ" ได้สภาพอากาศจริงของวันนั้น',
+       'พิมพ์บันทึก/ปัญหา-อุปสรรค (เซฟตามวัน)',
+       'กด "🖨️ พิมพ์ / PDF" → ได้รายงานสวยๆ: ความคืบหน้า, กำลังคน, เครื่องมือ, เงินสด, ช่องลงนาม 3 ช่อง'],
+     tips:['GPS/อากาศต้องเปิดผ่าน https หรือ localhost + อนุญาตสิทธิ์ + ออนไลน์','พยากรณ์อากาศมีเฉพาะ ~16 วันจากวันนี้ ใช้จริงตอนรายงานวันต่อวัน']},
+    {ic:'💾',t:'10. Data & เครื่องมือทั่วไป',d:'บันทึก / ย้อนกลับ / อัปโหลด / พิมพ์',
+     steps:['💾 Save = บันทึกทันที · ↶ Undo / ↷ Redo = ย้อน/ทำซ้ำได้ 40 ขั้น',
+       'เมนู "Data" (ขวาบน): Upload CBS, Payroll template, สำรอง/กู้คืนข้อมูล (JSON)',
+       '🖨️ Print = พิมพ์หน้าปัจจุบัน'],
+     tips:['ถ้าข้อมูลดูแปลก ลองกด Undo หรือ Restore จากไฟล์สำรอง']}
+  ];
+  const open=(typeof guideOpen==='number')?guideOpen:0;
+  el.innerHTML=`<div class="pagehead"><div><h2>วิธีการใช้งานระบบ <span style="font-weight:500;font-size:12px;color:var(--muted)">· คู่มือในตัว</span></h2><p>อธิบายทีละโมดูล ตั้งแต่เริ่มต้นจนจบ — คลิกหัวข้อเพื่อกาง/ปิด</p></div>
+     <div><button class="btn" onclick="window.print()">🖨️ พิมพ์คู่มือ</button></div></div>
+   <div style="max-width:860px">
+   ${S.map((s,i)=>`<div class="card" style="margin-bottom:10px;padding:0;overflow:hidden">
+     <div onclick="app.gOpen(${i})" style="display:flex;align-items:center;gap:12px;padding:15px 18px;cursor:pointer;${open===i?'background:#f6f7fb':''}">
+       <div style="font-size:22px">${s.ic}</div>
+       <div style="flex:1"><div style="font-weight:800;font-size:15px">${s.t}</div><div style="font-size:12px;color:var(--muted);margin-top:1px">${s.d}</div></div>
+       <div style="font-size:18px;color:#94a3b8">${open===i?'▾':'▸'}</div></div>
+     ${open===i?`<div style="padding:6px 22px 18px 22px;border-top:1px solid var(--line)">
+       <div style="font-weight:700;font-size:12px;color:#4f46e5;margin:12px 0 6px">ขั้นตอน</div>
+       <ol style="margin:0;padding-left:20px;display:flex;flex-direction:column;gap:7px;font-size:13.5px;line-height:1.5">${s.steps.map(x=>`<li>${x}</li>`).join('')}</ol>
+       ${s.tips.length?`<div style="font-weight:700;font-size:12px;color:#10b981;margin:14px 0 6px">💡 เคล็ดลับ</div><ul style="margin:0;padding-left:20px;display:flex;flex-direction:column;gap:6px;font-size:13px;color:#475569;line-height:1.5">${s.tips.map(x=>`<li>${x}</li>`).join('')}</ul>`:''}
+     </div>`:''}
+   </div>`).join('')}
+   <div class="card" style="background:linear-gradient(135deg,#eef2ff,#ecfeff);border:none;margin-top:14px"><div style="display:flex;align-items:center;gap:12px"><div style="font-size:24px">🔗</div><div><div style="font-weight:800">ทุกโมดูลเชื่อมกัน</div><div style="font-size:13px;color:#475569;margin-top:3px">CBS (ต้นทุน) → L4 (แผน+ความคืบหน้า) → Cash Flow (เงิน) · Manpower/Timesheet (คน) → ต้นทุนจริง → รายงาน — แก้ที่จุดเดียว อัปเดตทั้งระบบ</div></div></div></div>
+   </div>`;
+}
+
 function render(){
   Object.values(charts).forEach(c=>{try{c.destroy()}catch(e){}});charts={};
   document.getElementById('projSel').innerHTML=state.projects.map(p=>`<option value="${p.id}" ${p.id===state.activeId?'selected':''}>${esc(p.name)}</option>`).join('');
@@ -490,6 +571,7 @@ function render(){
   else if(current==='manpower')renderManpower(el);
   else if(current==='timesheet')renderTimesheet(el);
   else if(current==='report')renderReport(el);
+  else if(current==='guide')renderGuide(el);
   else renderSettings(el);
 }
 
@@ -1082,6 +1164,7 @@ const app={
   setLag(v){ensurePlan(proj()).payLag=Math.max(0,Math.min(6,parseInt(v)||0));save();renderCashflow(document.getElementById('content'));},
   setCfMode(m){cfMode=m;renderCashflow(document.getElementById('content'));},
   setCbsMode(m){cbsMode=m;renderCost(document.getElementById('content'));},
+  gOpen(i){guideOpen=(guideOpen===i?-1:i);renderGuide(document.getElementById('content'));},
   gTog(pi){const k='g_'+pi;ganttExp[k]=(ganttExp[k]===false);renderGantt(document.getElementById('content'));},
   mpSetTab(t){mpTab=t;renderManpower(document.getElementById('content'));},
   mpSetDate(v){if(v)mpDate=v;renderManpower(document.getElementById('content'));},
