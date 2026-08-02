@@ -130,6 +130,28 @@ tr.act2 td.pin input{width:70px;border:1px solid var(--line);border-radius:7px;p
 .wz input,.wz select{width:100%;border:1px solid var(--line);border-radius:9px;padding:9px 11px;background:var(--soft)}
 .scroll{overflow-x:auto}
 .tbl-card.scroll table.ct{min-width:820px}
+
+.rpt{max-width:920px;margin:0 auto;background:#fff}
+.rpt-hd{display:flex;justify-content:space-between;align-items:flex-start;border-bottom:3px solid #4f46e5;padding-bottom:12px;margin-bottom:14px}
+.rpt-sec{margin:16px 0}
+.rpt-sec h3{font-size:14px;font-weight:800;border-left:4px solid #4f46e5;padding-left:9px;margin-bottom:9px}
+.rpt table{width:100%;border-collapse:collapse;font-size:12.5px}
+.rpt th{background:#f4f6f9;text-align:left;padding:7px 9px;font-size:11px;color:#475569;border-bottom:1px solid #e5e8ec}
+.rpt td{padding:6px 9px;border-bottom:1px solid #f1f3f6}
+.rpt tfoot td{border-top:2px solid #cbd5e1;border-bottom:none}
+.rpt .rt{text-align:right}
+.rcard{border:1px solid #e8eaee;border-radius:12px;padding:12px 14px}
+.sig{display:flex;gap:34px;margin-top:40px}
+.sig>div{flex:1;text-align:center;border-top:1px solid #333;padding-top:6px;font-size:12px}
+@media print{
+  .side,.topbar,.no-print{display:none!important}
+  .main{margin:0!important;width:100%!important}
+  .content{padding:0!important}
+  body,.app{background:#fff!important;display:block!important}
+  .print-only{display:block!important}
+  .rpt-sec,.rcard,.rpt table,.sig{break-inside:avoid}
+  @page{margin:1.2cm}
+}
 </style>
 </head>
 <body>
@@ -165,6 +187,7 @@ tr.act2 td.pin input{width:70px;border:1px solid var(--line);border-radius:7px;p
       <a data-view="schedule"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="4" width="18" height="16" rx="2"/><path d="M8 4v16M3 10h5M8 8h4M8 13h7M8 16h9"/></svg>L4 Schedule / Gantt</a>
       <a data-view="manpower"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="9" cy="7" r="3"/><path d="M2 21v-2a4 4 0 0 1 4-4h6a4 4 0 0 1 4 4v2"/><path d="M16 3.5a3 3 0 0 1 0 5.8M20 21v-2a4 4 0 0 0-3-3.85"/></svg>Manpower &amp; Equipment</a>
       <a data-view="timesheet"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg>Timesheet &amp; OT</a>
+      <a data-view="report"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><path d="M14 2v6h6M8 13h8M8 17h8M8 9h2"/></svg>Daily Report</a>
       <a data-view="settings"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1Z"/></svg>Settings</a>
     </nav>
     <div class="side-foot">CBS: 23 categories · 3 groups.<br>Saved <b>on this device</b>.</div>
@@ -255,7 +278,7 @@ function grpA(p,g){return p.cats.filter(c=>c.grp===g).reduce((a,c)=>a+catA(c),0)
 function totals(){const p=proj();let b=0,a=0;p.cats.forEach(c=>{b+=catB(c);a+=catA(c);});return {budget:b,actual:a,diff:b-a,margin:b?((b-a)/b*100):0};}
 
 /* router */
-let current='portfolio';let charts={};let cfMode='plan';let cfExpanded={};let cbsMode='total';const WORKDAYS=26;let mpTab='daily';let mpDate=new Date().toISOString().slice(0,10);let ganttExp={};let tsMonth='';
+let current='portfolio';let charts={};let cfMode='plan';let cfExpanded={};let cbsMode='total';const WORKDAYS=26;let mpTab='daily';let mpDate=new Date().toISOString().slice(0,10);let ganttExp={};let tsMonth='';let rptDate='';
 function nav(v){current=v;document.querySelectorAll('.nav a').forEach(a=>a.classList.toggle('active',a.dataset.view===v));render();}
 document.querySelectorAll('.nav a').forEach(a=>a.onclick=()=>nav(a.dataset.view));
 function ensureRes(p){if(!p.res)p.res={labor:[],equip:[]};if(!p.res.labor)p.res.labor=[];if(!p.res.equip)p.res.equip=[];if(!p.roster)p.roster=[];return p.res;}
@@ -405,6 +428,55 @@ function renderGantt(el){const p=proj();const sc=buildSchedule(p);const dur=sc.d
    <div style="display:flex;gap:16px;margin-top:10px;font-size:11.5px;flex-wrap:wrap">${Object.keys(PC).map(k=>`<span style="color:${PC[k]};font-weight:700">■ ${PHNAME[k]}</span>`).join('')}</div>`;
 }
 
+function renderReport(el){const p=proj();ensureMP(p);const pl=ensurePlan(p);
+  if(!rptDate)rptDate=new Date().toISOString().slice(0,10);
+  const d=rptDate;const dt=new Date(d+'T00:00:00');
+  const dname=['อาทิตย์','จันทร์','อังคาร','พุธ','พฤหัสบดี','ศุกร์','เสาร์'][dt.getDay()];
+  const k=schedStats(p);const sc=k.sc;const dur=sc.dur;
+  const mi=Math.max(0,Math.min(dur-1,monthIndexOf(p,d)));
+  const planPct=Math.min(100,k.planCum[mi]||0);const actPct=Math.min(100,k.actPct);
+  const spi=planPct?actPct/planPct:0;
+  const cf=buildCashflow(p);let ci=0,co=0;for(let m=0;m<=mi;m++){ci+=(cf.aIn[m]||0);co+=(cf.aOut[m]||0);}
+  const cost2date=actPct/100*sc.tot;
+  const active=sc.acts.filter(a=>a.ms<=mi&&a.me>=mi);
+  const rep=(p.reports&&p.reports[d])||{};const weather=rep.weather||'แจ่มใส';const note=rep.note||'';
+  const mlog=p.mp.log[d]||{},elog=p.eqp.log[d]||{};const hol=dt.getDay()===0;
+  let dayLab=0,heads=0,otH=0;
+  const mpRows=p.mp.positions.filter(po=>mlog[po.id]).map(po=>{const e=mlog[po.id];const wage=+po.wage||0;const cost=(hol?(+e.c||0)*wage*2:(+e.c||0)*wage)+(+e.ot||0)*(wage/8)*3;dayLab+=cost;heads+=(+e.c||0);otH+=(+e.ot||0);return `<tr><td>${esc(po.role||'-')}</td><td class="rt">${e.c||0}</td><td class="rt">${e.ot||0}</td><td class="rt">${fmt(wage)}</td><td class="rt"><b>${fmt(Math.round(cost))}</b></td></tr>`;}).join('');
+  let dayEq=0;const eqRows=p.eqp.units.filter(u=>elog[u.id]).map(u=>{const q=+elog[u.id];const cost=q*(+u.rate||0);dayEq+=cost;return `<tr><td>${esc(u.name||'-')} <span class="mut" style="font-size:10px;color:#94a3b8">${u.type||''}</span></td><td class="rt">${q}</td><td class="rt">${fmt(+u.rate||0)}</td><td class="rt"><b>${fmt(Math.round(cost))}</b></td></tr>`;}).join('');
+  const bar=(v,c)=>`<div style="height:7px;background:#eef1f5;border-radius:20px;overflow:hidden"><div style="height:100%;width:${Math.min(100,v)}%;background:${c};border-radius:20px"></div></div>`;
+  const actRows=active.length?active.slice(0,25).map(a=>{const pdt=a.me<mi?100:(a.ms>mi?0:(((mi-a.ms+1)/(a.me-a.ms+1))*100));const ap=Math.min(100,+a.actualPct||0);return `<tr><td style="max-width:280px">${esc(a.name)}</td><td class="rt">${pdt.toFixed(0)}%</td><td class="rt">${ap.toFixed(0)}%</td><td style="width:130px">${bar(ap,ap>=pdt?'#10b981':'#ef4444')}</td></tr>`;}).join(''):`<tr><td colspan="4" style="text-align:center;color:#94a3b8;padding:12px">ไม่มีกิจกรรมตามแผนในเดือนนี้</td></tr>`;
+  const weathers=['แจ่มใส','มีเมฆบางส่วน','ฝนตกบางช่วง','ฝนตกหนัก'];
+  const wd=(dt.getFullYear())+'-'+String(dt.getMonth()+1).padStart(2,'0')+'-'+String(dt.getDate()).padStart(2,'0');
+  el.innerHTML=`
+  <div class="pagehead no-print"><div><h2>Daily Report — รายงานประจำวัน</h2><p>สรุปทุกโมดูล: ความคืบหน้า · แผนงาน · กำลังคน · เครื่องมือ · กระแสเงิน · สั่งปริ้นได้</p></div>
+    <div style="display:flex;gap:8px;align-items:center"><button class="btn" onclick="app.rptNav(-1)">◀</button><input type="date" value="${d}" onchange="app.rptSetDate(this.value)" style="border:1px solid var(--line);border-radius:8px;padding:7px 10px;font-weight:700"><button class="btn" onclick="app.rptNav(1)">▶</button><button class="btn primary" onclick="window.print()">🖨️ พิมพ์ / PDF</button></div></div>
+  <div class="no-print" style="margin-bottom:10px;display:flex;gap:7px;align-items:center;flex-wrap:wrap"><span style="font-size:12px;color:var(--muted);font-weight:600">สภาพอากาศ:</span>${weathers.map(x=>`<span onclick="app.rptSet('weather','${x}')" style="cursor:pointer;border:1px solid var(--line);border-radius:20px;padding:5px 11px;font-size:12px;font-weight:600;${weather===x?'background:#4f46e5;color:#fff;border-color:#4f46e5':'color:#64748b'}">${x}</span>`).join('')}</div>
+  <div class="rpt">
+    <div class="rpt-hd">
+      <div><div style="display:flex;align-items:center;gap:10px"><div style="width:34px;height:34px;border-radius:9px;background:linear-gradient(135deg,#4f46e5,#0ea5e9);display:grid;place-items:center;color:#fff;font-weight:900">C</div><div><div style="font-weight:800;font-size:16px;letter-spacing:-.01em">${esc(p.name)}</div><div style="font-size:11.5px;color:#64748b">${esc(p.code||'')} · ${esc(p.client||'')}</div></div></div></div>
+      <div style="text-align:right"><div style="font-size:11px;color:#64748b;font-weight:700;letter-spacing:.05em">DAILY REPORT · DR-${d.replace(/-/g,'')}</div><div style="font-size:20px;font-weight:800;color:#4f46e5">${d}</div><div style="font-size:12px;color:#475569">วัน${dname} · อากาศ ${weather}</div></div>
+    </div>
+    <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin-bottom:6px">
+      ${[['ผลงานจริง',actPct.toFixed(1)+'%','แผน '+planPct.toFixed(1)+'%','#4f46e5'],['SPI',spi.toFixed(2),spi>=1?'ตามแผน/เร็วกว่า':'ช้ากว่าแผน',spi>=1?'#10b981':'#ef4444'],['มูลค่างานสะสม',cur()+' '+fmt(Math.round(cost2date)),'จาก '+cur()+' '+fmt(sc.tot),'#0ea5e9'],['เงินสดสุทธิสะสม',cur()+' '+fmt(Math.round(ci-co)),'รับ '+fmt(Math.round(ci))+' จ่าย '+fmt(Math.round(co)),(ci-co)>=0?'#10b981':'#ef4444']].map(c=>`<div class="rcard"><div style="font-size:10.5px;color:#64748b;font-weight:700">${c[0]}</div><div style="font-size:19px;font-weight:800;color:${c[3]};margin-top:3px">${c[1]}</div><div style="font-size:10.5px;color:#94a3b8;margin-top:2px">${c[2]}</div></div>`).join('')}
+    </div>
+    <div class="rpt-sec"><h3>📈 ความคืบหน้างาน (เดือน ${sc.months[mi]})</h3>
+      <table><thead><tr><th>กิจกรรม</th><th class="rt">แผน%</th><th class="rt">จริง%</th><th>สถานะ</th></tr></thead><tbody>${actRows}</tbody></table></div>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px">
+      <div class="rpt-sec"><h3>👷 กำลังคนหน้างาน (วันนี้)</h3>
+        <table><thead><tr><th>ตำแหน่ง</th><th class="rt">คน</th><th class="rt">OT</th><th class="rt">฿/วัน</th><th class="rt">ค่าแรง</th></tr></thead><tbody>${mpRows||'<tr><td colspan="5" style="text-align:center;color:#94a3b8;padding:10px">ไม่มีบันทึกกำลังคนวันนี้</td></tr>'}</tbody>
+        ${mpRows?`<tfoot><tr style="font-weight:800"><td>รวม (${heads} คน · OT ${otH} ชม.)</td><td colspan="3"></td><td class="rt">${fmt(Math.round(dayLab))}</td></tr></tfoot>`:''}</table></div>
+      <div class="rpt-sec"><h3>🏗️ เครื่องมือ/อุปกรณ์ (วันนี้)</h3>
+        <table><thead><tr><th>รายการ</th><th class="rt">จำนวน</th><th class="rt">฿/วัน</th><th class="rt">ค่าเช่า</th></tr></thead><tbody>${eqRows||'<tr><td colspan="4" style="text-align:center;color:#94a3b8;padding:10px">ไม่มีบันทึกอุปกรณ์วันนี้</td></tr>'}</tbody>
+        ${eqRows?`<tfoot><tr style="font-weight:800"><td>รวม</td><td colspan="2"></td><td class="rt">${fmt(Math.round(dayEq))}</td></tr></tfoot>`:''}</table></div>
+    </div>
+    <div class="rpt-sec"><h3>📝 บันทึก / ปัญหา-อุปสรรค</h3>
+      <textarea class="no-print" onchange="app.rptSet('note',this.value)" placeholder="บันทึกงานที่ทำ ปัญหา อุปสรรค การประสานงาน..." style="width:100%;min-height:70px;border:1px solid var(--line);border-radius:10px;padding:10px;font-family:inherit;font-size:13px">${esc(note)}</textarea>
+      <div class="print-only" style="display:none;min-height:60px;border:1px solid #e5e8ec;border-radius:8px;padding:10px;font-size:13px">${esc(note)||'&nbsp;'}</div></div>
+    <div class="sig"><div>ผู้รายงาน / ผู้ควบคุมงาน</div><div>ผู้จัดการโครงการ</div><div>ผู้ตรวจรับ</div></div>
+  </div>`;
+}
+
 function render(){
   Object.values(charts).forEach(c=>{try{c.destroy()}catch(e){}});charts={};
   document.getElementById('projSel').innerHTML=state.projects.map(p=>`<option value="${p.id}" ${p.id===state.activeId?'selected':''}>${esc(p.name)}</option>`).join('');
@@ -416,6 +488,7 @@ function render(){
   else if(current==='schedule')renderSchedule(el);
   else if(current==='manpower')renderManpower(el);
   else if(current==='timesheet')renderTimesheet(el);
+  else if(current==='report')renderReport(el);
   else renderSettings(el);
 }
 
@@ -707,6 +780,7 @@ function renderSchedule(el){const p=proj();ensurePlan(p);const k=schedStats(p);c
    </div>
    <div class="card" style="margin-bottom:16px"><h3>S-Curve — Plan vs Actual <span class="hint">% complete · red line = data date</span></h3><div class="body"><div class="chart-wrap"><canvas id="cSC"></canvas></div>
      <div style="font-size:11.5px;margin-top:8px;display:flex;gap:18px"><span style="color:#c7d2fe;font-weight:700">■ Planned</span><span style="color:#4f46e5;font-weight:700">■ Actual</span></div></div></div>
+   <div class="card" style="margin-bottom:14px;padding:14px 18px"><div style="display:flex;align-items:center;gap:12px;flex-wrap:wrap"><span style="font-weight:800;font-size:14px;white-space:nowrap">📍 Data date</span><button class="btn" style="padding:4px 10px" onclick="app.setDataDate(${Math.max(0,k.dd-1)})">◀</button><input type="range" min="0" max="${sc.dur-1}" value="${k.dd}" onchange="app.setDataDate(this.value)" style="flex:1;min-width:200px;accent-color:#4f46e5"><button class="btn" style="padding:4px 10px" onclick="app.setDataDate(${Math.min(sc.dur-1,k.dd+1)})">▶</button><span style="font-weight:800;font-size:16px;min-width:82px;text-align:center;color:#fff;background:#4f46e5;border-radius:8px;padding:5px 10px">${sc.months[k.dd]}</span><button class="btn primary" onclick="app.setDataToday()">Today</button></div><p style="margin:8px 0 0;font-size:12px;color:var(--muted)">เลื่อนเพื่อกำหนด "วันนี้" → <b style="color:#4f46e5">PLAN%</b> = แผนควรเสร็จกี่% ณ เดือนนั้น (Procurement เริ่ม Sep-26 จะขึ้นเมื่อเลื่อนถึง) · <b>ACT%</b> = ผลงานจริงที่คุณกรอก · เส้นแดงบน Gantt เลื่อนตาม</p></div>
    <div class="tbl-card" style="overflow:auto;max-height:74vh;position:relative"><div id="scBody"></div></div>
    <div style="display:flex;gap:14px;margin-top:10px;font-size:11px;flex-wrap:wrap;align-items:center"><span style="font-weight:700">อ่านแถบ:</span><span style="color:#64748b">▬ Plan (จาง=แผนเต็ม · เข้ม=แผนถึงวันนี้)</span><span style="color:#4f46e5;font-weight:700">▬ Actual จริง</span><span style="color:#ef4444;font-weight:700">| ช้ากว่าแผน</span></div>`;
   drawSchedule();
@@ -1024,6 +1098,9 @@ const app={
   setResMonth(kind,id,m,v){const p=proj();ensureRes(p);const o=p.res[kind].find(x=>x.id===id);if(!o)return;if(!o.monthly)o.monthly={};const n=parseNum(v);if(!n)delete o.monthly[m];else o.monthly[m]=n;save();renderManpower(document.getElementById('content'));},
   uploadPayroll(){const fi=document.getElementById('payrollInput');fi.value='';fi.click();},
   tsNavMonth(delta){const p=proj();ensurePlan(p);if(!tsMonth)tsMonth=p.plan.startY+'-'+String(p.plan.startM+1).padStart(2,'0');let [Y,M]=tsMonth.split('-').map(Number);M+=delta;while(M<1){M+=12;Y--;}while(M>12){M-=12;Y++;}tsMonth=Y+'-'+String(M).padStart(2,'0');renderTimesheet(document.getElementById('content'));},
+  rptSetDate(v){if(v)rptDate=v;renderReport(document.getElementById('content'));},
+  rptNav(delta){const dt=new Date((rptDate||new Date().toISOString().slice(0,10))+'T00:00:00');dt.setDate(dt.getDate()+delta);rptDate=dt.toISOString().slice(0,10);renderReport(document.getElementById('content'));},
+  rptSet(f,v){const p=proj();if(!p.reports)p.reports={};if(!p.reports[rptDate])p.reports[rptDate]={};p.reports[rptDate][f]=v;save();if(f==='weather')renderReport(document.getElementById('content'));},
   downloadPayrollTemplate(){const p=proj();ensureRes(p);const hdr=['ลำดับที่','รหัสพนักงาน','คำนำหน้า','ชื่อ','นามสกุล','ตำแหน่ง','วันที่เริ่มงาน','รายวัน/รายเดือน','สถานะ','ค่าแรง (ฐาน)','ค่าตำแหน่ง','ค่าประสบการณ์','ค่าโทรศัพท์','ค่าน้ำมัน','เฉลี่ยรวมรายรับ/เดือน'];const aoa=[hdr];if(p.roster.length)p.roster.forEach((r,i)=>aoa.push([i+1,r.code||'',r.prefix||'',r.name||'',r.surname||'',r.position||'',r.start||'',r.type||'',r.status||'',r.base||'',r.posAllow||0,r.expAllow||0,r.phone||0,r.fuel||0,r.avg||'']));else aoa.push([1,'SEUS000','นาย','ชื่อ','นามสกุล','ช่างทั่วไป','','รายวัน','ประจำ',600,0,0,0,0,'']);const ws=XLSX.utils.aoa_to_sheet(aoa);const wb=XLSX.utils.book_new();XLSX.utils.book_append_sheet(wb,ws,'Payroll');XLSX.writeFile(wb,'SEUS_Payroll_Template.xlsx');},
   setTsPeriod(v){const p=proj();ensureTs(p);p.ts.period=v;save();},
   setTs(code,f,v){const p=proj();const r=tsRow(p,code);r[f]=Math.max(0,parseNum(v));save();renderTimesheet(document.getElementById('content'));},
