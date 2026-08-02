@@ -575,11 +575,11 @@ function wizDetect(rows){const KWS=['description','item','material','labour','la
   let dc=F(s=>wizHas(s,'description','รายการ','work','scope','detail')&&!wizHas(s,'no.'));if(dc<0)dc=F(s=>wizHas(s,'item')&&!wizHas(s,'no'));
   if(dc<0){let bc=-1,bt=-1;for(let c=0;c<ncol;c++){let t=0;for(let k=hr+1;k<rows.length;k++){const v=rows[k]&&rows[k][c];if(typeof v==='string'&&v.trim().length>4)t++;}if(t>bt){bt=t;bc=c;}}dc=bc;}
   const qc=F(s=>wizHas(s,"q'ty",'qty','qties','quantity','จำนวน'));
-  let mat=F(s=>wizHas(s,'material','วัสดุ')&&wizHas(s,'amount','total','cost')),matQ=0;
-  if(mat<0){const mu=F(s=>wizHas(s,'material')&&wizHas(s,'unit','price','rate'));if(mu>=0){mat=mu;matQ=1;}}
-  let lab=F(s=>wizHas(s,'labour','labor','ค่าแรง')&&wizHas(s,'amount','total','cost')),labQ=0;
-  if(lab<0)lab=F(s=>wizHas(s,'labor cost','labour cost','labor amount'));
-  if(lab<0){const lu=F(s=>wizHas(s,'labour','labor')&&wizHas(s,'unit','price','rate')&&!wizHas(s,'amount','total','hr'));if(lu>=0){lab=lu;labQ=1;}}
+  let mat=F(s=>wizHas(s,'material','วัสดุ')&&wizHas(s,'amount')&&!wizHas(s,'unit')),matQ=0;
+  if(mat<0){const mu=F(s=>wizHas(s,'material')&&wizHas(s,'unit','price','rate'));if(mu>=0&&ch[mu+1]!=null&&wizHas(ch[mu+1],'amount','total','sub total'))mat=mu+1;else if(mu>=0){mat=mu;matQ=1;}}
+  if(mat<0){for(let c=0;c<ncol-1;c++){if(wizHas(ch[c],'price','unit')&&!wizHas(ch[c],'labour','labor')&&wizHas(ch[c+1],'sub total','amount','total')){mat=c+1;break;}}}
+  let lab=F(s=>wizHas(s,'labour','labor','ค่าแรง')&&wizHas(s,'amount','cost')&&!wizHas(s,'unit','/hr','man hr')),labQ=0;
+  if(lab<0){const lu=F(s=>wizHas(s,'labour','labor')&&wizHas(s,'unit','price','rate')&&!wizHas(s,'amount'));if(lu>=0&&ch[lu+1]!=null&&wizHas(ch[lu+1],'amount','total','sub total'))lab=lu+1;else if(lu>=0){lab=lu;labQ=1;}}
   let tot=F(s=>(s==='total'||s==='amount'||s==='total amount'||wizHas(s,'sub total','sub-total','line total','total (thb)'))&&!wizHas(s,'material','labour','labor','unit'));
   if(mat<0&&lab<0&&tot<0){let bc=-1,bs=-1;for(let c=0;c<ncol;c++){let sm=0;for(let k=hr+1;k<rows.length;k++){sm+=wizNum(rows[k]&&rows[k][c]);}if(sm>bs){bs=sm;bc=c;}}tot=bc;}
   return {cols:{hr:hr,dc:dc,qc:qc,mat:mat,lab:lab,tot:tot,matQ:matQ,labQ:labQ},colNames:ch};}
