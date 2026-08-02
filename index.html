@@ -255,7 +255,7 @@ function grpA(p,g){return p.cats.filter(c=>c.grp===g).reduce((a,c)=>a+catA(c),0)
 function totals(){const p=proj();let b=0,a=0;p.cats.forEach(c=>{b+=catB(c);a+=catA(c);});return {budget:b,actual:a,diff:b-a,margin:b?((b-a)/b*100):0};}
 
 /* router */
-let current='portfolio';let charts={};let cfMode='plan';let cfExpanded={};let cbsMode='total';const WORKDAYS=26;let mpTab='daily';let mpDate=new Date().toISOString().slice(0,10);let ganttExp={};
+let current='portfolio';let charts={};let cfMode='plan';let cfExpanded={};let cbsMode='total';const WORKDAYS=26;let mpTab='daily';let mpDate=new Date().toISOString().slice(0,10);let ganttExp={};let tsMonth='';
 function nav(v){current=v;document.querySelectorAll('.nav a').forEach(a=>a.classList.toggle('active',a.dataset.view===v));render();}
 document.querySelectorAll('.nav a').forEach(a=>a.onclick=()=>nav(a.dataset.view));
 function ensureRes(p){if(!p.res)p.res={labor:[],equip:[]};if(!p.res.labor)p.res.labor=[];if(!p.res.equip)p.res.equip=[];if(!p.roster)p.roster=[];return p.res;}
@@ -339,34 +339,34 @@ function ensureTs(p){if(!p.ts)p.ts={period:'',rows:{}};if(!p.ts.rows)p.ts.rows={
 function empDaily(e){const base=+e.base||0;return (''+(e.type||'')).includes('วัน')?base:base/WORKDAYS;}
 function tsRow(p,code){const ts=ensureTs(p);if(!ts.rows[code])ts.rows[code]={days:0,otH:0,holH:0,approved:false,log:[]};return ts.rows[code];}
 function tsPay(e,r){const daily=empDaily(e);const hourly=daily/8;const normal=daily*(+r.days||0);const otRaw=(+r.otH||0)*hourly*3+(+r.holH||0)*hourly*2;const otPay=r.approved?otRaw:0;return {daily,hourly,normal,otRaw,otPay,total:normal+otPay};}
-function renderTimesheet(el){const p=proj();ensureTs(p);const ts=p.ts;const R=p.roster||[];
-  if(!R.length){el.innerHTML=`<div class="pagehead"><div><h2>Timesheet &amp; OT</h2><p>Clock-in attendance → wage by actual time · Thai OT rules · approval before pay.</p></div></div>
-    <div class="card"><div class="body" style="text-align:center;padding:40px"><p class="mini" style="max-width:520px;margin:0 auto 16px">No payroll roster yet. Upload the employee/wage file in the Manpower &amp; Equipment page, then employees appear here for attendance &amp; OT.</p><button class="btn primary" onclick="nav('manpower')">Go to Manpower &amp; Equipment</button></div></div>`;return;}
-  let tN=0,tOTapp=0,tOTpend=0,tTot=0;
-  const rows=R.map(e=>{const code=e.code||e.name;const r=tsRow(p,code);const pay=tsPay(e,r);tN+=pay.normal;if(r.approved)tOTapp+=pay.otRaw;else tOTpend+=pay.otRaw;tTot+=pay.total;const open=(r.log||[]).some(x=>!x.out);
-    return `<tr><td class="l" style="white-space:nowrap"><b>${esc(code)}</b> ${esc((e.name||'')+' '+(e.surname||''))}</td>
-      <td style="text-align:center;font-size:10px;color:#64748b">${esc(e.type||'')}</td>
-      <td class="calc">${fmt(Math.round(pay.daily))}</td>
-      <td class="pin"><input style="width:44px;text-align:center" value="${r.days||''}" placeholder="0" onchange="app.setTs('${code}','days',this.value)"></td>
-      <td class="pin"><input style="width:44px;text-align:center" title="OT hours after 17:00 (×3)" value="${r.otH||''}" placeholder="0" onchange="app.setTs('${code}','otH',this.value)"></td>
-      <td class="pin"><input style="width:44px;text-align:center" title="Holiday hours (×2)" value="${r.holH||''}" placeholder="0" onchange="app.setTs('${code}','holH',this.value)"></td>
-      <td style="text-align:center;white-space:nowrap">${open?`<button class="btn" style="padding:3px 7px;background:#fef2f2;color:#ef4444;border-color:#fecaca" onclick="app.clockOut('${code}')">■ Out</button>`:`<button class="btn" style="padding:3px 7px;background:#ecfdf5;color:#10b981;border-color:#a7f3d0" onclick="app.clockIn('${code}')">▶ In</button>`}</td>
-      <td style="text-align:center"><label style="cursor:pointer;font-size:11px;font-weight:700;color:${r.approved?'#10b981':'#f59e0b'}"><input type="checkbox" ${r.approved?'checked':''} onchange="app.toggleApprove('${code}')" style="vertical-align:middle"> ${r.approved?'Approved':'Pending'}</label></td>
-      <td class="calc">${fmt(Math.round(pay.normal))}</td>
-      <td class="calc" style="color:${r.approved?'#10b981':'#94a3b8'}">${fmt(Math.round(r.approved?pay.otPay:pay.otRaw))}${r.approved?'':' *'}</td>
-      <td class="calc" style="font-weight:700">${fmt(Math.round(pay.total))}</td></tr>`;}).join('');
-  el.innerHTML=`<div class="pagehead"><div><h2>Timesheet &amp; OT <span style="font-weight:500;font-size:12px;color:var(--muted)">· ${R.length} employees</span></h2><p>Thai OT: weekday after 17:00 = <b>×3</b> · holiday = <b>×2</b> · 6-day week · hourly = daily wage ÷ 8. <b>OT paid only after approval.</b> <span style="color:#94a3b8">* = pending, not yet in total</span></p></div>
-     <div style="display:flex;gap:8px;align-items:center">Period <input value="${esc(ts.period||'')}" placeholder="2026-07" style="width:90px;border:1px solid var(--line);border-radius:8px;padding:6px 8px" onchange="app.setTsPeriod(this.value)"><button class="btn" onclick="app.approveAllOT()">✓ Approve all OT</button></div></div>
+function renderTimesheet(el){const p=proj();ensureMP(p);const pl=ensurePlan(p);
+  if(!tsMonth){tsMonth=pl.startY+'-'+String(pl.startM+1).padStart(2,'0');}
+  const [Y,Mo]=tsMonth.split('-').map(Number);const ndays=new Date(Y,Mo,0).getDate();
+  const dstr=d=>Y+'-'+String(Mo).padStart(2,'0')+'-'+String(d).padStart(2,'0');
+  const dow=d=>new Date(dstr(d)+'T00:00:00').getDay();
+  const monLabel=['ม.ค.','ก.พ.','มี.ค.','เม.ย.','พ.ค.','มิ.ย.','ก.ค.','ส.ค.','ก.ย.','ต.ค.','พ.ย.','ธ.ค.'][Mo-1]+' '+Y;
+  if(!p.mp.positions.length){el.innerHTML=`<div class="pagehead"><div><h2>Timesheet &amp; OT</h2><p>ลงเวลา/คน/OT รายวัน · ใช้ข้อมูลชุดเดียวกับ Manpower loading (ตัวเลขตรงกัน)</p></div></div>
+    <div class="card"><div class="body" style="text-align:center;padding:40px"><p class="mini">ยังไม่มีตำแหน่งงาน — ไปกำหนดตำแหน่ง+ค่าแรงที่หน้า Manpower (แท็บ Setup) ก่อน</p><button class="btn primary" onclick="nav('manpower')">ไปหน้า Manpower</button></div></div>`;return;}
+  // per-position monthly cost from same log
+  const posCost=po=>{let c=0;for(let d=1;d<=ndays;d++){const e=(p.mp.log[dstr(d)]||{})[po.id];if(!e)continue;const wage=+po.wage||0;const hol=dow(d)===0;c+=(hol?(+e.c||0)*wage*2:(+e.c||0)*wage)+(+e.ot||0)*(wage/8)*3;}return c;};
+  let monTot=0,monHrsOT=0;p.mp.positions.forEach(po=>{monTot+=posCost(po);for(let d=1;d<=ndays;d++){const e=(p.mp.log[dstr(d)]||{})[po.id];if(e)monHrsOT+=(+e.ot||0);}});
+  // reconcile with Manpower module
+  const rm=resMonthly(p);const mi=(Y-pl.startY)*12+((Mo-1)-pl.startM);const mpVal=(mi>=0&&mi<rm.dur)?rm.labor[mi]:0;
+  const dhead=[];for(let d=1;d<=ndays;d++){const wd=dow(d);const hol=wd===0;dhead.push(`<th style="min-width:46px;padding:4px 1px;font-size:9px;${hol?'background:#fef2f2;color:#ef4444':'color:#94a3b8'}">${d}<br>${['อา','จ','อ','พ','พฤ','ศ','ส'][wd]}</th>`);}
+  const rows=p.mp.positions.map(po=>{const cells=[];for(let d=1;d<=ndays;d++){const e=(p.mp.log[dstr(d)]||{})[po.id]||{};const hol=dow(d)===0;
+      cells.push(`<td style="padding:1px;${hol?'background:#fef2f2':''}"><input title="คน" style="width:22px;text-align:center;font-size:10.5px;border:1px solid var(--line);border-radius:4px" value="${e.c||''}" placeholder="0" onchange="app.setDay('mp','${dstr(d)}','${po.id}','c',this.value)"><input title="OT ชม." style="width:22px;text-align:center;font-size:9.5px;color:#f59e0b;border:1px solid #fde68a;border-radius:4px;margin-top:1px" value="${e.ot||''}" placeholder="OT" onchange="app.setDay('mp','${dstr(d)}','${po.id}','ot',this.value)"></td>`);}
+    return `<tr><td class="l pin" style="position:sticky;left:0;background:#fff;z-index:1;min-width:150px"><b>${esc(po.role||'-')}</b><br><span style="font-size:10px;color:#94a3b8">${fmt(+po.wage||0)} ฿/วัน</span></td>${cells.join('')}<td class="calc" style="position:sticky;right:0;background:#fff;font-weight:700;min-width:90px">${fmt(Math.round(posCost(po)))}</td></tr>`;}).join('');
+  el.innerHTML=`<div class="pagehead"><div><h2>Timesheet &amp; OT <span style="font-weight:500;font-size:12px;color:var(--muted)">· รายวัน</span></h2><p>คน + OT (ชม.) รายวันต่อตำแหน่ง · <b style="color:#10b981">ใช้ข้อมูลชุดเดียวกับ Manpower loading — แก้ที่นี่หรือที่นั่น ตัวเลขตรงกันเสมอ</b> · OT หลัง 17:00 ×3 · วันอาทิตย์ ×2</p></div>
+     <div style="display:flex;gap:8px;align-items:center"><button class="btn" onclick="app.tsNavMonth(-1)">◀</button><span style="font-weight:700;min-width:90px;text-align:center">${monLabel}</span><button class="btn" onclick="app.tsNavMonth(1)">▶</button></div></div>
    <div class="kpis">
-     ${kpi('Normal wage',cur()+' '+fmt(Math.round(tN)),'days × daily wage','#eef2ff','#4f46e5',iW)}
-     ${kpi('OT approved',cur()+' '+fmt(Math.round(tOTapp)),'included in payroll','#ecfdf5','#10b981',iC,'up')}
-     ${kpi('OT pending',cur()+' '+fmt(Math.round(tOTpend)),'awaiting approval','#fffbeb','#f59e0b',iD,'down')}
-     ${kpi('Month payroll',cur()+' '+fmt(Math.round(tTot)),'normal + approved OT','#ecfeff','#0ea5e9',iT)}
+     ${kpi('ค่าแรงเดือนนี้',cur()+' '+fmt(Math.round(monTot)),ndays+' วัน','#eef2ff','#4f46e5',iW)}
+     ${kpi('OT รวม (ชม.)',fmt(Math.round(monHrsOT)),'×3 (วันธรรมดา)','#fffbeb','#f59e0b',iD)}
+     ${kpi('ตรงกับ Manpower',cur()+' '+fmt(Math.round(mpVal)),Math.abs(mpVal-monTot)<1?'✓ ตัวเลขตรงกัน':'ต่างกัน '+fmt(Math.round(mpVal-monTot)),'#ecfdf5',Math.abs(mpVal-monTot)<1?'#10b981':'#ef4444',iC,'up')}
+     ${kpi('ตำแหน่งงาน',p.mp.positions.length+' ตำแหน่ง','จาก Manpower Setup','#ecfeff','#0ea5e9',iT)}
    </div>
-   <div class="tbl-card scroll"><table class="ct"><thead><tr><th class="l">Employee</th><th>Type</th><th>Daily</th><th>Days</th><th>OT h ×3</th><th>Hol h ×2</th><th>Clock</th><th>OT approval</th><th>Normal ฿</th><th>OT ฿</th><th>Total ฿</th></tr></thead>
-     <tbody>${rows}</tbody>
-     <tfoot><tr><td class="l">TOTAL</td><td colspan="7"></td><td>${fmt(Math.round(tN))}</td><td>${fmt(Math.round(tOTapp))}</td><td>${fmt(Math.round(tTot))}</td></tr></tfoot></table></div>
-   <p class="mini" style="margin-top:10px;color:var(--muted)">▶ In / ■ Out records real timestamps and auto-fills Days / OT (after 17:00) / Holiday hours (Sunday). You can also type the values directly.</p>`;
+   <div class="tbl-card scroll"><table class="ct"><thead><tr><th class="l" style="position:sticky;left:0;background:var(--card);z-index:2">ตำแหน่ง</th>${dhead.join('')}<th style="position:sticky;right:0;background:var(--card)">ค่าแรงรวม</th></tr></thead>
+     <tbody>${rows}</tbody></table></div>
+   <p class="mini" style="margin-top:10px;color:var(--muted)">แต่ละช่อง: บน = จำนวนคน · ล่าง = ชั่วโมง OT · วันอาทิตย์แถบแดง (×2) · แก้ที่นี่จะไปอัปเดต Manpower loading และ Cash Flow อัตโนมัติ</p>`;
 }
 
 function renderGantt(el){const p=proj();const sc=buildSchedule(p);const dur=sc.dur;const months=sc.months;const dd=Math.min(p.plan.dataDate||0,dur-1);
@@ -686,9 +686,9 @@ function regenCashflowFromSchedule(){}
 function schedStats(p){const sc=buildSchedule(p);const pl=p.plan;const dur=sc.dur;const totW=sc.acts.reduce((a,x)=>a+x.weight,0)||100;
   const planM=Array(dur).fill(0);sc.acts.forEach(a=>{const n=a.me-a.ms+1;for(let m=a.ms;m<=a.me;m++)planM[m]+=a.weight/n;});
   const planCum=[];let s=0;planM.forEach(v=>{s+=v;planCum.push(s);});
-  const dd=Math.min(pl.dataDate||0,dur-1);const earned=sc.acts.reduce((a,x)=>a+x.weight*(+x.actualPct||0)/100,0);
-  const actCum=[];for(let m=0;m<dur;m++){if(m>dd){actCum.push(null);continue;}const sh=planCum[dd]?planCum[m]/planCum[dd]:0;actCum.push(earned*sh);}
-  return {sc,dur,totW,planCum,actCum,dd,earned,planToDate:planCum[dd]||0,planPct:planCum[dd]||0,actPct:earned};}
+  const dd=Math.min(pl.dataDate||0,dur-1);const earned=sc.acts.reduce((a,x)=>a+x.weight*Math.min(100,+x.actualPct||0)/100,0);
+  const actCum=[];for(let m=0;m<dur;m++){if(m>dd){actCum.push(null);continue;}const sh=planCum[dd]?planCum[m]/planCum[dd]:0;actCum.push(Math.min(100,earned*sh));}
+  return {sc,dur,totW,planCum,actCum,dd,earned,planToDate:planCum[dd]||0,planPct:Math.min(100,planCum[dd]||0),actPct:Math.min(100,earned)};}
 let expandedS={};
 function renderSchedule(el){const p=proj();ensurePlan(p);const k=schedStats(p);const sc=k.sc;
   if(!sc.acts.length){el.innerHTML=`<div class="pagehead"><div><h2>L4 Schedule / Gantt</h2><p>L4 activities are generated from your CBS items (weighted by value).</p></div></div>
@@ -698,7 +698,7 @@ function renderSchedule(el){const p=proj();ensurePlan(p);const k=schedStats(p);c
   el.innerHTML=`<div class="pagehead"><div><h2>L4 Schedule / Gantt <span style="font-weight:500;font-size:12px;color:var(--muted)">· Plan vs Actual tracking</span></h2><p>${esc(p.name)} · ${sc.months[0]}–${sc.months[sc.dur-1]} · แก้วันเริ่ม/ช่วงเวลา/ความคืบหน้าได้ในตาราง · progress ป้อนเข้า Cash Flow</p></div>
      <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">Data date:
        <select onchange="app.setDataDate(this.value)" style="border:1px solid var(--line);border-radius:8px;padding:6px 8px">${sc.months.map((m,i)=>`<option value="${i}" ${i===k.dd?'selected':''}>${m}</option>`).join('')}</select>
-       <button class="btn" onclick="app.scheduleWizard()">🗓️ Phase durations</button><button class="btn" onclick="app.exportSchedule()">⬇ Excel</button><button class="btn" onclick="window.print()">🖨️</button></div></div>
+       <button class="btn" onclick="app.setDataToday()" title="ตั้ง Data date = วันนี้">📍 Today</button><button class="btn" onclick="app.scheduleWizard()">🗓️ Phase durations</button><button class="btn" onclick="app.exportSchedule()">⬇ Excel</button><button class="btn" onclick="window.print()">🖨️</button></div></div>
    <div class="kpis">
      ${kpi('Planned % (to date)',k.planPct.toFixed(2)+'%','by '+sc.months[k.dd],'#eef2ff','#4f46e5',iT)}
      ${kpi('Actual % complete',k.actPct.toFixed(2)+'%','earned '+cur()+' '+fmt(k.earned/100*sc.tot),'#ecfeff','#0ea5e9',iC,k.actPct>=k.planPct?'up':'down')}
@@ -745,8 +745,8 @@ function drawSchedule(){
   let R='';
   ['eng','proc','inst','comm','ind'].forEach((ph,pi)=>{const list=sc.acts.filter(a=>a.phase===ph);if(!list.length)return;
     const col=PC[ph];const pms=Math.min.apply(0,list.map(a=>a.ms)),pme=Math.max.apply(0,list.map(a=>a.me));
-    const pw=list.reduce((s,x)=>s+x.weight,0),pe=list.reduce((s,x)=>s+x.weight*(+x.actualPct||0)/100,0);const pact=pw?pe/pw*100:0;
-    let pp=0;list.forEach(a=>{const n=a.me-a.ms+1;for(let m=a.ms;m<=Math.min(a.me,dd);m++)pp+=a.weight/n;});const pplan=pw?pp/pw*100:0;
+    const pw=list.reduce((s,x)=>s+x.weight,0),pe=list.reduce((s,x)=>s+x.weight*Math.min(100,+x.actualPct||0)/100,0);const pact=Math.min(100,pw?pe/pw*100:0);
+    let pp=0;list.forEach(a=>{const n=a.me-a.ms+1;for(let m=a.ms;m<=Math.min(a.me,dd);m++)pp+=a.weight/n;});const pplan=Math.min(100,pw?pp/pw*100:0);
     const open=expandedS['ph_'+pi]!==false;
     const gname=`<div style="flex:1;font-weight:800;font-size:12.5px;padding-left:6px;cursor:pointer;white-space:nowrap;overflow:hidden" onclick="app.togS('ph_'+${pi})">${open?'▾':'▸'} ${PHNAME[ph]}</div><div style="width:66px"></div><div style="width:40px"></div><div style="width:44px;text-align:right;font-size:11px;color:#64748b;padding-right:4px">${pplan.toFixed(0)}%</div><div style="width:50px;text-align:right;font-weight:700;font-size:11px;padding-right:4px">${pact.toFixed(0)}%</div>`;
     R+=`<div style="display:flex;height:${RH}px;border-bottom:1px solid var(--soft)"><div style="position:sticky;left:0;z-index:2;width:${LW}px;flex:0 0 ${LW}px;background:#f8fafc;border-right:1px solid var(--line);display:flex;align-items:center">${gname}</div>${barGroup(pms,pme,pact,col)}</div>`;
@@ -757,7 +757,7 @@ function drawSchedule(){
         const nm=`${esc(it.name)} <span style="color:#94a3b8;font-size:10px">${a.catNo}</span> <button title="แตกเป็น task" onclick="app.addTask('${it.id}')" style="border:none;background:#eef2ff;color:#4f46e5;border-radius:4px;padding:0 5px;cursor:pointer;font-size:10px">＋</button>`;
         R+=`<div style="display:flex;height:${RH}px;border-bottom:1px solid var(--soft)">${leftLeaf(nm,20,a.ms,a.me-a.ms+1,pdt,(+a.actualPct||0),`app.setActF('${it.id}','','ms',this.value)`,`app.setActF('${it.id}','','dur',this.value)`,`app.setActual('${it.id}','',this.value)`)}${barLeaf(a.ms,a.me,+a.actualPct||0,pdt,col)}</div>`;
       } else {
-        const ims=Math.min.apply(0,ia.map(a=>a.ms)),ime=Math.max.apply(0,ia.map(a=>a.me));const iw=ia.reduce((s,x)=>s+x.weight,0),ie=ia.reduce((s,x)=>s+x.weight*(+x.actualPct||0)/100,0);const ipact=iw?ie/iw*100:0;
+        const ims=Math.min.apply(0,ia.map(a=>a.ms)),ime=Math.max.apply(0,ia.map(a=>a.me));const iw=ia.reduce((s,x)=>s+x.weight,0),ie=ia.reduce((s,x)=>s+x.weight*Math.min(100,+x.actualPct||0)/100,0);const ipact=Math.min(100,iw?ie/iw*100:0);
         const iexp=expandedS['it_'+iid]!==false;
         const inm=`<div style="flex:1;font-weight:600;font-size:12px;padding-left:20px;cursor:pointer;white-space:nowrap;overflow:hidden;text-overflow:ellipsis" onclick="app.togS('it_'+'${iid}')">${iexp?'▾':'▸'} ${esc(it.name)} <span style="color:#4f46e5;font-size:10px">·${ia.length}t</span></div><div style="width:66px"></div><div style="width:40px"></div><div style="width:44px"></div><div style="width:50px;text-align:right;font-weight:700;font-size:11px;padding-right:4px">${ipact.toFixed(0)}%</div>`;
         R+=`<div style="display:flex;height:${RH}px;border-bottom:1px solid var(--soft)"><div style="position:sticky;left:0;z-index:2;width:${LW}px;flex:0 0 ${LW}px;background:#fafbfc;border-right:1px solid var(--line);display:flex;align-items:center">${inm}</div>${barGroup(ims,ime,ipact,col)}</div>`;
@@ -953,6 +953,7 @@ const app={
   importSchedule(){document.getElementById('dataMenu').classList.remove('open');const fi=document.getElementById('schedInput');fi.value='';fi.click();},
   scheduleTemplate(){document.getElementById('dataMenu').classList.remove('open');buildSchedTemplate();},
   setDataDate(v){ensurePlan(proj()).dataDate=+v;save();renderSchedule(document.getElementById('content'));},
+  setDataToday(){const p=proj();ensurePlan(p);const now=new Date();const idx=(now.getFullYear()-p.plan.startY)*12+(now.getMonth()-p.plan.startM);const sc=buildSchedule(p);p.plan.dataDate=Math.max(0,Math.min(sc.dur-1,idx));save();renderSchedule(document.getElementById('content'));},
   exportSchedule(){buildScheduleExcel();},
   cashflowTemplate(){document.getElementById('dataMenu').classList.remove('open');cashflowTemplateBuild();},
   uploadCashflow(){document.getElementById('dataMenu').classList.remove('open');const fi=document.getElementById('cfInput');fi.value='';fi.click();},
@@ -1014,7 +1015,7 @@ const app={
   addUnit(){const p=proj();ensureMP(p);p.eqp.units.push({id:tid_(),name:'',type:'Rental',rate:0});save();renderManpower(document.getElementById('content'));},
   delUnit(id){const p=proj();ensureMP(p);p.eqp.units=p.eqp.units.filter(x=>x.id!==id);save();renderManpower(document.getElementById('content'));},
   setUnit(id,f,v){const p=proj();ensureMP(p);const o=p.eqp.units.find(x=>x.id===id);if(!o)return;if(f==='name'||f==='type')o[f]=v;else o[f]=Math.max(0,parseNum(v));save();renderManpower(document.getElementById('content'));},
-  setDay(kind,d,id,f,v){const p=proj();ensureMP(p);const store=kind==='mp'?p.mp.log:p.eqp.log;if(!store[d])store[d]={};if(kind==='mp'){if(!store[d][id])store[d][id]={};const n=Math.max(0,parseNum(v));if(f==='c')store[d][id].c=n;else store[d][id].ot=n;if(!store[d][id].c&&!store[d][id].ot)delete store[d][id];}else{const n=Math.max(0,parseNum(v));if(!n)delete store[d][id];else store[d][id]=n;}if(!Object.keys(store[d]).length)delete store[d];save();renderManpower(document.getElementById('content'));},
+  setDay(kind,d,id,f,v){const p=proj();ensureMP(p);const store=kind==='mp'?p.mp.log:p.eqp.log;if(!store[d])store[d]={};if(kind==='mp'){if(!store[d][id])store[d][id]={};const n=Math.max(0,parseNum(v));if(f==='c')store[d][id].c=n;else store[d][id].ot=n;if(!store[d][id].c&&!store[d][id].ot)delete store[d][id];}else{const n=Math.max(0,parseNum(v));if(!n)delete store[d][id];else store[d][id]=n;}if(!Object.keys(store[d]).length)delete store[d];save();render();},
   seedPositions(){const p=proj();ensureMP(p);const seen={};p.mp.positions.forEach(po=>seen[po.role]=1);(p.roster||[]).forEach(r=>{const role=r.position||'';if(!role||seen[role])return;seen[role]=1;const daily=(''+(r.type||'')).includes('วัน')?(+r.base||0):((+r.base||0)/WORKDAYS);p.mp.positions.push({id:tid_(),role:role,catNo:'STF',wage:Math.round(daily)});});save();toast('Seeded positions from roster');renderManpower(document.getElementById('content'));},
 
   addRes(kind){const p=proj();ensureRes(p);const o=kind==='labor'?{id:tid_(),role:'',catNo:(p.cats[0]&&p.cats[0].no)||'STF',rate:0,otMo:0,monthly:{}}:{id:tid_(),name:'',kind:'Rental',rate:0,monthly:{}};p.res[kind].push(o);save();renderManpower(document.getElementById('content'));},
@@ -1022,6 +1023,7 @@ const app={
   setRes(kind,id,f,v){const p=proj();ensureRes(p);const o=p.res[kind].find(x=>x.id===id);if(!o)return;if(f==='role'||f==='name'||f==='catNo'||f==='kind')o[f]=v;else o[f]=Math.max(0,parseNum(v));save();renderManpower(document.getElementById('content'));},
   setResMonth(kind,id,m,v){const p=proj();ensureRes(p);const o=p.res[kind].find(x=>x.id===id);if(!o)return;if(!o.monthly)o.monthly={};const n=parseNum(v);if(!n)delete o.monthly[m];else o.monthly[m]=n;save();renderManpower(document.getElementById('content'));},
   uploadPayroll(){const fi=document.getElementById('payrollInput');fi.value='';fi.click();},
+  tsNavMonth(delta){const p=proj();ensurePlan(p);if(!tsMonth)tsMonth=p.plan.startY+'-'+String(p.plan.startM+1).padStart(2,'0');let [Y,M]=tsMonth.split('-').map(Number);M+=delta;while(M<1){M+=12;Y--;}while(M>12){M-=12;Y++;}tsMonth=Y+'-'+String(M).padStart(2,'0');renderTimesheet(document.getElementById('content'));},
   downloadPayrollTemplate(){const p=proj();ensureRes(p);const hdr=['ลำดับที่','รหัสพนักงาน','คำนำหน้า','ชื่อ','นามสกุล','ตำแหน่ง','วันที่เริ่มงาน','รายวัน/รายเดือน','สถานะ','ค่าแรง (ฐาน)','ค่าตำแหน่ง','ค่าประสบการณ์','ค่าโทรศัพท์','ค่าน้ำมัน','เฉลี่ยรวมรายรับ/เดือน'];const aoa=[hdr];if(p.roster.length)p.roster.forEach((r,i)=>aoa.push([i+1,r.code||'',r.prefix||'',r.name||'',r.surname||'',r.position||'',r.start||'',r.type||'',r.status||'',r.base||'',r.posAllow||0,r.expAllow||0,r.phone||0,r.fuel||0,r.avg||'']));else aoa.push([1,'SEUS000','นาย','ชื่อ','นามสกุล','ช่างทั่วไป','','รายวัน','ประจำ',600,0,0,0,0,'']);const ws=XLSX.utils.aoa_to_sheet(aoa);const wb=XLSX.utils.book_new();XLSX.utils.book_append_sheet(wb,ws,'Payroll');XLSX.writeFile(wb,'SEUS_Payroll_Template.xlsx');},
   setTsPeriod(v){const p=proj();ensureTs(p);p.ts.period=v;save();},
   setTs(code,f,v){const p=proj();const r=tsRow(p,code);r[f]=Math.max(0,parseNum(v));save();renderTimesheet(document.getElementById('content'));},
