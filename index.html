@@ -249,6 +249,7 @@ const TYPENAME={M:'Material',L:'Labor',E:'Equipment',O:'Other'};
 
 let storageOK=true;
 let state=load();attachRefSchedules(state);
+function nextProjectCode(){const d=new Date();const yy=String(d.getFullYear()%100).padStart(2,'0');const mm=String(d.getMonth()+1).padStart(2,'0');const pre='PJ'+yy+mm;let n=0;(state.projects||[]).forEach(p=>{if(p&&p.code&&p.code.indexOf(pre)===0){const s=parseInt(p.code.slice(pre.length))||0;if(s>n)n=s;}});return pre+String(n+1).padStart(3,'0');}
 function mkProject(seed){return {id:uid(),name:seed.name,code:seed.code,client:seed.client,currency:seed.currency||'THB',
   cats:seed.cats.map(c=>({id:uid(),grp:c.grp,no:c.no,name:c.name,type:c.type,
     items:(c.items||[]).map(i=>({id:uid(),name:i.name,budget:+i.budget||0,actual:+i.actual||0,actualPct:+i.actualPct||0,lab:+i.lab||0}))})),
@@ -1145,7 +1146,7 @@ const app={
   reseed(){document.getElementById('dataMenu').classList.remove('open');confirmBox('Reload MAP2 + GMTP samples? This replaces ALL current data.',()=>{state=freshState();save();render();toast('Samples reloaded');});},
   newProjectModal(){modal(`<h4>New Project</h4><div class="mbody">
       <div class="field"><label>Project name</label><input id="npName" placeholder="e.g. Rayong Substation E&I"></div>
-      <div class="field row"><div><label>Code</label><input id="npCode"></div><div><label>Currency</label><input id="npCur" value="THB"></div></div>
+      <div class="field row"><div><label>Code (อัตโนมัติ)</label><input id="npCode" value="${nextProjectCode()}" readonly title="PJ + ปีค.ศ.2หลัก + เดือน2หลัก + ลำดับ3หลัก" style="background:#f4f6fb;color:#475569;font-weight:700"></div><div><label>Currency</label><input id="npCur" value="THB"></div></div>
       <div class="field"><label>Start with</label><select id="npTpl" onchange="var e=document.getElementById('npQhint');if(e)e.style.display=this.value==='quote'?'block':'none';">
         <option value="quote">📄 Upload Quotation → auto-generate CBS (recommended)</option>
         <option value="cbs">Blank CBS (15 categories, zero)</option>
