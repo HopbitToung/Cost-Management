@@ -231,6 +231,7 @@ tr.act2 td.pin input{width:70px;border:1px solid var(--line);border-radius:7px;p
 <input type="file" id="fileInput" accept="application/json" class="hide">
 <input type="file" id="xlsxInput" accept=".xlsx,.xls" class="hide">
 <input type="file" id="payrollInput" accept=".xlsx,.xls" class="hide">
+<input type="file" id="erpInput" accept=".json" class="hide">
 <input type="file" id="cfInput" accept=".xlsx,.xls" class="hide">
 <input type="file" id="schedInput" accept=".xlsx,.xls" class="hide">
 <input type="file" id="quoteInput" accept=".xlsx,.xls" class="hide">
@@ -621,6 +622,34 @@ function wizRender(){if(!wizSheets)return;
     </div></div>
     <div class="mfoot"><button class="btn" onclick="app.closeModal()">Cancel</button><button class="btn primary" onclick="app.wizImport()">Import → CBS</button></div>`);}
 
+function erpPackage(p){ensurePlan(p);const cf=buildCashflow(p);const rm=resMonthly(p);
+  const byCat=p.cats.map(c=>({cbsCode:c.no,category:c.name,group:c.grp,budget:Math.round(catB(c)),material:Math.round(c.items.reduce((a,it)=>a+budMat(it),0)),labour:Math.round(c.items.reduce((a,it)=>a+budLab(it),0)),actualCost:Math.round(c.items.reduce((a,it)=>a+actualCost(it),0)),readyToClaim:Math.round(c.items.reduce((a,it)=>a+readyToClaim(it),0))})).filter(x=>x.budget||x.actualCost);
+  const cbs=[];p.cats.forEach(c=>c.items.forEach(it=>{if(!(+it.budget))return;cbs.push({cbsCode:c.no,category:c.name,item:it.name,budget:Math.round(+it.budget||0),material:Math.round(budMat(it)),labour:Math.round(budLab(it)),actualCost:Math.round(actualCost(it)),readyToClaim:Math.round(readyToClaim(it)),actualClaim:Math.round(itemClaimAmt(it))});}));
+  const cashflow=cf.months.map((m,i)=>({month:i,label:m,planIn:Math.round(cf.revenue[i]||0),planOut:Math.round(cf.cost[i]||0),actualIn:Math.round(cf.aIn[i]||0),actualOut:Math.round(cf.aOut[i]||0),labor:Math.round(rm.labor[i]||0),equip:Math.round(rm.equip[i]||0)}));
+  return {kind:'costflow/erp-sync',version:1,exportedAt:new Date().toISOString(),
+    project:{code:p.code||'',name:p.name,client:p.client||'',currency:p.currency||'THB',startYear:p.plan.startY,startMonth:p.plan.startM+1,contractAmount:Math.round(contractTotal(p))},
+    totals:{contract:Math.round(contractTotal(p)),cost:Math.round(costTotal(p)),material:Math.round(byCat.reduce((a,x)=>a+x.material,0)),labour:Math.round(byCat.reduce((a,x)=>a+x.labour,0)),actualCost:Math.round(projCost(p)),readyToClaim:Math.round(projReady(p))},
+    cbsByCategory:byCat,cbsLines:cbs,cashflowMonthly:cashflow};}
+function applyErpActuals(data){if(!data)return 0;const p=proj();let n=0;
+  const A=data.actuals||data;
+  if(A.byCbsCode){A.byCbsCode.forEach(x=>{const c=p.cats.find(cc=>cc.no===x.cbsCode);if(!c)return;const tot=c.items.reduce((a,it)=>a+(+it.budget||0),0)||1;c.items.forEach(it=>{it.actualCost=Math.round((+x.actualCost||0)*(+it.budget||0)/tot);});n++;});}
+  if(A.byMonth){p.erpCash={};A.byMonth.forEach(m=>{const key=(m.month!=null?m.month:m.label);p.erpCash[key]={actualIn:+m.actualIn||0,actualOut:+m.actualOut||0,note:m.note||''};n++;});}
+  p.erpSyncAt=new Date().toISOString();return n;}
+
+function erpAll(k){try{return JSON.parse(localStorage.getItem('seus_'+k)||'[]');}catch(e){return [];}}
+function erpGet(k){try{return JSON.parse(localStorage.getItem('seus_'+k)||'null');}catch(e){return null;}}
+function erpSet(k,v){try{localStorage.setItem('seus_'+k,JSON.stringify(v));return true;}catch(e){return false;}}
+function erpPushProject(p){const arr=erpAll('projects');let e=arr.find(x=>(x.projectNo&&x.projectNo===p.code)||(x.source==='costflow'&&x.name===p.name));const contract=Math.round(contractTotal(p));const sd=p.plan?(p.plan.startY+'-'+String(p.plan.startM+1).padStart(2,'0')+'-01'):'';
+  if(!e){e={id:'cf_'+(p.code||uid()),projectNo:p.code||'',name:p.name,client:p.client||'',contractValue:contract,currency:p.currency||'THB',startDate:sd,status:'active',source:'costflow',createdAt:Date.now()};arr.push(e);}
+  else{e.projectNo=p.code||e.projectNo;e.name=p.name;e.contractValue=contract;e.client=p.client||e.client;e.source='costflow';e.updatedAt=Date.now();}
+  erpSet('projects',arr);return e.id;}
+function erpPushCBS(p,pid){let arr=erpAll('costBudget').filter(x=>!(x.projectId===pid&&x.source==='costflow'));let ord=0;
+  p.cats.forEach(c=>c.items.forEach(it=>{if(!(+it.budget))return;arr.push({id:'cf_'+uid(),projectId:pid,source:'costflow',cbsCode:c.no,category:c.name,itemType:'work',description:it.name,displayOrder:ord++,material:Math.round(budMat(it)),labour:Math.round(budLab(it)),budget:Math.round(+it.budget||0),actualCost:Math.round(actualCost(it)),readyToClaim:Math.round(readyToClaim(it)),createdAt:Date.now()});}));
+  erpSet('costBudget',arr);return arr.filter(x=>x.projectId===pid&&x.source==='costflow').length;}
+function applyErpTotals(p,mat,lab){const items=[];p.cats.forEach(c=>c.items.forEach(it=>items.push({it:it,f:labFrac(it,c.no),b:+it.budget||0})));
+  const li=items.filter(x=>x.f>=0.5),mi=items.filter(x=>x.f<0.5);const lb=li.reduce((a,x)=>a+x.b,0)||1,mb=mi.reduce((a,x)=>a+x.b,0)||1;
+  if(lab>0)li.forEach(x=>x.it.actualCost=Math.round(lab*x.b/lb));if(mat>0)mi.forEach(x=>x.it.actualCost=Math.round(mat*x.b/mb));p.erpSyncAt=new Date().toISOString();}
+
 function render(){
   Object.values(charts).forEach(c=>{try{c.destroy()}catch(e){}});charts={};
   document.getElementById('projSel').innerHTML=state.projects.map(p=>`<option value="${p.id}" ${p.id===state.activeId?'selected':''}>${esc(p.name)}</option>`).join('');
@@ -886,6 +915,7 @@ function renderSettings(el){
         <button class="btn" onclick="app.importJSON()">Restore JSON</button>
         <button class="btn" onclick="app.reseed()">Reload samples</button>
      </div></div>
+     <div class="sec"><h3>🔗 ERP Integration <span style="font-weight:400;font-size:12px;color:var(--muted)">· CostFlow ↔ ERP</span></h3><div class="body"><p class="mini" style="margin-bottom:10px">เชื่อมกับ ERP (HTML+Firebase) ผ่านสัญญาข้อมูลกลาง — ส่ง CBS/ต้นทุน/กระแสเงินสด ไป ERP และดึงยอดจริงกลับมา ใช้ <b>รหัสโครงการ</b> เป็นกุญแจ · Firestore path: <code>integration/{รหัสโครงการ}</code></p><div style="display:flex;gap:10px;flex-wrap:wrap"><button class="btn primary" onclick="app.erpExport()">⬆ Publish → ERP (JSON + Cloud)</button><button class="btn" onclick="app.erpImport()">⬇ Import ERP actuals (JSON)</button><button class="btn" onclick="app.erpPull()">☁ Pull from ERP (Cloud)</button></div><p class="mini" style="margin-top:10px;color:var(--muted)">ส่งออก: project · cbsByCategory · cbsLines (ค่าของ/ค่าแรง/actual) · cashflowMonthly (plan/actual in-out) · labor/equip รายเดือน<br>รับกลับ: actuals.byCbsCode[{cbsCode,actualCost}] → กระจายเข้า Actual Cost · actuals.byMonth[{month,actualIn,actualOut}]</p></div>
      <div class="sec danger"><h3>Danger Zone</h3><div class="body" style="display:flex;gap:10px;flex-wrap:wrap">
         <button class="btn danger-b" onclick="app.clearActuals()">Clear all Actuals</button>
         <button class="btn danger-b" onclick="app.deleteProject()">Delete this project</button>
@@ -1230,6 +1260,18 @@ const app={
   setLag(v){ensurePlan(proj()).payLag=Math.max(0,Math.min(6,parseInt(v)||0));save();renderCashflow(document.getElementById('content'));},
   setCfMode(m){cfMode=m;renderCashflow(document.getElementById('content'));},
   setCbsMode(m){cbsMode=m;renderCost(document.getElementById('content'));},
+  erpExport(){const p=proj();const pkg=erpPackage(p);dl(new Blob([JSON.stringify(pkg,null,2)],{type:'application/json'}),'ERP_'+((p.code||'project').replace(/\s+/g,'_'))+'_'+today()+'.json');
+    let ok=false;try{const pid=erpPushProject(p);const n=erpPushCBS(p,pid);const cfm=erpGet('cashflow_costflow')||{};cfm[pid]=pkg.cashflowMonthly;erpSet('cashflow_costflow',cfm);ok=true;toast('ส่งเข้า ERP · seus_projects + '+n+' รายการต้นทุน (ERP origin เดียวกันเห็นทันที) + ดาวน์โหลด JSON');}catch(e){}
+    if(!ok)toast('ดาวน์โหลด ERP package (JSON) แล้ว');
+    if(typeof fbUser!=='undefined'&&fbUser&&fbDb&&p.code){fbDb.collection('integration').doc(p.code).set(pkg).catch(()=>{});}},
+  erpImport(){const fi=document.getElementById('erpInput');fi.value='';fi.click();},
+  erpPull(){const p=proj();const pr=erpAll('projects').find(x=>x.projectNo===p.code||x.name===p.name);
+    if(!pr){toast('ไม่พบโครงการใน ERP (seus_projects) — ใช้ Import JSON หรือเปิดที่ origin เดียวกับ ERP');return;}
+    const pid=pr.id;const att=erpAll('attendance').filter(x=>x.projectId===pid);const lab=att.reduce((a,x)=>a+(+x.totalCost||0),0);
+    const proc=erpAll('procurement').concat(erpAll('po')).filter(x=>x.projectId===pid);const mat=proc.reduce((a,x)=>a+(+x.totalCost||+x.amount||+x.grandTotal||+x.total||0),0);
+    if(lab<=0&&mat<=0){toast('ยังไม่มี actuals ใน ERP (attendance/procurement) สำหรับโครงการนี้');return;}
+    applyErpTotals(p,mat,lab);save();render();toast('ดึงจาก ERP · แรงงาน '+cur()+' '+fmt(Math.round(lab))+' · วัสดุ '+cur()+' '+fmt(Math.round(mat)));},
+
   gOpen(i){guideOpen=(guideOpen===i?-1:i);renderGuide(document.getElementById('content'));},
   gTog(pi){const k='g_'+pi;ganttExp[k]=(ganttExp[k]===false);renderGantt(document.getElementById('content'));},
   mpSetTab(t){mpTab=t;renderManpower(document.getElementById('content'));},
@@ -1303,6 +1345,7 @@ function buildExcel(withData){
   toast(withData?'CBS exported':'Template downloaded');
 }
 function skey(n){return String(n==null?'':n).replace(/\s+/g,' ').trim().toLowerCase();}
+document.getElementById('erpInput').onchange=function(e){const f=e.target.files[0];if(!f)return;const r=new FileReader();r.onload=function(ev){try{const d=JSON.parse(ev.target.result);const n=applyErpActuals(d);save();render();toast('นำเข้า ERP actuals · ปรับ '+n+' รายการ');}catch(err){alert('อ่านไฟล์ ERP ไม่สำเร็จ: '+err.message);}};r.readAsText(f);};
 document.getElementById('payrollInput').onchange=function(e){const f=e.target.files[0];if(!f)return;const r=new FileReader();
   r.onload=function(ev){try{const wb=XLSX.read(ev.target.result,{type:'array',cellDates:true});const sn=wb.SheetNames[0];const rows=XLSX.utils.sheet_to_json(wb.Sheets[sn],{header:1});
     let hr=rows.findIndex(rw=>rw&&rw.some(c=>(''+c).includes('รหัส')||(''+c).toLowerCase().includes('code')||(''+c).includes('ค่าแรง')));if(hr<0)hr=0;const H=rows[hr].map(c=>(''+(c==null?'':c)));
