@@ -182,6 +182,7 @@ tr.act2 td.pin input{width:70px;border:1px solid var(--line);border-radius:7px;p
       <div class="lbl">Workspace</div>
       <a data-view="portfolio" class="active"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 3v18h18"/><rect x="7" y="10" width="3" height="8"/><rect x="12" y="6" width="3" height="12"/><rect x="17" y="13" width="3" height="5"/></svg>Portfolio (all projects)</a>
       <a data-view="dashboard"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="9"/><rect x="14" y="3" width="7" height="5"/><rect x="14" y="12" width="7" height="9"/><rect x="3" y="16" width="7" height="5"/></svg>Dashboard</a>
+      <a data-view="quote"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><path d="M14 2v6h6M9 13h6M9 17h4"/></svg>Quotations</a>
       <a data-view="cost"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 3h18v18H3z"/><path d="M3 9h18M3 15h18M12 3v18"/></svg>CBS Cost</a>
       <a data-view="cashflow"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 3v18h18"/><path d="M7 14l4-4 4 3 5-6"/></svg>Cash Flow &amp; S-Curve</a>
       <a data-view="schedule"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="4" width="18" height="16" rx="2"/><path d="M8 4v16M3 10h5M8 8h4M8 13h7M8 16h9"/></svg>L4 Schedule / Gantt</a>
@@ -231,6 +232,7 @@ tr.act2 td.pin input{width:70px;border:1px solid var(--line);border-radius:7px;p
 <input type="file" id="fileInput" accept="application/json" class="hide">
 <input type="file" id="xlsxInput" accept=".xlsx,.xls" class="hide">
 <input type="file" id="payrollInput" accept=".xlsx,.xls" class="hide">
+<input type="file" id="quoInput" accept=".json" class="hide">
 <input type="file" id="cfInput" accept=".xlsx,.xls" class="hide">
 <input type="file" id="schedInput" accept=".xlsx,.xls" class="hide">
 <input type="file" id="quoteInput" accept=".xlsx,.xls" class="hide">
@@ -281,7 +283,7 @@ function grpA(p,g){return p.cats.filter(c=>c.grp===g).reduce((a,c)=>a+catA(c),0)
 function totals(){const p=proj();let b=0,a=0;p.cats.forEach(c=>{b+=catB(c);a+=catA(c);});return {budget:b,actual:a,diff:b-a,margin:b?((b-a)/b*100):0};}
 
 /* router */
-let current='portfolio';let charts={};let cfMode='plan';let cfExpanded={};let cbsMode='total';const WORKDAYS=26;let mpTab='daily';let mpDate=new Date().toISOString().slice(0,10);let ganttExp={};let tsMonth='';let rptDate='';let guideOpen=0;
+let current='portfolio';let charts={};let cfMode='plan';let cfExpanded={};let cbsMode='total';const WORKDAYS=26;let mpTab='daily';let mpDate=new Date().toISOString().slice(0,10);let ganttExp={};let tsMonth='';let rptDate='';let guideOpen=0;let dragCat=null,dragItem=null;
 function nav(v){current=v;document.querySelectorAll('.nav a').forEach(a=>a.classList.toggle('active',a.dataset.view===v));render();}
 document.querySelectorAll('.nav a').forEach(a=>a.onclick=()=>nav(a.dataset.view));
 function ensureRes(p){if(!p.res)p.res={labor:[],equip:[]};if(!p.res.labor)p.res.labor=[];if(!p.res.equip)p.res.equip=[];if(!p.roster)p.roster=[];return p.res;}
@@ -649,11 +651,33 @@ function applyErpTotals(p,mat,lab){const items=[];p.cats.forEach(c=>c.items.forE
   const li=items.filter(x=>x.f>=0.5),mi=items.filter(x=>x.f<0.5);const lb=li.reduce((a,x)=>a+x.b,0)||1,mb=mi.reduce((a,x)=>a+x.b,0)||1;
   if(lab>0)li.forEach(x=>x.it.actualCost=Math.round(lab*x.b/lb));if(mat>0)mi.forEach(x=>x.it.actualCost=Math.round(mat*x.b/mb));p.erpSyncAt=new Date().toISOString();}
 
+let quoImportedDB=null;
+function quoLoadDB(){try{const d=JSON.parse(localStorage.getItem('seus_quotation_db_v2')||'null');if(d&&d.quotations)return d;}catch(e){}return quoImportedDB;}
+function quoCalc(q){let mat=0,lab=0;(q.lines||[]).forEach(l=>{if(l.kind!=='item')return;mat+=(+l.qty||0)*(+l.matPrice||0);lab+=(+l.qty||0)*(+l.labPrice||0);});const oh=+q.overhead||0;const matOH=mat*oh/100,labOH=lab*oh/100;const sub=mat+lab+matOH+labOH-(+q.discount||0);const vat=sub*(+q.vat||0)/100;return {mat:mat,lab:lab,matOH:matOH,labOH:labOH,sub:sub,vat:vat,total:sub+vat};}
+function quoToProject(q){const cats={};CBS.forEach(c=>cats[c[1]]={id:uid(),grp:c[0],no:c[1],name:c[2],type:c[3],items:[]});let need=0,n=0;
+  (q.lines||[]).forEach(l=>{if(l.kind!=='item')return;const mat=(+l.qty||0)*(+l.matPrice||0),lab=(+l.qty||0)*(+l.labPrice||0);if(mat<=0&&lab<=0)return;let code=autoMapCode((l.desc||'')+' '+(l.code||''));const review=!code;if(!code)code='OHC';if(!cats[code])code='OHC';cats[code].items.push({id:uid(),name:(l.desc||l.code||'Item'),budget:Math.round(mat+lab),lab:Math.round(lab),actual:0,review:review});n++;if(review)need++;});
+  const c=quoCalc(q);const oh=Math.round((c.matOH||0)+(c.labOH||0)-(+q.discount||0));if(oh>0)cats['OHC'].items.push({id:uid(),name:'Overhead & Profit',budget:oh,lab:0,actual:0,review:false});
+  const p={id:uid(),name:q.project||q.docNo||'Quotation',code:nextProjectCode(),client:q.clientName||'',currency:'THB',cats:CBS.map(x=>cats[x[1]]),cashflow:null};
+  return {p:p,need:need,n:n,total:Math.round(c.total)};}
+function renderQuote(el){const db=quoLoadDB();
+  if(!db||!db.quotations||!db.quotations.length){el.innerHTML=`<div class="pagehead"><div><h2>Quotations <span style="font-weight:500;font-size:12px;color:var(--muted)">· ใบเสนอราคา</span></h2><p>ดึงจาก SEUS Quotation (localStorage seus_quotation_db_v2) — ใบไหนได้งาน (Won) กด Export → สร้างโปรเจกต์ใน Cost Management</p></div><div><button class="btn" onclick="app.quoImport()">⬆ Import quotation (JSON)</button></div></div>
+    <div class="card"><div class="body" style="text-align:center;padding:40px"><p class="mini" style="max-width:560px;margin:0 auto">ยังไม่พบข้อมูลใบเสนอราคา<br>• เปิด CostFlow ที่ <b>origin เดียวกับ SEUS Quotation</b> (แชร์ localStorage) หรือ<br>• กด "Import quotation (JSON)" นำไฟล์ backup จากแอปใบเสนอราคาเข้ามา</p></div></div>`;return;}
+  const qs=db.quotations.slice().reverse();
+  const stName={won:'ได้งาน',sent:'ส่งแล้ว',lost:'ไม่ได้',draft:'ร่าง',accepted:'ตอบรับ'};
+  const stCol={won:'#ecfdf5|#059669',sent:'#eef2ff|#4f46e5',lost:'#fef2f2|#dc2626',draft:'#f1f5f9|#64748b',accepted:'#ecfdf5|#059669'};
+  const rows=qs.map(q=>{const c=quoCalc(q);const items=(q.lines||[]).filter(l=>l.kind==='item').length;const st=(q.status||'draft').toLowerCase();const col=(stCol[st]||stCol.draft).split('|');const won=st==='won'||st==='accepted';
+    return `<tr><td class="l" style="font-weight:600">${esc(q.docNo||q.id.slice(0,8))}</td><td class="l">${esc(q.project||'-')}</td><td class="l">${esc(q.clientName||'-')}</td><td class="rt">${items}</td><td class="rt"><b>${fmt(Math.round(c.total))}</b></td><td style="text-align:center"><span class="badge" style="background:${col[0]};color:${col[1]}">${stName[st]||st}</span></td><td style="text-align:center"><button class="btn ${won?'primary':''}" style="padding:6px 11px;font-size:12px" onclick="app.quoExport('${q.id}')">→ Cost Management</button></td></tr>`;}).join('');
+  const wonN=qs.filter(q=>['won','accepted'].indexOf((q.status||'').toLowerCase())>=0).length;
+  el.innerHTML=`<div class="pagehead"><div><h2>Quotations <span style="font-weight:500;font-size:12px;color:var(--muted)">· ${qs.length} ใบ · ได้งาน ${wonN}</span></h2><p>ใบไหนได้งาน กด <b>→ Cost Management</b> เพื่อสร้างโปรเจกต์ต้นทุนจากใบเสนอราคานั้น (แยกค่าของ/ค่าแรง + จับหมวด CBS อัตโนมัติ)</p></div><div><button class="btn" onclick="app.quoImport()">⬆ Import (JSON)</button></div></div>
+   <div class="tbl-card"><table class="ct"><thead><tr><th class="l">เลขที่</th><th class="l">โครงการ</th><th class="l">ลูกค้า</th><th class="rt">รายการ</th><th class="rt">มูลค่า</th><th style="text-align:center">สถานะ</th><th style="text-align:center">Export</th></tr></thead><tbody>${rows}</tbody></table></div>
+   <p class="mini" style="margin-top:10px;color:var(--muted)">แนะนำ: host CostFlow กับ SEUS Quotation ที่ origin เดียวกัน → รายการนี้อัปเดตอัตโนมัติ ไม่ต้อง import</p>`;}
+
 function render(){
   Object.values(charts).forEach(c=>{try{c.destroy()}catch(e){}});charts={};
   document.getElementById('projSel').innerHTML=state.projects.map(p=>`<option value="${p.id}" ${p.id===state.activeId?'selected':''}>${esc(p.name)}</option>`).join('');
   const el=document.getElementById('content');
-  if(current==='dashboard')renderDashboard(el);
+  if(current==='quote')renderQuote(el);
+  else if(current==='dashboard')renderDashboard(el);
   else if(current==='portfolio')renderPortfolio(el);
   else if(current==='cost')renderCost(el);
   else if(current==='cashflow')renderCashflow(el);
@@ -749,8 +773,8 @@ function drawCBS(){
       html+=`<tr class="cat"><td class="tog" onclick="app.tog('${c.id}')">${open?'▾':'▸'}</td><td class="l">${c.no}. ${esc(c.name)} <span style="color:#94a3b8;font-size:10px">${c.type}</span></td><td>${fmt(cs.pm)}</td><td>${fmt(cs.pl)}</td><td style="color:#0369a1">${fmt(cs.am)}</td><td style="color:#0369a1">${fmt(cs.al)}</td><td>${fmt(cs.rc)}</td><td>${fmt(cs.cl)}</td><td></td><td></td><td class="act"><button title="Delete category" onclick="app.delCat('${c.id}')">×</button></td></tr>`;
       if(open){c.items.forEach((it,ii)=>{const rcv=readyToClaim(it);const cm=(it.claimMonth==null?null:+it.claimMonth);const camt=(it.claim!=null&&it.claim!=='')?(+it.claim||0):(cm!=null?rcv:'');const rev=it.review?'<span title="verify" style="color:#f59e0b;font-weight:800;margin-right:3px">⚠</span>':'';
         const amD=Math.round(actMatOf(it,c.no)),alD=Math.round(actLabOf(it,c.no));
-        html+=`<tr class="itm ${it.review?'rev':''}"><td></td>
-          <td class="l name" style="white-space:nowrap"><span style="display:inline-block;min-width:46px;color:#64748b;font-size:11px;font-weight:700">${c.no}-${String(ii+1).padStart(2,'0')}</span> ${rev}<input value="${esc(it.name)}" style="width:calc(100% - 104px)" onchange="app.setItem('${c.id}','${it.id}','name',this.value)"><select title="ย้ายหมวด" style="font-size:9px;border:1px solid var(--line);border-radius:5px;padding:1px;margin-left:3px;max-width:30px" onchange="app.moveItem('${c.id}','${it.id}',this.value)">${p.cats.map(x=>`<option value="${x.no}" ${x.id===c.id?'selected':''}>${x.no}</option>`).join('')}</select></td>
+        html+=`<tr class="itm ${it.review?'rev':''}" draggable="true" ondragstart="app.dragStart('${c.id}','${it.id}')" ondragover="event.preventDefault()" ondrop="app.dropItem('${c.id}','${it.id}')"><td style="text-align:center;cursor:grab;color:#cbd5e1" title="ลากเพื่อย้าย">⠿</td>
+          <td class="l name" style="white-space:nowrap"><button title="ขึ้น" onclick="app.moveItemUp('${c.id}','${it.id}')" style="border:none;background:none;cursor:pointer;color:#94a3b8;padding:0 1px;font-size:10px">▲</button><button title="ลง" onclick="app.moveItemDown('${c.id}','${it.id}')" style="border:none;background:none;cursor:pointer;color:#94a3b8;padding:0 1px;font-size:10px">▼</button><span style="display:inline-block;min-width:46px;color:#64748b;font-size:11px;font-weight:700">${c.no}-${String(ii+1).padStart(2,'0')}</span> ${rev}<input value="${esc(it.name)}" style="width:calc(100% - 132px)" onchange="app.setItem('${c.id}','${it.id}','name',this.value)"><select title="ย้ายหมวด" style="font-size:9px;border:1px solid var(--line);border-radius:5px;padding:1px;margin-left:3px;max-width:30px" onchange="app.moveItem('${c.id}','${it.id}',this.value)">${p.cats.map(x=>`<option value="${x.no}" ${x.id===c.id?'selected':''}>${x.no}</option>`).join('')}</select></td>
           ${numI(budMat(it),'0',`app.setItem('${c.id}','${it.id}','budMat',this.value)`)}
           ${numI(budLab(it),'0',`app.setItem('${c.id}','${it.id}','budLab',this.value)`,'#4f46e5')}
           <td class="num"><input value="${(it.actMat!=null&&it.actMat!=='')?fmt(it.actMat):''}" placeholder="${amD?fmt(amD):'0'}" onchange="app.setItem('${c.id}','${it.id}','actMat',this.value)" style="color:#0369a1"></td>
@@ -759,7 +783,7 @@ function drawCBS(){
           <td class="num"><input value="${camt!==''?fmt(camt):''}" placeholder="${rcv?fmt(rcv):'0'}" onchange="app.setItemClaim('${c.id}','${it.id}','claim',this.value)"></td>
           <td style="text-align:center"><select onchange="app.setItemClaim('${c.id}','${it.id}','month',this.value)" style="border:1px solid var(--line);border-radius:6px;padding:2px;font-size:11px"><option value="" ${cm==null?'selected':''}>—</option>${months.map((m,j)=>`<option value="${j}" ${j===cm?'selected':''}>${m}</option>`).join('')}</select></td>
           <td class="pin" style="text-align:center;white-space:nowrap"><input style="width:30px;text-align:center" value="${it.credit!=null?it.credit:''}" placeholder="0" onchange="app.setItemClaim('${c.id}','${it.id}','credit',this.value)"><select style="font-size:9px;border:1px solid var(--line);border-radius:5px;padding:1px" onchange="app.setItemClaim('${c.id}','${it.id}','creditUnit',this.value)"><option value="d" ${(it.creditUnit||'d')==='d'?'selected':''}>d</option><option value="mo" ${it.creditUnit==='mo'?'selected':''}>mo</option></select></td>
-          <td class="act" style="white-space:nowrap"><button title="เลื่อนขึ้น" onclick="app.moveItemUp('${c.id}','${it.id}')" style="border:none;background:none;cursor:pointer;color:#64748b;padding:0 2px;font-size:11px">▲</button><button title="เลื่อนลง" onclick="app.moveItemDown('${c.id}','${it.id}')" style="border:none;background:none;cursor:pointer;color:#64748b;padding:0 2px;font-size:11px">▼</button><button title="ลบ" onclick="app.delItem('${c.id}','${it.id}')">×</button></td></tr>`;});
+          <td class="act"><button title="ลบ" onclick="app.delItem('${c.id}','${it.id}')">×</button></td></tr>`;});
         html+=`<tr class="addi"><td></td><td colspan="10"><button onclick="app.addItem('${c.id}')">＋ Add sub-item</button></td></tr>`;
       }
     });
@@ -814,8 +838,9 @@ function buildSchedule(p){const pl=ensurePlan(p);const months=planMonths(pl);con
         acts.push({id:it.id,taskId:null,catNo:c.no,catName:c.name,phase:ph,name:it.name,itemName:it.name,weight:b/tot*100,budget:b,ms:ws0,me:we0,actualPct:+it.actualPct||0,ref:it});
       }});});
   return {months,acts,dur,tot};}
+function sCurveW(n){if(n<=1)return [1];const out=[];const f=t=>t*t*(3-2*t);let prev=0;for(let i=1;i<=n;i++){const c=f(i/n);out.push(c-prev);prev=c;}return out;}
 function buildCashflow(p){const sc=buildSchedule(p);const pl=p.plan;const dur=sc.dur;
-  const planM=Array(dur).fill(0);sc.acts.forEach(a=>{const n=a.me-a.ms+1;for(let m=a.ms;m<=a.me;m++)planM[m]+=a.weight/n;});
+  const planM=Array(dur).fill(0);sc.acts.forEach(a=>{const n=a.me-a.ms+1;const _w=sCurveW(n);for(let m=a.ms;m<=a.me;m++)planM[m]+=a.weight*_w[m-a.ms];});
   const cT=costTotal(p),kT=contractTotal(p),lag=Math.max(0,pl.payLag||0);
   const ovO=pl.planOut||{},ovI=pl.planIn||{};
   const clO={},clI={},hasO={},hasI={};(pl.cfLines||[]).forEach(x=>{if(x.type==='out'){hasO[x.m]=1;clO[x.m]=(clO[x.m]||0)+(+x.amt||0);}else{hasI[x.m]=1;clI[x.m]=(clI[x.m]||0)+(+x.amt||0);}});
@@ -930,7 +955,7 @@ function phaseWin(no){const Pm={'ENG':[0,.30],'MEL':[.10,.60],'MIN':[.10,.60],'B
 function genScheduleData(){}
 function regenCashflowFromSchedule(){}
 function schedStats(p){const sc=buildSchedule(p);const pl=p.plan;const dur=sc.dur;const totW=sc.acts.reduce((a,x)=>a+x.weight,0)||100;
-  const planM=Array(dur).fill(0);sc.acts.forEach(a=>{const n=a.me-a.ms+1;for(let m=a.ms;m<=a.me;m++)planM[m]+=a.weight/n;});
+  const planM=Array(dur).fill(0);sc.acts.forEach(a=>{const n=a.me-a.ms+1;const _w=sCurveW(n);for(let m=a.ms;m<=a.me;m++)planM[m]+=a.weight*_w[m-a.ms];});
   const planCum=[];let s=0;planM.forEach(v=>{s+=v;planCum.push(s);});
   const dd=Math.min(pl.dataDate||0,dur-1);const earned=sc.acts.reduce((a,x)=>a+x.weight*Math.min(100,+x.actualPct||0)/100,0);
   const actCum=[];for(let m=0;m<dur;m++){if(m>dd){actCum.push(null);continue;}const sh=planCum[dd]?planCum[m]/planCum[dd]:0;actCum.push(Math.min(100,earned*sh));}
@@ -967,7 +992,7 @@ function renderSchedule(el){const p=proj();ensurePlan(p);const k=schedStats(p);c
 
 function drawSchedule(){
   const p=proj();const sc=buildSchedule(p);const dur=sc.dur;const end=dur-1;const dd=Math.min(p.plan.dataDate||0,dur-1);const months=sc.months;
-  const CW=44,LW=360,RH=30,W=dur*CW;
+  const CW=44,LW=468,RH=30,W=dur*CW;
   const PC={eng:'#4f46e5',proc:'#0ea5e9',inst:'#10b981',comm:'#f59e0b',ind:'#8b5cf6'};
   const msel=(cur,cb)=>`<select onchange="${cb}" style="border:1px solid var(--line);border-radius:5px;padding:1px;font-size:10px;width:62px">${months.map((m,i)=>`<option value="${i}" ${i===cur?'selected':''}>${m}</option>`).join('')}</select>`;
   const grid=`repeating-linear-gradient(90deg,transparent,transparent ${CW-1}px,#f0f2f5 ${CW-1}px,#f0f2f5 ${CW}px)`;
@@ -982,7 +1007,7 @@ function drawSchedule(){
      <div style="position:absolute;left:${left}px;top:10px;width:${(w*Math.min(100,act)/100).toFixed(1)}px;height:7px;background:${col};border-radius:3px"></div>
      <div style="position:absolute;left:${left-1}px;top:8px;width:4px;height:12px;background:${col}"></div><div style="position:absolute;left:${(left+w-3)}px;top:8px;width:4px;height:12px;background:${col}"></div></div>`;};
   const leftLeaf=(name,indent,ms,dur1,pdt,act,msCb,durCb,actCb)=>`<div style="position:sticky;left:0;z-index:2;width:${LW}px;flex:0 0 ${LW}px;background:#fff;border-right:1px solid var(--line);display:flex;align-items:center">
-       <div style="flex:1;padding-left:${indent}px;font-size:12px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;padding-right:6px">${name}</div>
+       <div title="${(''+name).replace(/<[^>]*>/g,'').replace(/"/g,'')}" style="flex:1;padding-left:${indent}px;font-size:12px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;padding-right:6px">${name}</div>
        <div style="width:66px;text-align:center">${msel(ms,msCb)}</div>
        <div style="width:40px;text-align:center"><input value="${dur1}" onchange="${durCb}" style="width:34px;text-align:center;border:1px solid var(--line);border-radius:5px;font-size:11px"></div>
        <div style="width:44px;text-align:right;font-size:11px;color:#64748b;padding-right:4px">${pdt.toFixed(0)}%</div>
@@ -1170,6 +1195,11 @@ const app={
   moveItem(fromId,itemId,toCode){const p=proj();const from=p.cats.find(c=>c.id===fromId);const to=p.cats.find(c=>c.no===toCode);if(!from||!to||from===to)return;const idx=from.items.findIndex(i=>i.id===itemId);if(idx<0)return;const it=from.items.splice(idx,1)[0];delete it.review;to.items.push(it);save();renderCost(document.getElementById('content'));},
   moveItemUp(cid,iid){const c=proj().cats.find(x=>x.id===cid);if(!c)return;const i=c.items.findIndex(x=>x.id===iid);if(i>0){const t=c.items[i-1];c.items[i-1]=c.items[i];c.items[i]=t;save();renderCost(document.getElementById('content'));}},
   moveItemDown(cid,iid){const c=proj().cats.find(x=>x.id===cid);if(!c)return;const i=c.items.findIndex(x=>x.id===iid);if(i>=0&&i<c.items.length-1){const t=c.items[i+1];c.items[i+1]=c.items[i];c.items[i]=t;save();renderCost(document.getElementById('content'));}},
+  dragStart(cid,iid){dragCat=cid;dragItem=iid;},
+  dropItem(cid,iid){if(!dragItem||dragCat!==cid){dragItem=null;dragCat=null;return;}const c=proj().cats.find(x=>x.id===cid);if(!c){dragItem=null;return;}const from=c.items.findIndex(x=>x.id===dragItem),to=c.items.findIndex(x=>x.id===iid);dragItem=null;dragCat=null;if(from<0||to<0||from===to)return;const it=c.items.splice(from,1)[0];c.items.splice(to,0,it);save();renderCost(document.getElementById('content'));},
+  quoExport(qid){const db=quoLoadDB();if(!db)return;const q=db.quotations.find(x=>x.id===qid);if(!q){toast('ไม่พบใบเสนอราคา');return;}const r=quoToProject(q);state.projects.push(r.p);state.activeId=r.p.id;expanded={};r.p.cats.forEach(c=>{if(c.items.length)expanded[c.id]=true;});save();nav('cost');toast('สร้างโปรเจกต์จากใบเสนอราคา · '+r.n+' รายการ · '+cur()+' '+fmt(r.total)+(r.need?(' · '+r.need+' ต้องตรวจหมวด ⚠'):' · จับหมวดครบ'));},
+  quoImport(){const fi=document.getElementById('quoInput');fi.value='';fi.click();},
+
   autoGenCbs(){document.getElementById('dataMenu').classList.remove('open');const fi=document.getElementById('quoteInput');fi.value='';fi.click();},
   wizToggle(i){wizSheets[i].include=!wizSheets[i].include;wizRender();},
   wizSetCol(i,which,v){const s=wizSheets[i];if(which==='matQ'||which==='labQ')s.cols[which]=(+v?1:0);else s.cols[which]=parseInt(v);s.lines=wizExtract(s.rows,s.cols);s.total=s.lines.reduce((a,x)=>a+x.budget,0);wizRender();},
@@ -1334,6 +1364,7 @@ function buildExcel(withData){
   toast(withData?'CBS exported':'Template downloaded');
 }
 function skey(n){return String(n==null?'':n).replace(/\s+/g,' ').trim().toLowerCase();}
+document.getElementById('quoInput').onchange=function(e){const f=e.target.files[0];if(!f)return;const r=new FileReader();r.onload=function(ev){try{const d=JSON.parse(ev.target.result);const db=(d&&d.quotations)?d:(d&&d.db&&d.db.quotations?d.db:null);if(!db||!db.quotations)throw new Error('ไม่พบ quotations ในไฟล์');quoImportedDB=db;render();toast('นำเข้า '+db.quotations.length+' ใบเสนอราคา');}catch(err){alert('อ่านไฟล์ไม่สำเร็จ: '+err.message);}};r.readAsText(f);};
 document.getElementById('payrollInput').onchange=function(e){const f=e.target.files[0];if(!f)return;const r=new FileReader();
   r.onload=function(ev){try{const wb=XLSX.read(ev.target.result,{type:'array',cellDates:true});const sn=wb.SheetNames[0];const rows=XLSX.utils.sheet_to_json(wb.Sheets[sn],{header:1});
     let hr=rows.findIndex(rw=>rw&&rw.some(c=>(''+c).includes('รหัส')||(''+c).toLowerCase().includes('code')||(''+c).includes('ค่าแรง')));if(hr<0)hr=0;const H=rows[hr].map(c=>(''+(c==null?'':c)));
