@@ -231,7 +231,6 @@ tr.act2 td.pin input{width:70px;border:1px solid var(--line);border-radius:7px;p
 <input type="file" id="fileInput" accept="application/json" class="hide">
 <input type="file" id="xlsxInput" accept=".xlsx,.xls" class="hide">
 <input type="file" id="payrollInput" accept=".xlsx,.xls" class="hide">
-<input type="file" id="erpInput" accept=".json" class="hide">
 <input type="file" id="cfInput" accept=".xlsx,.xls" class="hide">
 <input type="file" id="schedInput" accept=".xlsx,.xls" class="hide">
 <input type="file" id="quoteInput" accept=".xlsx,.xls" class="hide">
@@ -748,10 +747,10 @@ function drawCBS(){
     html+=`<tr class="grp"><td></td><td class="l">${g}. ${GROUPS[g]}</td><td>${fmt(S.pm)}</td><td>${fmt(S.pl)}</td><td>${fmt(S.am)}</td><td>${fmt(S.al)}</td><td>${fmt(S.rc)}</td><td>${fmt(S.cl)}</td><td></td><td></td><td></td></tr>`;
     cats.forEach(c=>{const cs={pm:0,pl:0,am:0,al:0,rc:0,cl:0};c.items.forEach(it=>{cs.pm+=budMat(it);cs.pl+=budLab(it);cs.am+=actMatOf(it,c.no);cs.al+=actLabOf(it,c.no);cs.rc+=readyToClaim(it);cs.cl+=itemClaimAmt(it);});const open=expanded[c.id];
       html+=`<tr class="cat"><td class="tog" onclick="app.tog('${c.id}')">${open?'▾':'▸'}</td><td class="l">${c.no}. ${esc(c.name)} <span style="color:#94a3b8;font-size:10px">${c.type}</span></td><td>${fmt(cs.pm)}</td><td>${fmt(cs.pl)}</td><td style="color:#0369a1">${fmt(cs.am)}</td><td style="color:#0369a1">${fmt(cs.al)}</td><td>${fmt(cs.rc)}</td><td>${fmt(cs.cl)}</td><td></td><td></td><td class="act"><button title="Delete category" onclick="app.delCat('${c.id}')">×</button></td></tr>`;
-      if(open){c.items.forEach(it=>{const rcv=readyToClaim(it);const cm=(it.claimMonth==null?null:+it.claimMonth);const camt=(it.claim!=null&&it.claim!=='')?(+it.claim||0):(cm!=null?rcv:'');const rev=it.review?'<span title="verify" style="color:#f59e0b;font-weight:800;margin-right:3px">⚠</span>':'';
+      if(open){c.items.forEach((it,ii)=>{const rcv=readyToClaim(it);const cm=(it.claimMonth==null?null:+it.claimMonth);const camt=(it.claim!=null&&it.claim!=='')?(+it.claim||0):(cm!=null?rcv:'');const rev=it.review?'<span title="verify" style="color:#f59e0b;font-weight:800;margin-right:3px">⚠</span>':'';
         const amD=Math.round(actMatOf(it,c.no)),alD=Math.round(actLabOf(it,c.no));
         html+=`<tr class="itm ${it.review?'rev':''}"><td></td>
-          <td class="l name">${rev}<input value="${esc(it.name)}" style="width:calc(100% - 40px)" onchange="app.setItem('${c.id}','${it.id}','name',this.value)"><select title="ย้ายหมวด" style="font-size:9px;border:1px solid var(--line);border-radius:5px;padding:1px;margin-left:3px;max-width:30px" onchange="app.moveItem('${c.id}','${it.id}',this.value)">${p.cats.map(x=>`<option value="${x.no}" ${x.id===c.id?'selected':''}>${x.no}</option>`).join('')}</select></td>
+          <td class="l name" style="white-space:nowrap"><span style="display:inline-block;min-width:46px;color:#64748b;font-size:11px;font-weight:700">${c.no}-${String(ii+1).padStart(2,'0')}</span> ${rev}<input value="${esc(it.name)}" style="width:calc(100% - 104px)" onchange="app.setItem('${c.id}','${it.id}','name',this.value)"><select title="ย้ายหมวด" style="font-size:9px;border:1px solid var(--line);border-radius:5px;padding:1px;margin-left:3px;max-width:30px" onchange="app.moveItem('${c.id}','${it.id}',this.value)">${p.cats.map(x=>`<option value="${x.no}" ${x.id===c.id?'selected':''}>${x.no}</option>`).join('')}</select></td>
           ${numI(budMat(it),'0',`app.setItem('${c.id}','${it.id}','budMat',this.value)`)}
           ${numI(budLab(it),'0',`app.setItem('${c.id}','${it.id}','budLab',this.value)`,'#4f46e5')}
           <td class="num"><input value="${(it.actMat!=null&&it.actMat!=='')?fmt(it.actMat):''}" placeholder="${amD?fmt(amD):'0'}" onchange="app.setItem('${c.id}','${it.id}','actMat',this.value)" style="color:#0369a1"></td>
@@ -760,7 +759,7 @@ function drawCBS(){
           <td class="num"><input value="${camt!==''?fmt(camt):''}" placeholder="${rcv?fmt(rcv):'0'}" onchange="app.setItemClaim('${c.id}','${it.id}','claim',this.value)"></td>
           <td style="text-align:center"><select onchange="app.setItemClaim('${c.id}','${it.id}','month',this.value)" style="border:1px solid var(--line);border-radius:6px;padding:2px;font-size:11px"><option value="" ${cm==null?'selected':''}>—</option>${months.map((m,j)=>`<option value="${j}" ${j===cm?'selected':''}>${m}</option>`).join('')}</select></td>
           <td class="pin" style="text-align:center;white-space:nowrap"><input style="width:30px;text-align:center" value="${it.credit!=null?it.credit:''}" placeholder="0" onchange="app.setItemClaim('${c.id}','${it.id}','credit',this.value)"><select style="font-size:9px;border:1px solid var(--line);border-radius:5px;padding:1px" onchange="app.setItemClaim('${c.id}','${it.id}','creditUnit',this.value)"><option value="d" ${(it.creditUnit||'d')==='d'?'selected':''}>d</option><option value="mo" ${it.creditUnit==='mo'?'selected':''}>mo</option></select></td>
-          <td class="act"><button title="Delete" onclick="app.delItem('${c.id}','${it.id}')">×</button></td></tr>`;});
+          <td class="act" style="white-space:nowrap"><button title="เลื่อนขึ้น" onclick="app.moveItemUp('${c.id}','${it.id}')" style="border:none;background:none;cursor:pointer;color:#64748b;padding:0 2px;font-size:11px">▲</button><button title="เลื่อนลง" onclick="app.moveItemDown('${c.id}','${it.id}')" style="border:none;background:none;cursor:pointer;color:#64748b;padding:0 2px;font-size:11px">▼</button><button title="ลบ" onclick="app.delItem('${c.id}','${it.id}')">×</button></td></tr>`;});
         html+=`<tr class="addi"><td></td><td colspan="10"><button onclick="app.addItem('${c.id}')">＋ Add sub-item</button></td></tr>`;
       }
     });
@@ -915,7 +914,6 @@ function renderSettings(el){
         <button class="btn" onclick="app.importJSON()">Restore JSON</button>
         <button class="btn" onclick="app.reseed()">Reload samples</button>
      </div></div>
-     <div class="sec"><h3>🔗 ERP Integration <span style="font-weight:400;font-size:12px;color:var(--muted)">· CostFlow ↔ ERP</span></h3><div class="body"><p class="mini" style="margin-bottom:10px">เชื่อมกับ ERP (HTML+Firebase) ผ่านสัญญาข้อมูลกลาง — ส่ง CBS/ต้นทุน/กระแสเงินสด ไป ERP และดึงยอดจริงกลับมา ใช้ <b>รหัสโครงการ</b> เป็นกุญแจ · Firestore path: <code>integration/{รหัสโครงการ}</code></p><div style="display:flex;gap:10px;flex-wrap:wrap"><button class="btn primary" onclick="app.erpExport()">⬆ Publish → ERP (JSON + Cloud)</button><button class="btn" onclick="app.erpImport()">⬇ Import ERP actuals (JSON)</button><button class="btn" onclick="app.erpPull()">☁ Pull from ERP (Cloud)</button></div><p class="mini" style="margin-top:10px;color:var(--muted)">ส่งออก: project · cbsByCategory · cbsLines (ค่าของ/ค่าแรง/actual) · cashflowMonthly (plan/actual in-out) · labor/equip รายเดือน<br>รับกลับ: actuals.byCbsCode[{cbsCode,actualCost}] → กระจายเข้า Actual Cost · actuals.byMonth[{month,actualIn,actualOut}]</p></div>
      <div class="sec danger"><h3>Danger Zone</h3><div class="body" style="display:flex;gap:10px;flex-wrap:wrap">
         <button class="btn danger-b" onclick="app.clearActuals()">Clear all Actuals</button>
         <button class="btn danger-b" onclick="app.deleteProject()">Delete this project</button>
@@ -1170,6 +1168,8 @@ function renderPortfolio(el){
 const app={
   switchProject(id){state.activeId=id;save();render();},
   moveItem(fromId,itemId,toCode){const p=proj();const from=p.cats.find(c=>c.id===fromId);const to=p.cats.find(c=>c.no===toCode);if(!from||!to||from===to)return;const idx=from.items.findIndex(i=>i.id===itemId);if(idx<0)return;const it=from.items.splice(idx,1)[0];delete it.review;to.items.push(it);save();renderCost(document.getElementById('content'));},
+  moveItemUp(cid,iid){const c=proj().cats.find(x=>x.id===cid);if(!c)return;const i=c.items.findIndex(x=>x.id===iid);if(i>0){const t=c.items[i-1];c.items[i-1]=c.items[i];c.items[i]=t;save();renderCost(document.getElementById('content'));}},
+  moveItemDown(cid,iid){const c=proj().cats.find(x=>x.id===cid);if(!c)return;const i=c.items.findIndex(x=>x.id===iid);if(i>=0&&i<c.items.length-1){const t=c.items[i+1];c.items[i+1]=c.items[i];c.items[i]=t;save();renderCost(document.getElementById('content'));}},
   autoGenCbs(){document.getElementById('dataMenu').classList.remove('open');const fi=document.getElementById('quoteInput');fi.value='';fi.click();},
   wizToggle(i){wizSheets[i].include=!wizSheets[i].include;wizRender();},
   wizSetCol(i,which,v){const s=wizSheets[i];if(which==='matQ'||which==='labQ')s.cols[which]=(+v?1:0);else s.cols[which]=parseInt(v);s.lines=wizExtract(s.rows,s.cols);s.total=s.lines.reduce((a,x)=>a+x.budget,0);wizRender();},
@@ -1260,17 +1260,6 @@ const app={
   setLag(v){ensurePlan(proj()).payLag=Math.max(0,Math.min(6,parseInt(v)||0));save();renderCashflow(document.getElementById('content'));},
   setCfMode(m){cfMode=m;renderCashflow(document.getElementById('content'));},
   setCbsMode(m){cbsMode=m;renderCost(document.getElementById('content'));},
-  erpExport(){const p=proj();const pkg=erpPackage(p);dl(new Blob([JSON.stringify(pkg,null,2)],{type:'application/json'}),'ERP_'+((p.code||'project').replace(/\s+/g,'_'))+'_'+today()+'.json');
-    let ok=false;try{const pid=erpPushProject(p);const n=erpPushCBS(p,pid);const cfm=erpGet('cashflow_costflow')||{};cfm[pid]=pkg.cashflowMonthly;erpSet('cashflow_costflow',cfm);ok=true;toast('ส่งเข้า ERP · seus_projects + '+n+' รายการต้นทุน (ERP origin เดียวกันเห็นทันที) + ดาวน์โหลด JSON');}catch(e){}
-    if(!ok)toast('ดาวน์โหลด ERP package (JSON) แล้ว');
-    if(typeof fbUser!=='undefined'&&fbUser&&fbDb&&p.code){fbDb.collection('integration').doc(p.code).set(pkg).catch(()=>{});}},
-  erpImport(){const fi=document.getElementById('erpInput');fi.value='';fi.click();},
-  erpPull(){const p=proj();const pr=erpAll('projects').find(x=>x.projectNo===p.code||x.name===p.name);
-    if(!pr){toast('ไม่พบโครงการใน ERP (seus_projects) — ใช้ Import JSON หรือเปิดที่ origin เดียวกับ ERP');return;}
-    const pid=pr.id;const att=erpAll('attendance').filter(x=>x.projectId===pid);const lab=att.reduce((a,x)=>a+(+x.totalCost||0),0);
-    const proc=erpAll('procurement').concat(erpAll('po')).filter(x=>x.projectId===pid);const mat=proc.reduce((a,x)=>a+(+x.totalCost||+x.amount||+x.grandTotal||+x.total||0),0);
-    if(lab<=0&&mat<=0){toast('ยังไม่มี actuals ใน ERP (attendance/procurement) สำหรับโครงการนี้');return;}
-    applyErpTotals(p,mat,lab);save();render();toast('ดึงจาก ERP · แรงงาน '+cur()+' '+fmt(Math.round(lab))+' · วัสดุ '+cur()+' '+fmt(Math.round(mat)));},
 
   gOpen(i){guideOpen=(guideOpen===i?-1:i);renderGuide(document.getElementById('content'));},
   gTog(pi){const k='g_'+pi;ganttExp[k]=(ganttExp[k]===false);renderGantt(document.getElementById('content'));},
@@ -1345,7 +1334,6 @@ function buildExcel(withData){
   toast(withData?'CBS exported':'Template downloaded');
 }
 function skey(n){return String(n==null?'':n).replace(/\s+/g,' ').trim().toLowerCase();}
-document.getElementById('erpInput').onchange=function(e){const f=e.target.files[0];if(!f)return;const r=new FileReader();r.onload=function(ev){try{const d=JSON.parse(ev.target.result);const n=applyErpActuals(d);save();render();toast('นำเข้า ERP actuals · ปรับ '+n+' รายการ');}catch(err){alert('อ่านไฟล์ ERP ไม่สำเร็จ: '+err.message);}};r.readAsText(f);};
 document.getElementById('payrollInput').onchange=function(e){const f=e.target.files[0];if(!f)return;const r=new FileReader();
   r.onload=function(ev){try{const wb=XLSX.read(ev.target.result,{type:'array',cellDates:true});const sn=wb.SheetNames[0];const rows=XLSX.utils.sheet_to_json(wb.Sheets[sn],{header:1});
     let hr=rows.findIndex(rw=>rw&&rw.some(c=>(''+c).includes('รหัส')||(''+c).toLowerCase().includes('code')||(''+c).includes('ค่าแรง')));if(hr<0)hr=0;const H=rows[hr].map(c=>(''+(c==null?'':c)));
