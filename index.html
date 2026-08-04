@@ -575,25 +575,26 @@ function wizDetect(rows){const KWS=['description','item','material','labour','la
   const F=pred=>{for(let c=0;c<ncol;c++)if(pred(ch[c]))return c;return -1;};
   let dc=F(s=>wizHas(s,'description','รายการ','work','scope','detail')&&!wizHas(s,'no.'));if(dc<0)dc=F(s=>wizHas(s,'item')&&!wizHas(s,'no'));
   if(dc<0){let bc=-1,bt=-1;for(let c=0;c<ncol;c++){let t=0;for(let k=hr+1;k<rows.length;k++){const v=rows[k]&&rows[k][c];if(typeof v==='string'&&v.trim().length>4)t++;}if(t>bt){bt=t;bc=c;}}dc=bc;}
-  const qc=F(s=>wizHas(s,"q'ty",'qty','qties','quantity','จำนวน'));
-  let mat=F(s=>wizHas(s,'material','วัสดุ')&&wizHas(s,'amount')&&!wizHas(s,'unit')),matQ=0;
-  if(mat<0){const mu=F(s=>wizHas(s,'material')&&wizHas(s,'unit','price','rate'));if(mu>=0&&ch[mu+1]!=null&&wizHas(ch[mu+1],'amount','total','sub total'))mat=mu+1;else if(mu>=0){mat=mu;matQ=1;}}
-  if(mat<0){for(let c=0;c<ncol-1;c++){if(wizHas(ch[c],'price','unit')&&!wizHas(ch[c],'labour','labor')&&wizHas(ch[c+1],'sub total','amount','total')){mat=c+1;break;}}}
-  let lab=F(s=>wizHas(s,'labour','labor','ค่าแรง')&&wizHas(s,'amount','cost')&&!wizHas(s,'unit','/hr','man hr')),labQ=0;
-  if(lab<0){const lu=F(s=>wizHas(s,'labour','labor')&&wizHas(s,'unit','price','rate')&&!wizHas(s,'amount'));if(lu>=0&&ch[lu+1]!=null&&wizHas(ch[lu+1],'amount','total','sub total'))lab=lu+1;else if(lu>=0){lab=lu;labQ=1;}}
+  const qc=F(s=>wizHas(s,"q'ty",'qty','qties','quantity','จำนวน','q,ty'));
+  const uc=F(s=>wizHas(s,'unit','หน่วย')&&!wizHas(s,'price','material','labour','labor','rate','cost'));
+  let mat=-1,matQ=0;{const mu=F(s=>wizHas(s,'material','วัสดุ','mat.','mat ')&&wizHas(s,'unit','price','rate')&&!wizHas(s,'amount','total','sub total'));if(mu>=0){mat=mu;matQ=1;}}
+  if(mat<0){mat=F(s=>wizHas(s,'material','วัสดุ')&&wizHas(s,'amount')&&!wizHas(s,'unit'));matQ=0;}
+  if(mat<0){for(let c=0;c<ncol-1;c++){if(wizHas(ch[c],'price','unit')&&!wizHas(ch[c],'labour','labor')&&wizHas(ch[c+1],'sub total','amount','total')){mat=c;matQ=1;break;}}}
+  let lab=-1,labQ=0;{const lu=F(s=>wizHas(s,'labour','labor','ค่าแรง')&&wizHas(s,'unit','price','rate')&&!wizHas(s,'amount','total','sub total','man hr','/hr'));if(lu>=0){lab=lu;labQ=1;}}
+  if(lab<0){lab=F(s=>wizHas(s,'labour','labor')&&wizHas(s,'amount','cost')&&!wizHas(s,'unit','man hr'));labQ=0;}
   let tot=F(s=>(s==='total'||s==='amount'||s==='total amount'||wizHas(s,'sub total','sub-total','line total','total (thb)'))&&!wizHas(s,'material','labour','labor','unit'));
   if(mat<0&&lab<0&&tot<0){let bc=-1,bs=-1;for(let c=0;c<ncol;c++){let sm=0;for(let k=hr+1;k<rows.length;k++){sm+=wizNum(rows[k]&&rows[k][c]);}if(sm>bs){bs=sm;bc=c;}}tot=bc;}
-  return {cols:{hr:hr,dc:dc,qc:qc,mat:mat,lab:lab,tot:tot,matQ:matQ,labQ:labQ},colNames:ch};}
+  return {cols:{hr:hr,dc:dc,qc:qc,uc:uc,mat:mat,lab:lab,tot:tot,matQ:matQ,labQ:labQ},colNames:ch};}
 function wizExtract(rows,c){const lines=[];let section='';const hr=c.hr||0;
   for(let k=hr+1;k<rows.length;k++){const rw=rows[k];if(!rw)continue;const dv=c.dc>=0?rw[c.dc]:null;if(dv==null||String(dv).trim()==='')continue;
     const kd=wizKw(dv);if(['total','sub-total','subtotal','sub total','grand total','sum of','sum '].some(t=>kd.indexOf(t)===0))continue;
-    const q=c.qc>=0?wizNum(rw[c.qc]):1;
-    let mat=c.mat>=0?wizNum(rw[c.mat])*(c.matQ?q:1):0;
-    let lab=c.lab>=0?wizNum(rw[c.lab])*(c.labQ?q:1):0;
-    let tot=c.tot>=0?wizNum(rw[c.tot]):0;
+    const q=c.qc>=0?wizNum(rw[c.qc]):null;const qn=q||1;
+    const matV=c.mat>=0?wizNum(rw[c.mat]):0;const labV=c.lab>=0?wizNum(rw[c.lab]):0;
+    const mat=c.matQ?matV*qn:matV;const lab=c.labQ?labV*qn:labV;const tot=c.tot>=0?wizNum(rw[c.tot]):0;
     if(mat<=0&&lab<=0&&tot<=0){if(String(dv).trim().length>2)section=String(dv).trim();continue;}
     const budget=(mat>0||lab>0)?mat+lab:tot;if(budget<=0)continue;
-    lines.push({desc:String(dv).trim().slice(0,90),mat:Math.round(mat),lab:Math.round(lab),budget:Math.round(budget),section:section});}
+    const unit=(c.uc>=0)?String(rw[c.uc]||'').trim():'';
+    lines.push({desc:String(dv).trim().slice(0,90),qty:q,unit:unit,matVal:matV,matQ:c.matQ,labVal:labV,labQ:c.labQ,mat:Math.round(mat),lab:Math.round(lab),budget:Math.round(budget),section:section});}
   return lines;}
 function wizGrand(wb){let best=0;wb.SheetNames.forEach(sn=>{const rows=XLSX.utils.sheet_to_json(wb.Sheets[sn],{header:1});rows.forEach(rw=>{if(!rw)return;const j=rw.map(wizKw).join(' ');if(wizHas(j,'grand total','total cost','total (direct','net total','รวมทั้งสิ้น','ราคารวม','total amount','contract amount')){rw.forEach(v=>{const n=wizNum(v);if(n>best&&n<1e12)best=n;});}});});return Math.round(best);}
 function wizAnalyze(wb){const meta=/read me|cover|instruction|assumption|org|hse|layout|design|daywork|设备/;const out=[];
@@ -611,7 +612,7 @@ function wizRender(){if(!wizSheets)return;
      ${s.include?`<div style="display:flex;gap:7px;flex-wrap:wrap;margin-top:8px;font-size:11px;align-items:center;color:#64748b">
        รายการ:${csel(s,si,'dc',c.dc)} ค่าของ:${csel(s,si,'mat',c.mat)}<label style="font-size:10px"><input type="checkbox" ${c.matQ?'checked':''} onchange="app.wizSetCol(${si},'matQ',this.checked?1:0)">×Q</label>
        ค่าแรง:${csel(s,si,'lab',c.lab)}<label style="font-size:10px"><input type="checkbox" ${c.labQ?'checked':''} onchange="app.wizSetCol(${si},'labQ',this.checked?1:0)">×Q</label>
-       รวม:${csel(s,si,'tot',c.tot)} Qty:${csel(s,si,'qc',c.qc)}</div>`:''}</div>`;}).join('');
+       รวม:${csel(s,si,'tot',c.tot)} Qty:${csel(s,si,'qc',c.qc)} หน่วย:${csel(s,si,'uc',c.uc)}</div>`:''}</div>`;}).join('');
   modal(`<h4>Smart Import — นำเข้าใบเสนอราคา (แบบไหนก็ได้)</h4><div class="mbody" style="max-height:60vh;overflow:auto">
     <p class="mini" style="margin-bottom:10px">เลือก sheet + ตรวจ/แก้คอลัมน์ → ระบบคิดยอดให้ทันที เทียบยอดจริง (แก้ ×Q ถ้าค่าเป็นราคาต่อหน่วยต้องคูณจำนวน)</p>${rows}
     <div style="border-top:2px solid var(--line);margin-top:6px;padding-top:12px;display:flex;flex-direction:column;gap:8px">
@@ -655,7 +656,7 @@ let quoImportedDB=null;
 function quoLoadDB(){try{const d=JSON.parse(localStorage.getItem('seus_quotation_db_v2')||'null');if(d&&d.quotations)return d;}catch(e){}return quoImportedDB;}
 function quoCalc(q){let mat=0,lab=0;(q.lines||[]).forEach(l=>{if(l.kind!=='item')return;mat+=(+l.qty||0)*(+l.matPrice||0);lab+=(+l.qty||0)*(+l.labPrice||0);});const oh=+q.overhead||0;const matOH=mat*oh/100,labOH=lab*oh/100;const sub=mat+lab+matOH+labOH-(+q.discount||0);const vat=sub*(+q.vat||0)/100;return {mat:mat,lab:lab,matOH:matOH,labOH:labOH,sub:sub,vat:vat,total:sub+vat};}
 function quoToProject(q){const cats={};CBS.forEach(c=>cats[c[1]]={id:uid(),grp:c[0],no:c[1],name:c[2],type:c[3],items:[]});let need=0,n=0;
-  (q.lines||[]).forEach(l=>{if(l.kind!=='item')return;const mat=(+l.qty||0)*(+l.matPrice||0),lab=(+l.qty||0)*(+l.labPrice||0);if(mat<=0&&lab<=0)return;let code=autoMapCode((l.desc||'')+' '+(l.code||''));const review=!code;if(!code)code='OHC';if(!cats[code])code='OHC';cats[code].items.push({id:uid(),name:(l.desc||l.code||'Item'),budget:Math.round(mat+lab),lab:Math.round(lab),actual:0,review:review});n++;if(review)need++;});
+  (q.lines||[]).forEach(l=>{if(l.kind!=='item')return;const mat=(+l.qty||0)*(+l.matPrice||0),lab=(+l.qty||0)*(+l.labPrice||0);if(mat<=0&&lab<=0)return;let code=autoMapCode((l.desc||'')+' '+(l.code||''));const review=!code;if(!code)code='OHC';if(!cats[code])code='OHC';cats[code].items.push({id:uid(),name:(l.desc||l.code||'Item'),qty:(+l.qty||1),unit:l.unit||'',matPrice:(+l.matPrice||0),labPrice:(+l.labPrice||0),budget:Math.round(mat+lab),lab:Math.round(lab),actual:0,review:review});n++;if(review)need++;});
   const c=quoCalc(q);const oh=Math.round((c.matOH||0)+(c.labOH||0)-(+q.discount||0));if(oh>0)cats['OHC'].items.push({id:uid(),name:'Overhead & Profit',budget:oh,lab:0,actual:0,review:false});
   const p={id:uid(),name:q.project||q.docNo||'Quotation',code:nextProjectCode(),client:q.clientName||'',currency:'THB',cats:CBS.map(x=>cats[x[1]]),cashflow:null};
   return {p:p,need:need,n:n,total:Math.round(c.total)};}
@@ -1233,7 +1234,7 @@ const app={
   wizImport(){const inc=wizSheets.filter(s=>s.include);if(!inc.length){toast('ยังไม่ได้เลือก sheet');return;}
     const cats={};CBS.forEach(c=>cats[c[1]]={id:uid(),grp:c[0],no:c[1],name:c[2],type:c[3],items:[]});
     let imported=0,need=0,n=0;
-    inc.forEach(s=>s.lines.forEach(ln=>{let code=autoMapCode((ln.section?ln.section+' ':'')+ln.desc);const review=!code;if(!code)code='OHC';if(!cats[code])code='OHC';cats[code].items.push({id:uid(),name:ln.desc,budget:ln.budget,lab:(ln.lab>0?ln.lab:(ln.mat>0?0:undefined)),actual:0,review:review});imported+=ln.budget;n++;if(review)need++;}));
+    inc.forEach(s=>s.lines.forEach(ln=>{let code=autoMapCode((ln.section?ln.section+' ':'')+ln.desc);const review=!code;if(!code)code='OHC';if(!cats[code])code='OHC';const q=(+ln.qty||1);let mp,lp;if((ln.mat||0)>0||(ln.lab||0)>0){mp=ln.matQ?(+ln.matVal||0):((+ln.matVal||0)/q);lp=ln.labQ?(+ln.labVal||0):((+ln.labVal||0)/q);}else{mp=(+ln.budget||0);lp=0;}const it={id:uid(),name:ln.desc,qty:q,unit:ln.unit||'',matPrice:mp,labPrice:lp,budget:Math.round(mp*q+lp*q),lab:Math.round(lp*q),actual:0,review:review};cats[code].items.push(it);imported+=it.budget;n++;if(review)need++;}));
     if(wizAdj&&wizSrc>0&&Math.abs(wizSrc-imported)>=1){const d=Math.round(wizSrc-imported);cats['OHC'].items.push({id:uid(),name:'ปรับยอดให้ตรงใบเสนอราคา (Adjustment)',budget:d,lab:0,actual:0,review:true});imported+=d;n++;}
     const meta=wizMeta||{};wizMeta=null;
     if(meta.replace){const p=proj();p.cats.forEach(c=>{const nc=cats[c.no];if(nc)c.items=nc.items;});expanded={};p.cats.forEach(c=>{if(c.items.length)expanded[c.id]=true;});save();app.closeModal();nav('cost');toast('แทนที่ CBS · '+n+' รายการ · '+cur()+' '+fmt(Math.round(imported))+(need?(' · '+need+' ต้องตรวจ ⚠'):''));return;}
