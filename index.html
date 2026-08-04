@@ -815,7 +815,7 @@ const PHKEYS=['eng','proc','inst','comm'];
 const LABOR_FRAC={ENG:0.807,DOC:0.807,MEL:0,MIN:0,BLK:0,STF:0.954,SUB:0.954,TCF:0,TOL:0,RNT:0,TRN:0,SAF:0.30,ENV:0.30,UTL:0,OHC:0};
 function labFrac(it,cno){let lp;if(it.labPct!=null&&it.labPct!=='')lp=+it.labPct;else if(it.lab!=null&&(+it.budget||0)>0)lp=(+it.lab||0)/(+it.budget)*100;else lp=(LABOR_FRAC[cno]!=null?LABOR_FRAC[cno]:0)*100;return Math.max(0,Math.min(100,lp))/100;}
 function defaultPlan(){const d=new Date();return {startY:d.getFullYear(),startM:d.getMonth(),dataDate:0,payLag:1,unit:'month',phases:{eng:{s:0,dur:3},proc:{s:2,dur:5},inst:{s:5,dur:9},comm:{s:13,dur:3}}};}
-function ensurePlan(p){if(!p.plan)p.plan=defaultPlan();if(!p.plan.phases)p.plan.phases=defaultPlan().phases;['eng','proc','inst','comm'].forEach(k=>{if(!p.plan.phases[k])p.plan.phases[k]={s:0,dur:3};});if(p.plan.payLag==null)p.plan.payLag=1;if(!p.plan.unit)p.plan.unit='month';if(!p.claims)p.claims=[];return p.plan;}
+function ensurePlan(p){if(!p.plan)p.plan=defaultPlan();if(!p.plan.phases)p.plan.phases=defaultPlan().phases;['eng','proc','inst','comm'].forEach(k=>{if(!p.plan.phases[k])p.plan.phases[k]={s:0,dur:3};});if(p.plan.payLag==null)p.plan.payLag=1;if(!p.plan.unit)p.plan.unit='month';if(p.plan.matCostPct==null)p.plan.matCostPct=85;if(p.plan.labCostPct==null)p.plan.labCostPct=85;if(!p.claims)p.claims=[];return p.plan;}
 function planEnd(pl){let e=1;['eng','proc','inst','comm'].forEach(k=>{const ph=pl.phases[k];if(ph)e=Math.max(e,ph.s+ph.dur);});return e;}
 const UNIT_DAYS={day:1,week:7,month:30};
 function planUnit(pl){return pl&&pl.unit?pl.unit:'month';}
@@ -865,34 +865,31 @@ function pkgOf(name){var d=_l4lc(name);var H=function(){for(var i=0;i<arguments.
  if(H('panel','mcc','switchgear','distribution board',' db ','transformer','vsd','vfd','ups','battery','rack','cabinet','dcs','plc'))return 'Panel / MCC / Equipment';
  return 'Other Materials';}
 
+function _fi(p,id){for(var i=0;i<p.cats.length;i++){var c=p.cats[i];for(var j=0;j<c.items.length;j++)if(c.items[j].id===id)return c.items[j];}return null;}
 function genL4(p){var pl=ensurePlan(p);var end=Math.max(1,planEnd(pl))-1;
  var cl=function(x){return Math.max(0,Math.min(end,Math.round(x)));};
  var W=function(k,def){var w=pl.phases[k]||def||{s:0,dur:2};return {s:cl(w.s),e:cl(w.s+Math.max(1,w.dur)-1)};};
  var ew=W('eng'),pw=W('proc'),iw=W('inst'),cw=W('comm');
- var tot=costTotal(p)||1;
- var engPool=0,docPool=0,commPool=0,pkgMat={},pkgLab={},instLab=0;
+ var IND={TCF:1,TOL:1,RNT:1,TRN:1,UTL:1,OHC:1};
+ var stageOfPkg={'Steel Support & Hanger':'sup','Cable Tray & Accessories':'tray','Conduit & Accessories':'cond','Field Instruments':'fi','Junction Boxes & Accessories':'fi','Power Cable':'pullP','Instrument Cable':'pullI','Cable Gland & Accessories':'termP','Lighting & Small Power':'light','Grounding Material':'gnd','Panel / MCC / Equipment':'panel','Other Materials':'gen'};
+ var engPool=0,docPool=0,commPool=0,procPool=0,instPool=0;var procMembers={},stageMembers={};
  p.cats.forEach(function(c){c.items.forEach(function(it){if(isMargin(it))return;var m=Math.max(0,budMat(it)),l=Math.max(0,budLab(it));if(m<=0&&l<=0)return;var nm=it.name||c.name;
-   if(c.no==='ENG'){engPool+=m+l;return;} if(c.no==='DOC'){docPool+=m+l;return;}
-   if(m>0){var g=pkgOf(nm);pkgMat[g]=(pkgMat[g]||0)+m;}
-   if(c.no==='SUB'){commPool+=l;return;}
-   if(l>0){instLab+=l;if(c.no==='STF'){pkgLab.__STF=(pkgLab.__STF||0)+l;}else{var g2=pkgOf(nm);pkgLab[g2]=(pkgLab[g2]||0)+l;}}
+   if(c.no==='ENG'){engPool+=m+l;return;} if(c.no==='DOC'){docPool+=m+l;return;} if(c.no==='SUB'){commPool+=l;return;} if(IND[c.no])return;
+   if(m>0){var g=pkgOf(nm);(procMembers[g]=procMembers[g]||[]).push({id:it.id,val:m});procPool+=m;}
+   if(l>0){var g2=pkgOf(nm);var st=(c.no==='STF')?'gen':(stageOfPkg[g2]||'gen');(stageMembers[st]=stageMembers[st]||[]).push({id:it.id,val:l});instPool+=l;}
  });});
- var testReserve=Math.round(instLab*0.06);commPool+=testReserve;var instPool=Math.max(0,instLab-testReserve);
- var acts=[];var push=function(phase,group,name,val,ms,me){acts.push({id:uid(),phase:phase,group:group,name:name,val:Math.round(val||0),ms:cl(ms),me:Math.max(cl(ms),cl(me)),actualPct:0});};
+ var tot=costTotal(p)||1;var acts=[];
+ var push=function(phase,group,name,val,ms,me,items,dim){var a={id:uid(),phase:phase,group:group,name:name,val:Math.round(val||0),ms:cl(ms),me:Math.max(cl(ms),cl(me)),actualPct:0};if(items){a.items=items;a.dim=dim;}acts.push(a);};
  var laySeq=function(n,s,e,ov){var span=Math.max(1,e-s+1);var each=Math.max(1,Math.round(span/n*(1+(ov||0))));var step=(n>1)?Math.max(1,Math.round((span-each)/(n-1))):0;var o=[];for(var i=0;i<n;i++){var ms=Math.min(e,s+i*step);o.push([ms,Math.min(e,ms+each-1)]);}return o;};
 
- /* Engineering deliverables */
  var eng=[['Material approval & Specification (all)',0.18],['Location / Layout plan',0.10],['Single line diagram (SLD)',0.12],['Schematic & Wiring / Connection diagram',0.16],['Cable schedule & routing',0.12],['Loop diagram (instrument)',0.12],['Termination / Hook-up drawing',0.12],['As-built drawing',0.08]];
  var eL=laySeq(eng.length,ew.s,ew.e,0.4);eng.forEach(function(x,i){push('eng','Engineering Deliverables',x[0],engPool*x[1],eL[i][0],eL[i][1]);});
 
- /* Procurement packages */
  var pOrder=['Panel / MCC / Equipment','Power Cable','Instrument Cable','Field Instruments','Steel Support & Hanger','Cable Tray & Accessories','Conduit & Accessories','Cable Gland & Accessories','Junction Boxes & Accessories','Lighting & Small Power','Grounding Material','Other Materials'];
  var longLead={'Panel / MCC / Equipment':1,'Power Cable':1,'Instrument Cable':1,'Field Instruments':1};
  var pspan=Math.max(1,pw.e-pw.s+1);
- pOrder.forEach(function(g){var v=pkgMat[g]||0;if(v<=0)return;var ll=longLead[g];var ms=ll?pw.s:Math.min(pw.e,pw.s+Math.floor(pspan*0.25));var me=Math.min(pw.e,ms+Math.max(1,Math.round(pspan*(ll?0.85:0.6)))-1);push('proc','Procurement Packages',g,v,ms,me);});
+ pOrder.forEach(function(g){var mem=procMembers[g];if(!mem||!mem.length)return;var v=mem.reduce(function(a,m){return a+m.val;},0);var ll=longLead[g];var ms=ll?pw.s:Math.min(pw.e,pw.s+Math.floor(pspan*0.25));var me=Math.min(pw.e,ms+Math.max(1,Math.round(pspan*(ll?0.85:0.6)))-1);push('proc','Procurement Packages',g,v,ms,me,mem,'mat');});
 
- /* Installation — dependency-sequenced (CPM) */
- var gl=function(n){return pkgLab[n]||0;};var PL=gl('Power Cable'),IL=gl('Instrument Cable'),GL=gl('Cable Gland & Accessories');
  var stages=[
   {k:'scaf',name:'Scaffolding & access setup',group:'Site Preparation',deps:[]},
   {k:'sup',name:'Support & hanger installation',group:'Support & Routing',deps:['scaf']},
@@ -905,22 +902,19 @@ function genL4(p){var pl=ensurePlan(p);var end=Math.max(1,planEnd(pl))-1;
   {k:'gnd',name:'Grounding & bonding',group:'Termination',deps:['sup']},
   {k:'panel',name:'Panel / MCC installation & connection',group:'Equipment',deps:['sup']},
   {k:'termP',name:'Glanding & termination — power',group:'Termination',deps:['pullP','panel']},
-  {k:'termI',name:'Glanding & termination — instrument',group:'Termination',deps:['pullI','fi']}
+  {k:'termI',name:'Glanding & termination — instrument',group:'Termination',deps:['pullI','fi']},
+  {k:'gen',name:'Site supervision & general labour',group:'Site / General',deps:['sup']}
  ];
- var slab={scaf:0,sup:gl('Steel Support & Hanger'),tray:gl('Cable Tray & Accessories'),cond:gl('Conduit & Accessories'),fi:gl('Field Instruments')+gl('Junction Boxes & Accessories'),pullP:0.6*PL,pullI:0.6*IL,light:gl('Lighting & Small Power'),gnd:gl('Grounding Material'),panel:gl('Panel / MCC / Equipment'),termP:0.4*PL+0.5*GL,termI:0.4*IL+0.5*GL};
- var asum=0;for(var kk in slab)asum+=slab[kk];var extra=instPool-asum;
- if(asum>0){for(var k2 in slab)slab[k2]+=extra*slab[k2]/asum;}else if(instPool>0){slab.sup=instPool*0.22;slab.tray=instPool*0.18;slab.pullP=instPool*0.22;slab.termP=instPool*0.14;slab.fi=instPool*0.14;slab.pullI=instPool*0.10;}
+ var slab={};stages.forEach(function(s){slab[s.k]=(stageMembers[s.k]||[]).reduce(function(a,m){return a+m.val;},0);});
  var dw={};stages.forEach(function(s){dw[s.k]=Math.max(1,Math.round((slab[s.k]||0)/(instPool||1)*24));});
  var ES={},F={};var calc=function(k){if(F[k]!=null)return;var st=null;stages.forEach(function(s){if(s.k===k)st=s;});var e=0;st.deps.forEach(function(d){calc(d);e=Math.max(e,F[d]);});ES[k]=e;F[k]=e+dw[k];};
  stages.forEach(function(s){calc(s.k);});var P=0;stages.forEach(function(s){P=Math.max(P,F[s.k]);});P=P||1;
  var ispan=Math.max(1,iw.e-iw.s+1);var core={sup:1,tray:1,pullP:1,termP:1,pullI:1,termI:1};
- stages.forEach(function(s){if((slab[s.k]||0)<=0&&!core[s.k])return;var ms=iw.s+Math.floor(ES[s.k]/P*ispan);var me=iw.s+Math.ceil(F[s.k]/P*ispan)-1;push('inst',s.group,s.name,slab[s.k]||0,ms,me);});
+ stages.forEach(function(s){var mem=stageMembers[s.k]||[];if((slab[s.k]||0)<=0&&!core[s.k])return;var ms=iw.s+Math.floor(ES[s.k]/P*ispan);var me=iw.s+Math.ceil(F[s.k]/P*ispan)-1;push('inst',s.group,s.name,slab[s.k]||0,ms,me,mem,'lab');});
 
- /* Testing & Commissioning */
  var comm=[['Pre-commissioning & continuity test',0.30],['Loop check & function test',0.40],['Commissioning & punch list clearance',0.20],['System handover & final documentation',0.10]];
  var cL=laySeq(comm.length,cw.s,cw.e,0.15);comm.forEach(function(x,i){push('comm','Testing & Commissioning',x[0],commPool*x[1],cL[i][0],cL[i][1]);});
 
- /* Document / QA-QC & Reports */
  push('doc','QA/QC & Inspection','Material receiving inspection',docPool*0.14,pw.s,iw.e);
  push('doc','QA/QC & Inspection','RFI & inspection request (WIR)',docPool*0.12,iw.s,iw.e);
  push('doc','QA/QC & Inspection','Work inspection per ITP',docPool*0.20,iw.s,cw.e);
@@ -934,18 +928,22 @@ function genL4(p){var pl=ensurePlan(p);var end=Math.max(1,planEnd(pl))-1;
 function buildSchedFromL4(p){var pl=ensurePlan(p);var months=planMonths(pl);var dur=months.length;var end=dur-1;var tot=costTotal(p)||1;
  var acts=(p.l4.acts||[]).map(function(a){var ms=Math.max(0,Math.min(end,a.ms|0));var me=Math.max(ms,Math.min(end,a.me|0));return {id:a.id,taskId:null,catNo:'',catName:a.group,phase:a.phase,name:a.name,itemName:a.name,group:a.group,weight:(+a.val||0)/tot*100,budget:+a.val||0,ms:ms,me:me,actualPct:+a.actualPct||0,ref:a};});
  return {months:months,acts:acts,dur:dur,tot:tot};}
-function l4SyncClaims(p){if(!(p.l4&&p.l4.gen))return;var sc=buildSchedFromL4(p);var dd=Math.min(p.plan.dataDate||0,sc.dur-1);
+
+function l4SyncClaims(p){if(!(p.l4&&p.l4.gen))return;var pl=p.plan;var mcp=(pl.matCostPct!=null?+pl.matCostPct:85)/100;var lcp=(pl.labCostPct!=null?+pl.labCostPct:85)/100;
+ (p.l4.acts||[]).forEach(function(a){if(a.items&&a.items.length){var tv=0,ev=0;a.items.forEach(function(m){var it=_fi(p,m.id);var d=it?(a.dim==='mat'?(+it.matDone||0):(+it.labDone||0)):0;tv+=m.val;ev+=m.val*Math.min(100,d)/100;});a.actualPct=tv?ev/tv*100:0;}});
+ var sc=buildSchedFromL4(p);var dd=Math.min(pl.dataDate||0,sc.dur-1);
  var phW={},phE={};sc.acts.forEach(function(a){phW[a.phase]=(phW[a.phase]||0)+a.weight;phE[a.phase]=(phE[a.phase]||0)+a.weight*Math.min(100,+a.actualPct||0)/100;});
  var phProg=function(ph){return phW[ph]?phE[ph]/phW[ph]*100:0;};
- var pkgProg={};sc.acts.forEach(function(a){if(a.phase==='proc')pkgProg[a.name]=Math.min(100,+a.actualPct||0);});
  var IND={TCF:1,TOL:1,RNT:1,TRN:1,UTL:1,OHC:1};var totalP=sc.dur||1;var timePct=Math.min(100,(dd+1)/totalP*100);
- var ip=phProg('inst'),ep=phProg('eng'),dp=phProg('doc'),cp=phProg('comm'),pp=phProg('proc');
- p.cats.forEach(function(c){c.items.forEach(function(it){if(isMargin(it))return;var b=+it.budget||0;if(b<=0){it.actualPct=0;return;}
-  var mat=Math.max(0,budMat(it)),lab=Math.max(0,budLab(it));var claim=0;
-  if(c.no==='ENG')claim=b*ep/100;else if(c.no==='DOC')claim=b*dp/100;else if(c.no==='SUB')claim=b*cp/100;else if(IND[c.no])claim=b*timePct/100;
-  else{var pk=pkgOf(it.name);var pkp=(pkgProg[pk]!=null?pkgProg[pk]:pp);claim=mat*pkp/100+lab*ip/100;}
-  it.actualPct=Math.max(0,Math.min(100,b>0?claim/b*100:0));
+ var ep=phProg('eng'),dp=phProg('doc'),cp=phProg('comm');
+ p.cats.forEach(function(c){c.items.forEach(function(it){if(isMargin(it))return;var b=+it.budget||0;if(b<=0){it.actualPct=0;it.actMat=0;it.actLab=0;return;}
+  var mat=Math.max(0,budMat(it)),lab=Math.max(0,budLab(it));
+  if(c.no==='ENG'||c.no==='DOC'||c.no==='SUB'){var pr=(c.no==='ENG'?ep:(c.no==='DOC'?dp:cp))/100;it.actualPct=pr*100;it.actMat=0;it.actLab=Math.round(b*lcp*pr);it.matDone=0;it.labDone=Math.round(pr*100);return;}
+  if(IND[c.no]){var pr2=timePct/100;it.actualPct=pr2*100;it.actMat=Math.round(b*pr2);it.actLab=0;it.matDone=0;it.labDone=Math.round(pr2*100);return;}
+  var md=(+it.matDone||0)/100,ld=(+it.labDone||0)/100;var claim=mat*md+lab*ld;
+  it.actualPct=Math.max(0,Math.min(100,b>0?claim/b*100:0));it.actMat=Math.round(mat*mcp*md);it.actLab=Math.round(lab*lcp*ld);
  });});}
+
 function l4Pools(p){var engPool=0,docPool=0,commPool=0,procPool=0,instLab=0;
  p.cats.forEach(function(c){c.items.forEach(function(it){if(isMargin(it))return;var m=Math.max(0,budMat(it)),l=Math.max(0,budLab(it));if(m<=0&&l<=0)return;
   if(c.no==='ENG'){engPool+=m+l;return;}if(c.no==='DOC'){docPool+=m+l;return;}
@@ -1140,12 +1138,12 @@ function drawSchedule(){
      <div style="position:absolute;left:${left}px;top:10px;width:${w}px;height:7px;background:${col};opacity:.35;border-radius:3px"></div>
      <div style="position:absolute;left:${left}px;top:10px;width:${(w*Math.min(100,act)/100).toFixed(1)}px;height:7px;background:${col};border-radius:3px"></div>
      <div style="position:absolute;left:${left-1}px;top:8px;width:4px;height:12px;background:${col}"></div><div style="position:absolute;left:${(left+w-3)}px;top:8px;width:4px;height:12px;background:${col}"></div></div>`;};
-  const leftLeaf=(name,indent,ms,dur1,pdt,act,msCb,durCb,actCb)=>`<div style="position:sticky;left:0;z-index:2;width:${LW}px;flex:0 0 ${LW}px;background:#fff;border-right:1px solid var(--line);display:flex;align-items:center">
+  const leftLeaf=(name,indent,ms,dur1,pdt,act,msCb,durCb,actCb,actBtn)=>`<div style="position:sticky;left:0;z-index:2;width:${LW}px;flex:0 0 ${LW}px;background:#fff;border-right:1px solid var(--line);display:flex;align-items:center">
        <div title="${(''+name).replace(/<[^>]*>/g,'').replace(/"/g,'')}" style="flex:1;padding-left:${indent}px;font-size:12px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;padding-right:6px">${name}</div>
        <div style="width:66px;text-align:center">${msel(ms,msCb)}</div>
-       <div style="width:40px;text-align:center"><input value="${dur1}" onchange="${durCb}" style="width:34px;text-align:center;border:1px solid var(--line);border-radius:5px;font-size:11px"></div>
+       <div style="width:40px;text-align:center"><input value="${(typeof dur1==='number'&&dur1%1)?dur1.toFixed(1):dur1}" onchange="${durCb}" style="width:34px;text-align:center;border:1px solid var(--line);border-radius:5px;font-size:11px"></div>
        <div style="width:44px;text-align:right;font-size:11px;color:#64748b;padding-right:4px">${pdt.toFixed(0)}%</div>
-       <div style="width:50px;text-align:right;padding-right:4px"><input value="${act||''}" placeholder="0" onchange="${actCb}" style="width:40px;text-align:right;border:1px solid var(--line);border-radius:5px;font-size:11px"></div></div>`;
+       <div style="width:50px;text-align:right;padding-right:4px">${actBtn?`<button onclick="${actBtn}" title="อัปเดตรายย่อย" style="width:44px;text-align:right;border:1px solid #c7d2fe;background:#eef2ff;color:#4f46e5;border-radius:5px;font-size:11px;font-weight:700;cursor:pointer;padding:2px 4px">${(+act||0).toFixed(0)}%</button>`:`<input value="${act||''}" placeholder="0" onchange="${actCb}" style="width:40px;text-align:right;border:1px solid var(--line);border-radius:5px;font-size:11px">`}</div></div>`;
   let head=`<div style="display:flex;position:sticky;top:0;z-index:5;background:var(--card);border-bottom:1px solid var(--line)">
      <div style="position:sticky;left:0;z-index:6;width:${LW}px;flex:0 0 ${LW}px;background:var(--card);border-right:1px solid var(--line);display:flex;font-size:10px;font-weight:700;color:#64748b;text-transform:uppercase;letter-spacing:.03em">
        <div style="flex:1;padding:7px 10px">Activity</div><div style="width:66px;padding:7px 2px;text-align:center">Start</div><div style="width:40px;padding:7px 2px;text-align:center">Dur</div><div style="width:44px;padding:7px 2px;text-align:right">Plan%</div><div style="width:50px;padding:7px 4px;text-align:right">Act%</div></div>
@@ -1169,7 +1167,7 @@ function drawSchedule(){
         R+=`<div style="display:flex;height:${RH}px;border-bottom:1px solid var(--soft)"><div style="position:sticky;left:0;z-index:2;width:${LW}px;flex:0 0 ${LW}px;background:#fafbfc;border-right:1px solid var(--line);display:flex;align-items:center">${gnm}</div>${barGroup(gms,gme,gact,col)}</div>`;}
       if(!gopen)return;
       ga.forEach(a=>{const pdt=pdtOf(a);const indent=showSub?36:20;
-        R+=`<div style="display:flex;height:${RH}px;border-bottom:1px solid var(--soft)">${leftLeaf(esc(a.name),indent,a.ms,a.me-a.ms+1,pdt,(+a.actualPct||0),`app.setActF('${a.id}','','ms',this.value)`,`app.setActF('${a.id}','','dur',this.value)`,`app.setActual('${a.id}','',this.value)`)}${barLeaf(a.ms,a.me,+a.actualPct||0,pdt,col)}</div>`;});
+        const _hi=a.ref&&a.ref.items&&a.ref.items.length;R+=`<div style="display:flex;height:${RH}px;border-bottom:1px solid var(--soft)">${leftLeaf(esc(a.name)+(_hi?` <span style='color:#94a3b8;font-size:10px'>(${a.ref.items.length})</span>`:''),indent,a.ms,a.me-a.ms+1,pdt,(+a.actualPct||0),`app.setActF('${a.id}','','ms',this.value)`,`app.setActF('${a.id}','','dur',this.value)`,`app.setActual('${a.id}','',this.value)`,_hi?`app.l4ItemPopup('${a.id}')`:'')}${barLeaf(a.ms,a.me,+a.actualPct||0,pdt,col)}</div>`;});
     });
   });} else {
   ['eng','proc','inst','comm','ind'].forEach((ph,pi)=>{const list=sc.acts.filter(a=>a.phase===ph);if(!list.length)return;
@@ -1395,20 +1393,36 @@ const app={
     if(pl.dataDate)pl.dataDate=Math.round(pl.dataDate*rd);if(pl.payLag!=null)pl.payLag=Math.max(0,Math.round(pl.payLag*rd));
     if(p.l4&&p.l4.gen){genL4(p);}else{p.cats.forEach(c=>c.items.forEach(it=>{if(it.ms!=null)it.ms=Math.round(it.ms*rd);if(it.me!=null)it.me=Math.round(it.me*rd);(it.tasks||[]).forEach(t=>{if(t.ms!=null)t.ms=Math.round(t.ms*rd);if(t.dur!=null)t.dur=Math.max(0.5,t.dur*rd);});}));}
     save();renderSchedule(document.getElementById('content'));toast('เปลี่ยนหน่วยเป็น '+({month:'เดือน',week:'สัปดาห์',day:'วัน'}[u]));},
+  l4ItemPopup(actId){const p=proj();const a=((p.l4&&p.l4.acts)||[]).find(x=>x.id===actId);if(!a||!a.items)return;const dim=a.dim;
+    const rows=a.items.map(m=>{const it=findItem(m.id);if(!it)return '';const done=dim==='mat'?(+it.matDone||0):(+it.labDone||0);return `<tr style="border-bottom:1px solid var(--soft)"><td style="padding:4px 6px">${esc(it.name)}</td><td style="text-align:right;padding:4px 6px;color:#64748b">${cur()} ${fmt(Math.round(m.val))}</td><td style="text-align:right;padding:4px 6px"><input type="number" min="0" max="100" value="${done}" onchange="app.setItemDone('${it.id}','${dim}','${actId}',this.value)" style="width:56px;text-align:right;border:1px solid var(--line);border-radius:5px;padding:2px"> %</td></tr>`;}).join('');
+    const tv=a.items.reduce((s,m)=>s+m.val,0);
+    modal(`<h4>${esc(a.name)}</h4><div class="mbody" style="max-height:60vh;overflow:auto">
+      <p class="mini">${dim==='mat'?('กรอก % ที่ <b>ซื้อ/รับของ</b> แล้วต่อรายการ — ต้นทุนค่าของคิด '+(p.plan.matCostPct||85)+'% ของ Budget'):('กรอก % ที่ <b>ติดตั้ง</b> แล้วต่อรายการ — ต้นทุนค่าแรงคิด '+(p.plan.labCostPct||85)+'% ของ Budget')} · ระบบรวมเป็นความคืบหน้ากลุ่ม แล้วส่งเข้า CBS ทีละรายการ</p>
+      <div style="margin:6px 0"><button class="btn" onclick="app.setActAllDone('${actId}',100)">ตั้งทั้งหมด 100%</button> <button class="btn" onclick="app.setActAllDone('${actId}',0)">ล้าง</button> <span class="mini" style="margin-left:8px">มูลค่ากลุ่ม ${cur()} ${fmt(Math.round(tv))} · เสร็จรวม <b>${(+a.actualPct||0).toFixed(0)}%</b></span></div>
+      <table style="width:100%;font-size:12px;border-collapse:collapse"><thead><tr style="background:#f1f5f9"><th style="text-align:left;padding:5px 6px">รายการ</th><th style="text-align:right;padding:5px 6px">มูลค่า</th><th style="text-align:right;padding:5px 6px">% เสร็จ</th></tr></thead><tbody>${rows}</tbody></table>
+      </div><div class="mfoot"><button class="btn primary" onclick="app.l4PopupDone()">เสร็จ</button></div>`);},
+  setItemDone(id,dim,actId,v){const p=proj();const it=findItem(id);if(!it)return;const val=Math.max(0,Math.min(100,parseNum(v)));if(dim==='mat')it.matDone=val;else it.labDone=val;l4SyncClaims(p);save();app.l4ItemPopup(actId);},
+  setActAllDone(actId,val){const p=proj();const a=((p.l4&&p.l4.acts)||[]).find(x=>x.id===actId);if(!a||!a.items)return;a.items.forEach(m=>{const it=findItem(m.id);if(it){if(a.dim==='mat')it.matDone=val;else it.labDone=val;}});l4SyncClaims(p);save();app.l4ItemPopup(actId);},
+  l4PopupDone(){app.closeModal();renderSchedule(document.getElementById('content'));},
   genWizard(){const p=proj();const pl=ensurePlan(p);const pool=l4Pools(p);const U={month:'เดือน',week:'สัปดาห์',day:'วัน'};const u=planUnit(pl);
-    const pct=v=>(v/pool.tot*100).toFixed(1)+'%';const PH=[['eng','Engineering & Design',pool.eng],['proc','Procurement',pool.proc],['inst','Installation',pool.inst],['comm','Testing & Commissioning',pool.comm]];
-    modal(`<h4>สร้างแผน L4 อัตโนมัติ (AI)</h4><div class="mbody wz">
-      <p class="mini">AI ถ่วงน้ำหนักแต่ละกิจกรรมตาม<b>มูลค่า</b>ให้แล้ว (ค่าของ→ซื้อ · ค่าแรง→ติดตั้ง) — กำหนดแค่หน่วยเวลา วันเริ่ม และช่วงเวลาแต่ละหัวข้อ</p>
-      <div class="field row" style="margin:0"><div><label>หน่วยเวลา</label><select id="gw_unit"><option value="month" ${u==='month'?'selected':''}>เดือน</option><option value="week" ${u==='week'?'selected':''}>สัปดาห์</option><option value="day" ${u==='day'?'selected':''}>วัน</option></select></div><div><label>วันเริ่มโครงการ</label><input id="gw_start" type="date" value="${_isoOf(planStartDate(pl))}"></div></div>
-      ${PH.map(x=>`<div class="field row" style="margin:8px 0 0"><div><label>${x[1]} <span style='color:#4f46e5;font-weight:700'>${pct(x[2])}</span></label><input id="gw_S_${x[0]}" type="number" min="1" step="any" value="${(pl.phases[x[0]].s|0)+1}" placeholder="เริ่ม (ลำดับ)"></div><div><label>ระยะเวลา (${U[u]})</label><input id="gw_D_${x[0]}" type="number" min="0.5" step="any" value="${pl.phases[x[0]].dur}"></div></div>`).join('')}
+    const pct=v=>(v/pool.tot*100).toFixed(1)+'%';const isoAt=idx=>_isoOf(periodDate(pl,idx));
+    const PH=[['eng','Engineering & Design',pool.eng],['proc','Procurement',pool.proc],['inst','Installation',pool.inst],['comm','Testing & Commissioning',pool.comm]];
+    const rowsH=PH.map(x=>{const s=pl.phases[x[0]].s|0;const e=(pl.phases[x[0]].s+Math.max(1,pl.phases[x[0]].dur)-1)|0;return `<tr style="border-bottom:1px solid var(--soft)"><td style="padding:5px 6px;font-weight:600">${x[1]}<div style='color:#4f46e5;font-size:10px;font-weight:700'>${pct(x[2])}</div></td><td style="padding:5px 4px"><input type="date" id="gw_s_${x[0]}" value="${isoAt(s)}" oninput="app.gwDur()" style="font-size:11px"></td><td style="padding:5px 4px"><input type="date" id="gw_e_${x[0]}" value="${isoAt(e)}" oninput="app.gwDur()" style="font-size:11px"></td><td style="padding:5px 6px;text-align:right;font-size:12px;color:#334155" id="gw_dur_${x[0]}">–</td></tr>`;}).join('');
+    modal(`<h4>สร้างแผน L4 (AI) — ตารางวันเริ่ม/วันจบ</h4><div class="mbody" style="max-height:66vh;overflow:auto">
+      <p class="mini">AI ถ่วงน้ำหนักตาม<b>มูลค่า</b>ให้แล้ว (ค่าของ→ซื้อ · ค่าแรง→ติดตั้ง) — กรอกวันเริ่ม/วันจบแต่ละหัวข้อ ระบบคำนวณระยะเวลาให้เอง แล้วสร้างกราฟ</p>
+      <div class="field row" style="margin:0 0 8px"><div><label>หน่วยเวลา</label><select id="gw_unit" onchange="app.gwDur()"><option value="month" ${u==='month'?'selected':''}>เดือน</option><option value="week" ${u==='week'?'selected':''}>สัปดาห์</option><option value="day" ${u==='day'?'selected':''}>วัน</option></select></div><div><label>Payment lag (${U[u]})</label><input id="gw_lag" type="number" min="0" step="any" value="${pl.payLag||0}"></div></div>
+      <table style="width:100%;border-collapse:collapse;font-size:12px"><thead><tr style="background:#1f2a44;color:#fff"><th style="text-align:left;padding:6px">หัวข้อหลัก</th><th style="padding:6px">วันเริ่ม</th><th style="padding:6px">วันสิ้นสุด</th><th style="padding:6px">ระยะเวลา</th></tr></thead><tbody>${rowsH}</tbody></table>
       <p class="mini" style="margin-top:8px;color:#64748b">Document / QA-QC & Reports (${pct(pool.doc)}) กระจายครอบทั้งโครงการอัตโนมัติ</p>
-      <div class="field" style="margin-top:8px"><label>ระยะเวลาเก็บเงิน / Payment lag (${U[u]})</label><input id="gw_lag" type="number" min="0" step="any" value="${pl.payLag||0}"></div>
-     </div><div class="mfoot"><button class="btn" onclick="app.closeModal()">ยกเลิก</button><button class="btn primary" onclick="app.genWizardApply()">⚙️ สร้างแผน</button></div>`);},
-  genWizardApply(){const p=proj();const pl=ensurePlan(p);const u=document.getElementById('gw_unit').value;pl.unit=UNIT_DAYS[u]?u:'month';
-    const sd=document.getElementById('gw_start').value;if(sd){const d=new Date(sd);if(!isNaN(d)){pl.startISO=_isoOf(d);pl.startY=d.getFullYear();pl.startM=d.getMonth();}}
-    ['eng','proc','inst','comm'].forEach(k=>{const s=Math.max(0,(parseFloat(document.getElementById('gw_S_'+k).value)||1)-1);const dd=Math.max(0.5,parseFloat(document.getElementById('gw_D_'+k).value)||1);pl.phases[k]={s:s,dur:dd};});
-    pl.payLag=Math.max(0,parseFloat(document.getElementById('gw_lag').value)||0);
+      <div class="field row" style="margin-top:10px"><div><label>ต้นทุนค่าของ (% ของ Budget)</label><input id="gw_mcp" type="number" min="0" max="100" step="any" value="${pl.matCostPct!=null?pl.matCostPct:85}"></div><div><label>ต้นทุนค่าแรง (% ของ Budget)</label><input id="gw_lcp" type="number" min="0" max="100" step="any" value="${pl.labCostPct!=null?pl.labCostPct:85}"></div></div>
+     </div><div class="mfoot"><button class="btn" onclick="app.closeModal()">ยกเลิก</button><button class="btn primary" onclick="app.genWizardApply()">⚙️ สร้างแผน</button></div>`);setTimeout(()=>app.gwDur(),0);},
+  gwDur(){const u=document.getElementById('gw_unit').value;const ud=UNIT_DAYS[u]||30;const UL={month:'เดือน',week:'สัปดาห์',day:'วัน'}[u];['eng','proc','inst','comm'].forEach(k=>{const se=document.getElementById('gw_s_'+k),ee=document.getElementById('gw_e_'+k),de=document.getElementById('gw_dur_'+k);if(!se||!ee||!de)return;const s=new Date(se.value),e=new Date(ee.value);if(isNaN(s)||isNaN(e)){de.textContent='–';return;}const days=Math.round((e-s)/86400000);const n=Math.max(1,Math.round(days/ud)+1);de.textContent=n+' '+UL+(u!=='day'?(' ('+(days+1)+' วัน)'):'');});},
+  genWizardApply(){const p=proj();const pl=ensurePlan(p);const u=document.getElementById('gw_unit').value;pl.unit=UNIT_DAYS[u]?u:'month';const ud=UNIT_DAYS[pl.unit];
+    const S={},E={};let minS=null;['eng','proc','inst','comm'].forEach(k=>{const s=new Date(document.getElementById('gw_s_'+k).value),e=new Date(document.getElementById('gw_e_'+k).value);S[k]=isNaN(s)?null:s;E[k]=isNaN(e)?null:e;if(S[k]&&(minS===null||S[k]<minS))minS=S[k];});
+    if(!minS)minS=planStartDate(pl);pl.startISO=_isoOf(minS);pl.startY=minS.getFullYear();pl.startM=minS.getMonth();
+    ['eng','proc','inst','comm'].forEach(k=>{const s=S[k]||minS;const e=E[k]||s;const so=Math.max(0,Math.round((s-minS)/86400000/ud));const dur=Math.max(0.5,Math.round((e-s)/86400000/ud)+1);pl.phases[k]={s:so,dur:dur};});
+    pl.payLag=Math.max(0,parseFloat(document.getElementById('gw_lag').value)||0);pl.matCostPct=Math.max(0,Math.min(100,parseFloat(document.getElementById('gw_mcp').value)||85));pl.labCostPct=Math.max(0,Math.min(100,parseFloat(document.getElementById('gw_lcp').value)||85));
     genL4(p);save();expandedS={};app.closeModal();nav('schedule');toast('สร้างแผน L4 (AI ถ่วงน้ำหนักตามมูลค่า) แล้ว');},
+
   setActual(id,tid,v){const _p=proj();if(_p.l4&&_p.l4.gen){const a=(_p.l4.acts||[]).find(x=>x.id===id);if(a)a.actualPct=Math.max(0,Math.min(100,parseNum(v)));l4SyncClaims(_p);save();renderSchedule(document.getElementById('content'));return;}const it=findItem(id);if(!it)return;const val=Math.max(0,Math.min(100,parseNum(v)));if(tid){const t=(it.tasks||[]).find(x=>x.id===tid);if(t)t.actualPct=val;}else it.actualPct=val;save();renderSchedule(document.getElementById('content'));},
   setTaskField(id,tid,f,v){const it=findItem(id);if(!it||!it.tasks)return;const t=it.tasks.find(x=>x.id===tid);if(!t)return;if(f==='name')t.name=v;else if(f==='wt')t.wt=Math.max(0,parseNum(v));save();renderSchedule(document.getElementById('content'));},
   addTask(id){const _p=proj();if(_p.l4&&_p.l4.gen)return;const it=findItem(id);if(!it)return;const sc=buildSchedule(proj());const end=sc.dur-1;const s=(it.ms!=null?it.ms:0);const e=(it.me!=null?it.me:Math.min(s+2,end));const dur=Math.max(1,e-s+1);if(!it.tasks||!it.tasks.length){it.tasks=[{id:tid_(),name:it.name,wt:100,ms:s,dur:dur,actualPct:+it.actualPct||0}];}it.tasks.push({id:tid_(),name:'Task '+(it.tasks.length+1),wt:0,ms:s,dur:dur,actualPct:0});save();expandedS['it_'+id]=true;renderSchedule(document.getElementById('content'));},
