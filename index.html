@@ -755,7 +755,7 @@ const iF='<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-widt
 /* ===== CBS COST ===== */
 let expanded={};
 function renderCost(el){
-  const p=proj();
+  const p=proj();if(p.l4&&p.l4.gen)l4SyncClaims(p);
   let pM=0,pL=0,aM=0,aL=0,rc=0,cl=0;
   p.cats.forEach(c=>c.items.forEach(it=>{pM+=budMat(it);pL+=budLab(it);aM+=actMatOf(it,c.no);aL+=actLabOf(it,c.no);rc+=readyToClaim(it);cl+=itemClaimAmt(it);}));
   const selBar=(function(){const ids=Object.keys(cbsSel).filter(k=>cbsSel[k]);if(!ids.length)return '';const bs='border:none;background:rgba(255,255,255,.22);color:#fff;border-radius:6px;padding:4px 10px;cursor:pointer;font-weight:600';return `<div style="position:sticky;top:0;z-index:6;background:#4f46e5;color:#fff;border-radius:10px;padding:9px 14px;margin-bottom:8px;display:flex;align-items:center;gap:10px;flex-wrap:wrap"><b>เลือก ${ids.length} รายการ</b><button style="${bs}" onclick="app.moveSelUp()">▲ ขึ้น</button><button style="${bs}" onclick="app.moveSelDown()">▼ ลง</button><span style="font-size:12px">ย้ายไปหมวด:</span><select onchange="app.moveSelTo(this.value)" style="color:#111;border-radius:6px;padding:4px 6px;border:none"><option value="">— เลือก —</option>${p.cats.map(c=>`<option value="${c.no}">${c.no} · ${esc(c.name)}</option>`).join('')}</select><button style="${bs};margin-left:auto" onclick="app.clearSel()">ล้าง</button></div>`;})();
@@ -838,8 +838,8 @@ function matUnitOf(it){if(it.matPrice!=null&&it.matPrice!=='')return +it.matPric
 function labUnitOf(it){if(it.labPrice!=null&&it.labPrice!=='')return +it.labPrice||0;const q=qtyOf(it)||1;return (+it.lab||0)/q;}
 function budMat(it){if(it.disc)return -(it.discMat!=null?(+it.discMat||0):Math.max(0,-(+it.budget||0)));return qtyOf(it)*matUnitOf(it);}
 function budLab(it){if(it.disc)return -(+it.discLab||0);return qtyOf(it)*labUnitOf(it);}
-function actLabOf(it,cno){if(it.actLab!=null&&it.actLab!=='')return +it.actLab||0;if(it.actMat!=null&&it.actMat!=='')return 0;return actualCost(it)*labFrac(it,cno);}
-function actMatOf(it,cno){if(it.actMat!=null&&it.actMat!=='')return +it.actMat||0;if(it.actLab!=null&&it.actLab!=='')return 0;return actualCost(it)*(1-labFrac(it,cno));}
+function actLabOf(it,cno){const _p=(typeof proj==='function')?proj():null;if(_p&&_p.l4&&_p.l4.gen)return cno==='STF'?(+it.actLab||0):0;if(it.actLab!=null&&it.actLab!=='')return +it.actLab||0;if(it.actMat!=null&&it.actMat!=='')return 0;return actualCost(it)*labFrac(it,cno);}
+function actMatOf(it,cno){const _p=(typeof proj==='function')?proj():null;if(_p&&_p.l4&&_p.l4.gen)return +it.actMat||0;if(it.actMat!=null&&it.actMat!=='')return +it.actMat||0;if(it.actLab!=null&&it.actLab!=='')return 0;return actualCost(it)*(1-labFrac(it,cno));}
 function catCost(c){return c.items.reduce((a,it)=>a+actualCost(it),0);}
 function projCost(p){let t=0;p.cats.forEach(c=>c.items.forEach(it=>t+=actualCost(it)));return t;}
 function itemClaimAmt(it){if(it.claim!=null&&it.claim!=='')return +it.claim||0;if(it.claimMonth==null||it.claimMonth==='')return 0;return readyToClaim(it);}
@@ -985,7 +985,7 @@ function cfCalc(cf){const n=cf.months.length;const net=[],cum=[],cumR=[],cumC=[]
   const peak=Math.min(0,...cum);return {net,cum,cumR,cumC,totR:cr,totC:cc,peak,peakM:cum.indexOf(peak),posM:cum.findIndex(x=>x>=0)};}
 function tnPlugin(idx){return {id:'tn'+idx,afterDatasetsDraw(ch){if(idx==null||idx<0)return;const sx=ch.scales.x;if(!sx)return;const x=sx.getPixelForValue(idx);const yt=ch.scales.y.top,yb=ch.scales.y.bottom,cx=ch.ctx;cx.save();cx.strokeStyle='#ef4444';cx.setLineDash([5,4]);cx.lineWidth=1.5;cx.beginPath();cx.moveTo(x,yt);cx.lineTo(x,yb);cx.stroke();cx.setLineDash([]);cx.fillStyle='#ef4444';cx.font='700 10px system-ui,sans-serif';cx.fillText('Now',x+3,yt+11);cx.restore();}};}
 
-function renderCashflow(el){const p=proj();ensurePlan(p);const cf=buildCashflow(p);const dur=cf.dur;const dd=Math.min(p.plan.dataDate||0,dur-1);
+function renderCashflow(el){const p=proj();ensurePlan(p);if(p.l4&&p.l4.gen)l4SyncClaims(p);const cf=buildCashflow(p);const dur=cf.dur;const dd=Math.min(p.plan.dataDate||0,dur-1);
   const lineM={in:{},out:{}};(p.plan.cfLines||[]).forEach(x=>lineM[x.type][x.m]=1);
   const inP=cf.revenue,inA=cf.aIn,outP=cf.cost,outA=cf.aOut;
   const cum=a=>{const r=[];let s=0;a.forEach(v=>{s+=v;r.push(s);});return r;};
