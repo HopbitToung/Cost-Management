@@ -842,7 +842,7 @@ function actLabOf(it,cno){if(it.actLab!=null&&it.actLab!=='')return +it.actLab||
 function actMatOf(it,cno){if(it.actMat!=null&&it.actMat!=='')return +it.actMat||0;if(it.actLab!=null&&it.actLab!=='')return 0;return actualCost(it)*(1-labFrac(it,cno));}
 function catCost(c){return c.items.reduce((a,it)=>a+actualCost(it),0);}
 function projCost(p){let t=0;p.cats.forEach(c=>c.items.forEach(it=>t+=actualCost(it)));return t;}
-function itemClaimAmt(it){const ready=readyToClaim(it);return (it.claim!=null&&it.claim!=='')?(+it.claim||0):ready;}
+function itemClaimAmt(it){if(it.claim!=null&&it.claim!=='')return +it.claim||0;if(it.claimMonth==null||it.claimMonth==='')return 0;return readyToClaim(it);}
 function creditMonths(it,pl){if(it.credit==null||it.credit==='')return 0;const v=+it.credit||0;return (it.creditUnit==='mo')?v:Math.round(v/30);}
 function catClaim(c){return c.items.reduce((a,it)=>a+itemClaimAmt(it),0);}
 function projClaim(p){let t=0;p.cats.forEach(c=>t+=catClaim(c));return t;}
