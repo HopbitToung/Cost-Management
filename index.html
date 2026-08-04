@@ -939,8 +939,13 @@ function l4SyncClaims(p){if(!(p.l4&&p.l4.gen))return;var pl=p.plan;var mcp=(pl.m
  /* Actual labour cost = real manpower loading only, all aggregated into STF; every other item labour = 0 */
  p.cats.forEach(function(c){c.items.forEach(function(it){if(!isMargin(it))it.actLab=0;});});
  var manLab=0;try{var _rm=resMonthly(p);manLab=(_rm.labor||[]).reduce(function(a,b){return a+(+b||0);},0);}catch(e){manLab=0;}
- var _stf=[],_sb=0;p.cats.forEach(function(c){if(c.no==='STF')c.items.forEach(function(it){if(isMargin(it))return;_stf.push(it);_sb+=(+it.budget||0);});});
- if(_stf.length&&manLab>0){if(_sb>0){_stf.forEach(function(it){it.actLab=Math.round(manLab*(+it.budget||0)/_sb);});}else{_stf[0].actLab=Math.round(manLab);}}
+ var _stfCat=null;p.cats.forEach(function(c){if(c.no==='STF')_stfCat=c;});
+ if(!_stfCat){_stfCat={id:uid(),grp:'A',no:'STF',name:'Staff Salary & Site Manpower',type:'L',items:[]};p.cats.push(_stfCat);}
+ var _stf=_stfCat.items.filter(function(it){return !isMargin(it);});var _sb=_stf.reduce(function(a,it){return a+(+it.budget||0);},0);
+ if(manLab>0){
+   if(_sb>0){_stf.forEach(function(it){it.actLab=Math.round(manLab*(+it.budget||0)/_sb);});}
+   else{var _h=_stfCat.items.filter(function(it){return it.manpower;})[0];if(!_h){_h={id:uid(),name:'Site manpower (actual · Timesheet)',budget:0,lab:0,actual:0,manpower:true};_stfCat.items.push(_h);}_h.actLab=Math.round(manLab);}
+ }
 }
 function l4Pools(p){var engPool=0,docPool=0,commPool=0,procPool=0,instLab=0;
  p.cats.forEach(function(c){c.items.forEach(function(it){if(isMargin(it))return;var m=Math.max(0,budMat(it)),l=Math.max(0,budLab(it));if(m<=0&&l<=0)return;
