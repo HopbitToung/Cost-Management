@@ -934,8 +934,14 @@ function l4SyncClaims(p){if(!(p.l4&&p.l4.gen))return;var pl=p.plan;var mcp=(pl.m
  (p.l4.acts||[]).forEach(function(a){if(a.items&&a.items.length){var tv=0,ev=0;a.items.forEach(function(m){var it=_fi(p,m.id);var d=it?(a.dim==='mat'?(+it.matDone||0):(+it.labDone||0)):0;tv+=m.val;ev+=m.val*Math.min(100,d)/100;if(it){if(a.dim==='mat')matDoneOf[it.id]=d;else labDoneOf[it.id]=d;}});a.actualPct=tv?ev/tv*100:0;}});
  p.cats.forEach(function(c){c.items.forEach(function(it){if(isMargin(it))return;var hasM=(it.id in matDoneOf),hasL=(it.id in labDoneOf);if(!hasM&&!hasL)return;
   var b=+it.budget||0,mat=Math.max(0,budMat(it)),lab=Math.max(0,budLab(it));var md=(hasM?matDoneOf[it.id]:0)/100,ld=(hasL?labDoneOf[it.id]:0)/100;
-  var claim=mat*md+lab*ld;it.actualPct=Math.max(0,Math.min(100,b>0?claim/b*100:0));it.actMat=Math.round(mat*mcp*md);it.actLab=Math.round(lab*lcp*ld);
- });});}
+  var claim=mat*md+lab*ld;it.actualPct=Math.max(0,Math.min(100,b>0?claim/b*100:0));it.actMat=Math.round(mat*mcp*md);it.actLab=0;
+ });});
+ /* Actual labour cost = real manpower loading only, all aggregated into STF; every other item labour = 0 */
+ p.cats.forEach(function(c){c.items.forEach(function(it){if(!isMargin(it))it.actLab=0;});});
+ var manLab=0;try{var _rm=resMonthly(p);manLab=(_rm.labor||[]).reduce(function(a,b){return a+(+b||0);},0);}catch(e){manLab=0;}
+ var _stf=[],_sb=0;p.cats.forEach(function(c){if(c.no==='STF')c.items.forEach(function(it){if(isMargin(it))return;_stf.push(it);_sb+=(+it.budget||0);});});
+ if(_stf.length&&manLab>0){if(_sb>0){_stf.forEach(function(it){it.actLab=Math.round(manLab*(+it.budget||0)/_sb);});}else{_stf[0].actLab=Math.round(manLab);}}
+}
 function l4Pools(p){var engPool=0,docPool=0,commPool=0,procPool=0,instLab=0;
  p.cats.forEach(function(c){c.items.forEach(function(it){if(isMargin(it))return;var m=Math.max(0,budMat(it)),l=Math.max(0,budLab(it));if(m<=0&&l<=0)return;
   if(c.no==='ENG'){engPool+=m+l;return;}if(c.no==='DOC'){docPool+=m+l;return;}
@@ -1501,7 +1507,7 @@ const app={
   addUnit(){const p=proj();ensureMP(p);p.eqp.units.push({id:tid_(),name:'',type:'Rental',rate:0});save();renderManpower(document.getElementById('content'));},
   delUnit(id){const p=proj();ensureMP(p);p.eqp.units=p.eqp.units.filter(x=>x.id!==id);save();renderManpower(document.getElementById('content'));},
   setUnit(id,f,v){const p=proj();ensureMP(p);const o=p.eqp.units.find(x=>x.id===id);if(!o)return;if(f==='name'||f==='type')o[f]=v;else o[f]=Math.max(0,parseNum(v));save();renderManpower(document.getElementById('content'));},
-  setDay(kind,d,id,f,v){const p=proj();ensureMP(p);const store=kind==='mp'?p.mp.log:p.eqp.log;if(!store[d])store[d]={};if(kind==='mp'){if(!store[d][id])store[d][id]={};const n=Math.max(0,parseNum(v));if(f==='c')store[d][id].c=n;else store[d][id].ot=n;if(!store[d][id].c&&!store[d][id].ot)delete store[d][id];}else{const n=Math.max(0,parseNum(v));if(!n)delete store[d][id];else store[d][id]=n;}if(!Object.keys(store[d]).length)delete store[d];save();render();},
+  setDay(kind,d,id,f,v){const p=proj();ensureMP(p);const store=kind==='mp'?p.mp.log:p.eqp.log;if(!store[d])store[d]={};if(kind==='mp'){if(!store[d][id])store[d][id]={};const n=Math.max(0,parseNum(v));if(f==='c')store[d][id].c=n;else store[d][id].ot=n;if(!store[d][id].c&&!store[d][id].ot)delete store[d][id];}else{const n=Math.max(0,parseNum(v));if(!n)delete store[d][id];else store[d][id]=n;}if(!Object.keys(store[d]).length)delete store[d];if(p.l4&&p.l4.gen)l4SyncClaims(p);save();render();},
   seedPositions(){const p=proj();ensureMP(p);const seen={};p.mp.positions.forEach(po=>seen[po.role]=1);(p.roster||[]).forEach(r=>{const role=r.position||'';if(!role||seen[role])return;seen[role]=1;const daily=(''+(r.type||'')).includes('วัน')?(+r.base||0):((+r.base||0)/WORKDAYS);p.mp.positions.push({id:tid_(),role:role,catNo:'STF',wage:Math.round(daily)});});save();toast('Seeded positions from roster');renderManpower(document.getElementById('content'));},
 
   addRes(kind){const p=proj();ensureRes(p);const o=kind==='labor'?{id:tid_(),role:'',catNo:(p.cats[0]&&p.cats[0].no)||'STF',rate:0,otMo:0,monthly:{}}:{id:tid_(),name:'',kind:'Rental',rate:0,monthly:{}};p.res[kind].push(o);save();renderManpower(document.getElementById('content'));},
