@@ -584,17 +584,24 @@ function wizDetect(rows){const KWS=['description','item','material','labour','la
   if(lab<0){lab=F(s=>wizHas(s,'labour','labor')&&wizHas(s,'amount','cost')&&!wizHas(s,'unit','man hr'));labQ=0;}
   let tot=F(s=>(s==='total'||s==='amount'||s==='total amount'||wizHas(s,'sub total','sub-total','line total','total (thb)'))&&!wizHas(s,'material','labour','labor','unit'));
   if(mat<0&&lab<0&&tot<0){let bc=-1,bs=-1;for(let c=0;c<ncol;c++){let sm=0;for(let k=hr+1;k<rows.length;k++){sm+=wizNum(rows[k]&&rows[k][c]);}if(sm>bs){bs=sm;bc=c;}}tot=bc;}
-  return {cols:{hr:hr,dc:dc,qc:qc,uc:uc,mat:mat,lab:lab,tot:tot,matQ:matQ,labQ:labQ},colNames:ch};}
-function wizExtract(rows,c){const lines=[];let section='';const hr=c.hr||0;
+  let cc=F(s=>wizHas(s,'หมวดหลัก','หมวดcbs','cbs','รหัสหมวด','code')&&!wizHas(s,'ประเภท','type','ชื่อ','ย่อย','sub','unit','material','labour','labor','price'));
+  if(cc<0)cc=F(s=>wizHas(s,'หมวด','group')&&!wizHas(s,'ประเภท','type','ชื่อ','ย่อย','sub','unit','material','labour','labor','price','amount'));
+  let nc=F(s=>wizHas(s,'ชื่อหมวด','หมวดย่อย','category name','ชื่อหมวดย่อย')&&!wizHas(s,'code','ประเภท','type','material','labour','labor','unit'));
+  let tc=F(s=>wizHas(s,'ประเภท','type m','type l')&&!wizHas(s,'unit','material','labour','labor','price','amount','description'));
+  return {cols:{hr:hr,dc:dc,qc:qc,uc:uc,mat:mat,lab:lab,tot:tot,matQ:matQ,labQ:labQ,cc:cc,nc:nc,tc:tc},colNames:ch};}
+function wizExtract(rows,c){const lines=[];let section='';let catCode='',catName='',catType='';const hr=c.hr||0;
   for(let k=hr+1;k<rows.length;k++){const rw=rows[k];if(!rw)continue;const dv=c.dc>=0?rw[c.dc]:null;if(dv==null||String(dv).trim()==='')continue;
     const kd=wizKw(dv);if(['total','sub-total','subtotal','sub total','grand total','sum of','sum '].some(t=>kd.indexOf(t)===0))continue;
+    if(c.cc>=0&&rw[c.cc]!=null&&String(rw[c.cc]).trim()!=='')catCode=String(rw[c.cc]).trim();
+    if(c.nc>=0&&rw[c.nc]!=null&&String(rw[c.nc]).trim()!=='')catName=String(rw[c.nc]).trim();
+    if(c.tc>=0&&rw[c.tc]!=null&&String(rw[c.tc]).trim()!=='')catType=String(rw[c.tc]).trim();
     const q=c.qc>=0?wizNum(rw[c.qc]):null;const qn=q||1;
     const matV=c.mat>=0?wizNum(rw[c.mat]):0;const labV=c.lab>=0?wizNum(rw[c.lab]):0;
     const mat=c.matQ?matV*qn:matV;const lab=c.labQ?labV*qn:labV;const tot=c.tot>=0?wizNum(rw[c.tot]):0;
     if(mat<=0&&lab<=0&&tot<=0){if(String(dv).trim().length>2)section=String(dv).trim();continue;}
     const budget=(mat>0||lab>0)?mat+lab:tot;if(budget<=0)continue;
     const unit=(c.uc>=0)?String(rw[c.uc]||'').trim():'';
-    lines.push({desc:String(dv).trim().slice(0,90),qty:q,unit:unit,matVal:matV,matQ:c.matQ,labVal:labV,labQ:c.labQ,mat:Math.round(mat),lab:Math.round(lab),budget:Math.round(budget),section:section});}
+    lines.push({desc:String(dv).trim().slice(0,90),qty:q,unit:unit,matVal:matV,matQ:c.matQ,labVal:labV,labQ:c.labQ,mat:Math.round(mat),lab:Math.round(lab),budget:Math.round(budget),section:section,cat:catCode,catName:catName,catType:catType});}
   return lines;}
 function wizGrand(wb){let best=0;wb.SheetNames.forEach(sn=>{const rows=XLSX.utils.sheet_to_json(wb.Sheets[sn],{header:1});rows.forEach(rw=>{if(!rw)return;const j=rw.map(wizKw).join(' ');if(wizHas(j,'grand total','total cost','total (direct','net total','รวมทั้งสิ้น','ราคารวม','total amount','contract amount')){rw.forEach(v=>{const n=wizNum(v);if(n>best&&n<1e12)best=n;});}});});return Math.round(best);}
 function wizAnalyze(wb){const meta=/read me|cover|instruction|assumption|org|hse|layout|design|daywork|设备/;const out=[];
@@ -612,7 +619,7 @@ function wizRender(){if(!wizSheets)return;
      ${s.include?`<div style="display:flex;gap:7px;flex-wrap:wrap;margin-top:8px;font-size:11px;align-items:center;color:#64748b">
        รายการ:${csel(s,si,'dc',c.dc)} ค่าของ:${csel(s,si,'mat',c.mat)}<label style="font-size:10px"><input type="checkbox" ${c.matQ?'checked':''} onchange="app.wizSetCol(${si},'matQ',this.checked?1:0)">×Q</label>
        ค่าแรง:${csel(s,si,'lab',c.lab)}<label style="font-size:10px"><input type="checkbox" ${c.labQ?'checked':''} onchange="app.wizSetCol(${si},'labQ',this.checked?1:0)">×Q</label>
-       รวม:${csel(s,si,'tot',c.tot)} Qty:${csel(s,si,'qc',c.qc)} หน่วย:${csel(s,si,'uc',c.uc)}</div>`:''}</div>`;}).join('');
+       รวม:${csel(s,si,'tot',c.tot)} Qty:${csel(s,si,'qc',c.qc)} หน่วย:${csel(s,si,'uc',c.uc)} หมวด:${csel(s,si,'cc',c.cc)} ประเภท:${csel(s,si,'tc',c.tc)}</div>`:''}</div>`;}).join('');
   modal(`<h4>Smart Import — นำเข้าใบเสนอราคา (แบบไหนก็ได้)</h4><div class="mbody" style="max-height:60vh;overflow:auto">
     <p class="mini" style="margin-bottom:10px">เลือก sheet + ตรวจ/แก้คอลัมน์ → ระบบคิดยอดให้ทันที เทียบยอดจริง (แก้ ×Q ถ้าค่าเป็นราคาต่อหน่วยต้องคูณจำนวน)</p>${rows}
     <div style="border-top:2px solid var(--line);margin-top:6px;padding-top:12px;display:flex;flex-direction:column;gap:8px">
@@ -1234,12 +1241,12 @@ const app={
   wizImport(){const inc=wizSheets.filter(s=>s.include);if(!inc.length){toast('ยังไม่ได้เลือก sheet');return;}
     const cats={};CBS.forEach(c=>cats[c[1]]={id:uid(),grp:c[0],no:c[1],name:c[2],type:c[3],items:[]});
     let imported=0,need=0,n=0;
-    inc.forEach(s=>s.lines.forEach(ln=>{let code=autoMapCode((ln.section?ln.section+' ':'')+ln.desc);const review=!code;if(!code)code='OHC';if(!cats[code])code='OHC';const q=(+ln.qty||1);let mp,lp;if((ln.mat||0)>0||(ln.lab||0)>0){mp=ln.matQ?(+ln.matVal||0):((+ln.matVal||0)/q);lp=ln.labQ?(+ln.labVal||0):((+ln.labVal||0)/q);}else{mp=(+ln.budget||0);lp=0;}const it={id:uid(),name:ln.desc,qty:q,unit:ln.unit||'',matPrice:mp,labPrice:lp,budget:Math.round(mp*q+lp*q),lab:Math.round(lp*q),actual:0,review:review};cats[code].items.push(it);imported+=it.budget;n++;if(review)need++;}));
+    inc.forEach(s=>s.lines.forEach(ln=>{let code,review;if(ln.cat){code=String(ln.cat).trim().toUpperCase();if(!cats[code]){cats[code]={id:uid(),grp:'A',no:code,name:(ln.catName||code),type:((ln.catType||'M').toString().trim().toUpperCase().charAt(0)||'M'),items:[]};}review=false;}else{code=autoMapCode((ln.section?ln.section+' ':'')+ln.desc);review=!code;if(!code)code='OHC';if(!cats[code])code='OHC';}const q=(+ln.qty||1);let mp,lp;if((ln.mat||0)>0||(ln.lab||0)>0){mp=ln.matQ?(+ln.matVal||0):((+ln.matVal||0)/q);lp=ln.labQ?(+ln.labVal||0):((+ln.labVal||0)/q);}else{mp=(+ln.budget||0);lp=0;}const it={id:uid(),name:ln.desc,qty:q,unit:ln.unit||'',matPrice:mp,labPrice:lp,budget:Math.round(mp*q+lp*q),lab:Math.round(lp*q),actual:0,review:review};cats[code].items.push(it);imported+=it.budget;n++;if(review)need++;}));
     if(wizAdj&&wizSrc>0&&Math.abs(wizSrc-imported)>=1){const d=Math.round(wizSrc-imported);cats['OHC'].items.push({id:uid(),name:'ปรับยอดให้ตรงใบเสนอราคา (Adjustment)',budget:d,lab:0,actual:0,review:true});imported+=d;n++;}
     const meta=wizMeta||{};wizMeta=null;
-    if(meta.replace){const p=proj();p.cats.forEach(c=>{const nc=cats[c.no];if(nc)c.items=nc.items;});expanded={};p.cats.forEach(c=>{if(c.items.length)expanded[c.id]=true;});save();app.closeModal();nav('cost');toast('แทนที่ CBS · '+n+' รายการ · '+cur()+' '+fmt(Math.round(imported))+(need?(' · '+need+' ต้องตรวจ ⚠'):''));return;}
+    if(meta.replace){const p=proj();p.cats.forEach(c=>{const nc=cats[c.no];if(nc)c.items=nc.items;});Object.keys(cats).forEach(k=>{if(cats[k].items.length&&!p.cats.some(c=>c.no===k))p.cats.push(cats[k]);});expanded={};p.cats.forEach(c=>{if(c.items.length)expanded[c.id]=true;});save();app.closeModal();nav('cost');toast('แทนที่ CBS · '+n+' รายการ · '+cur()+' '+fmt(Math.round(imported))+(need?(' · '+need+' ต้องตรวจ ⚠'):''));return;}
     const nm=(meta.name&&meta.name.trim())||'นำเข้าจากใบเสนอราคา';
-    const p={id:uid(),name:nm,code:meta.code||nextProjectCode(),client:'',currency:meta.currency||'THB',cats:CBS.map(c=>cats[c[1]]),cashflow:null};
+    const p={id:uid(),name:nm,code:meta.code||nextProjectCode(),client:'',currency:meta.currency||'THB',cats:CBS.map(c=>cats[c[1]]).concat(Object.keys(cats).filter(k=>!CBS.some(c=>c[1]===k)).map(k=>cats[k])),cashflow:null};
     state.projects.push(p);state.activeId=p.id;expanded={};p.cats.forEach(c=>{if(c.items.length)expanded[c.id]=true;});save();app.closeModal();nav('cost');
     toast('สร้างโปรเจกต์ · '+n+' รายการ · '+cur()+' '+fmt(Math.round(imported))+(need?(' · '+need+' ต้องตรวจ ⚠'):' · จับหมวดครบ'));},
 
