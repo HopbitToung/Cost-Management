@@ -814,10 +814,16 @@ const PHNAME={eng:'Engineering & Design',proc:'Procurement',inst:'Installation',
 const PHKEYS=['eng','proc','inst','comm'];
 const LABOR_FRAC={ENG:0.807,DOC:0.807,MEL:0,MIN:0,BLK:0,STF:0.954,SUB:0.954,TCF:0,TOL:0,RNT:0,TRN:0,SAF:0.30,ENV:0.30,UTL:0,OHC:0};
 function labFrac(it,cno){let lp;if(it.labPct!=null&&it.labPct!=='')lp=+it.labPct;else if(it.lab!=null&&(+it.budget||0)>0)lp=(+it.lab||0)/(+it.budget)*100;else lp=(LABOR_FRAC[cno]!=null?LABOR_FRAC[cno]:0)*100;return Math.max(0,Math.min(100,lp))/100;}
-function defaultPlan(){const d=new Date();return {startY:d.getFullYear(),startM:d.getMonth(),dataDate:0,payLag:1,phases:{eng:{s:0,dur:3},proc:{s:2,dur:5},inst:{s:5,dur:9},comm:{s:13,dur:3}}};}
-function ensurePlan(p){if(!p.plan)p.plan=defaultPlan();if(!p.plan.phases)p.plan.phases=defaultPlan().phases;['eng','proc','inst','comm'].forEach(k=>{if(!p.plan.phases[k])p.plan.phases[k]={s:0,dur:3};});if(p.plan.payLag==null)p.plan.payLag=1;if(!p.claims)p.claims=[];return p.plan;}
+function defaultPlan(){const d=new Date();return {startY:d.getFullYear(),startM:d.getMonth(),dataDate:0,payLag:1,unit:'month',phases:{eng:{s:0,dur:3},proc:{s:2,dur:5},inst:{s:5,dur:9},comm:{s:13,dur:3}}};}
+function ensurePlan(p){if(!p.plan)p.plan=defaultPlan();if(!p.plan.phases)p.plan.phases=defaultPlan().phases;['eng','proc','inst','comm'].forEach(k=>{if(!p.plan.phases[k])p.plan.phases[k]={s:0,dur:3};});if(p.plan.payLag==null)p.plan.payLag=1;if(!p.plan.unit)p.plan.unit='month';if(!p.claims)p.claims=[];return p.plan;}
 function planEnd(pl){let e=1;['eng','proc','inst','comm'].forEach(k=>{const ph=pl.phases[k];if(ph)e=Math.max(e,ph.s+ph.dur);});return e;}
-function planMonths(pl){const n=planEnd(pl);const out=[];for(let i=0;i<n;i++){const idx=pl.startM+i;const y=pl.startY+Math.floor(idx/12);const m=((idx%12)+12)%12;out.push(MON[m]+"-"+String(y%100).padStart(2,'0'));}return out;}
+const UNIT_DAYS={day:1,week:7,month:30};
+function planUnit(pl){return pl&&pl.unit?pl.unit:'month';}
+function _isoOf(d){return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');}
+function planStartDate(pl){if(pl&&pl.startISO){const d=new Date(pl.startISO);if(!isNaN(d))return d;}return new Date(pl.startY,pl.startM,1);}
+function periodDate(pl,i){const u=planUnit(pl);const d=planStartDate(pl);if(u==='month'){return new Date(d.getFullYear(),d.getMonth()+Math.floor(i),1);}const r=new Date(d);r.setDate(r.getDate()+Math.round((u==='week'?7:1)*i));return r;}
+function periodLabel(pl,i){const u=planUnit(pl);const dt=periodDate(pl,i);const yy=String(dt.getFullYear()%100).padStart(2,'0');if(u==='month')return MON[dt.getMonth()]+'-'+yy;if(u==='week')return 'W'+(Math.floor(i)+1)+'·'+dt.getDate()+MON[dt.getMonth()];return dt.getDate()+MON[dt.getMonth()];}
+function planMonths(pl){const n=Math.max(1,Math.ceil(planEnd(pl)-1e-9));const out=[];for(let i=0;i<n;i++)out.push(periodLabel(pl,i));return out;}
 function isMargin(it){const nm=(it.name||'').toLowerCase();return nm.indexOf('overhead & profit')>=0||nm.indexOf('o&p')>=0||nm.indexOf('overhead and profit')>=0||/(^|[^a-z])profit/.test(nm);}
 function marginTotal(p){let t=0;p.cats.forEach(c=>c.items.forEach(i=>{if(isMargin(i))t+=(+i.budget||0);}));return t;}
 function costTotal(p){return contractTotal(p)-marginTotal(p);}
@@ -923,11 +929,30 @@ function genL4(p){var pl=ensurePlan(p);var end=Math.max(1,planEnd(pl))-1;
  push('doc','Reports','Weekly report',docPool*0.14,0,end);
  push('doc','Reports','Monthly progress report',docPool*0.16,0,end);
 
- p.l4={gen:true,acts:acts,ts:Date.now()};return p.l4;}
+ p.l4={gen:true,acts:acts,ts:Date.now()};l4SyncClaims(p);return p.l4;}
 
 function buildSchedFromL4(p){var pl=ensurePlan(p);var months=planMonths(pl);var dur=months.length;var end=dur-1;var tot=costTotal(p)||1;
  var acts=(p.l4.acts||[]).map(function(a){var ms=Math.max(0,Math.min(end,a.ms|0));var me=Math.max(ms,Math.min(end,a.me|0));return {id:a.id,taskId:null,catNo:'',catName:a.group,phase:a.phase,name:a.name,itemName:a.name,group:a.group,weight:(+a.val||0)/tot*100,budget:+a.val||0,ms:ms,me:me,actualPct:+a.actualPct||0,ref:a};});
  return {months:months,acts:acts,dur:dur,tot:tot};}
+function l4SyncClaims(p){if(!(p.l4&&p.l4.gen))return;var sc=buildSchedFromL4(p);var dd=Math.min(p.plan.dataDate||0,sc.dur-1);
+ var phW={},phE={};sc.acts.forEach(function(a){phW[a.phase]=(phW[a.phase]||0)+a.weight;phE[a.phase]=(phE[a.phase]||0)+a.weight*Math.min(100,+a.actualPct||0)/100;});
+ var phProg=function(ph){return phW[ph]?phE[ph]/phW[ph]*100:0;};
+ var pkgProg={};sc.acts.forEach(function(a){if(a.phase==='proc')pkgProg[a.name]=Math.min(100,+a.actualPct||0);});
+ var IND={TCF:1,TOL:1,RNT:1,TRN:1,UTL:1,OHC:1};var totalP=sc.dur||1;var timePct=Math.min(100,(dd+1)/totalP*100);
+ var ip=phProg('inst'),ep=phProg('eng'),dp=phProg('doc'),cp=phProg('comm'),pp=phProg('proc');
+ p.cats.forEach(function(c){c.items.forEach(function(it){if(isMargin(it))return;var b=+it.budget||0;if(b<=0){it.actualPct=0;return;}
+  var mat=Math.max(0,budMat(it)),lab=Math.max(0,budLab(it));var claim=0;
+  if(c.no==='ENG')claim=b*ep/100;else if(c.no==='DOC')claim=b*dp/100;else if(c.no==='SUB')claim=b*cp/100;else if(IND[c.no])claim=b*timePct/100;
+  else{var pk=pkgOf(it.name);var pkp=(pkgProg[pk]!=null?pkgProg[pk]:pp);claim=mat*pkp/100+lab*ip/100;}
+  it.actualPct=Math.max(0,Math.min(100,b>0?claim/b*100:0));
+ });});}
+function l4Pools(p){var engPool=0,docPool=0,commPool=0,procPool=0,instLab=0;
+ p.cats.forEach(function(c){c.items.forEach(function(it){if(isMargin(it))return;var m=Math.max(0,budMat(it)),l=Math.max(0,budLab(it));if(m<=0&&l<=0)return;
+  if(c.no==='ENG'){engPool+=m+l;return;}if(c.no==='DOC'){docPool+=m+l;return;}
+  if(m>0)procPool+=m;if(c.no==='SUB'){commPool+=l;return;}if(l>0)instLab+=l;});});
+ var tr=Math.round(instLab*0.06);commPool+=tr;var instPool=Math.max(0,instLab-tr);
+ var tot=engPool+procPool+instPool+commPool+docPool||1;
+ return {eng:engPool,proc:procPool,inst:instPool,comm:commPool,doc:docPool,tot:tot};}
 
 function buildSchedule(p){if(p.l4&&p.l4.gen)return buildSchedFromL4(p);const pl=ensurePlan(p);const months=planMonths(pl);const dur=months.length;const end=dur-1;const tot=costTotal(p)||1;const acts=[];
   p.cats.forEach(c=>{const ph=PHASE_OF[c.no]||'ind';
@@ -946,20 +971,23 @@ function buildSchedule(p){if(p.l4&&p.l4.gen)return buildSchedFromL4(p);const pl=
   return {months,acts,dur,tot};}
 function sCurveW(n){if(n<=1)return [1];const out=[];const f=t=>t*t*(3-2*t);let prev=0;for(let i=1;i<=n;i++){const c=f(i/n);out.push(c-prev);prev=c;}return out;}
 function buildCashflow(p){const sc=buildSchedule(p);const pl=p.plan;const dur=sc.dur;
-  const planM=Array(dur).fill(0);sc.acts.forEach(a=>{const n=a.me-a.ms+1;const _w=sCurveW(n);for(let m=a.ms;m<=a.me;m++)planM[m]+=a.weight*_w[m-a.ms];});
-  const cT=costTotal(p),kT=contractTotal(p),lag=Math.max(0,pl.payLag||0);
-  const ovO=pl.planOut||{},ovI=pl.planIn||{};
-  const clO={},clI={},hasO={},hasI={};(pl.cfLines||[]).forEach(x=>{if(x.type==='out'){hasO[x.m]=1;clO[x.m]=(clO[x.m]||0)+(+x.amt||0);}else{hasI[x.m]=1;clI[x.m]=(clI[x.m]||0)+(+x.amt||0);}});
-  const cost=planM.map((v,m)=>hasO[m]?Math.round(clO[m]):(ovO[m]!=null?Math.round(+ovO[m]):Math.round(v/100*cT)));
-  const billed=planM.map(v=>v/100*kT);const rev=Array(dur).fill(0);for(let m=0;m<dur;m++){const src=m-lag;if(src>=0)rev[m]=Math.round(billed[src]);}
-  const sumR=rev.reduce((a,b)=>a+b,0),totB=Math.round(billed.reduce((a,b)=>a+b,0));if(dur>0)rev[dur-1]+=totB-sumR;
-  for(let m=0;m<dur;m++){if(hasI[m])rev[m]=Math.round(clI[m]);else if(ovI[m]!=null)rev[m]=Math.round(+ovI[m]);}
-  const aOut=Array(dur).fill(0),aIn=Array(dur).fill(0);
+  const planP=Array(dur).fill(0);sc.acts.forEach(a=>{const s0=Math.max(0,Math.floor(a.ms)),e0=Math.min(dur-1,Math.floor(a.me));const n=Math.max(1,e0-s0+1);const _w=sCurveW(n);for(let m=s0;m<=e0;m++)planP[m]+=a.weight*(_w[m-s0]||0);});
+  const cT=costTotal(p),kT=contractTotal(p),lag=Math.max(0,Math.round(pl.payLag||0));
+  const costP=planP.map(v=>v/100*cT);const billedP=planP.map(v=>v/100*kT);
+  const revP=Array(dur).fill(0);for(let m=0;m<dur;m++){const s=m-lag;if(s>=0)revP[m]=billedP[s];}
+  const sumR=revP.reduce((a,b)=>a+b,0),totB=billedP.reduce((a,b)=>a+b,0);if(dur>0)revP[dur-1]+=totB-sumR;
+  const aOutP=Array(dur).fill(0),aInP=Array(dur).fill(0);
   p.cats.forEach(c=>c.items.forEach(it=>{const prog=itemProgress(it)/100;const amt=itemClaimAmt(it);const ac=isMargin(it)?0:actualCost(it);if(prog<=0&&amt<=0&&ac<=0)return;
     const rm=Math.min(Math.max((it.claimMonth!=null?+it.claimMonth:(pl.dataDate||0)),0),dur-1);
-    aOut[rm]+=Math.round(ac);
-    aIn[Math.min(rm+creditMonths(it,pl),dur-1)]+=Math.round(amt);}));
-  return {months:sc.months,cost,revenue:rev,planM,dur,aOut,aIn,actualIn:aIn};}
+    aOutP[rm]+=Math.round(ac);aInP[Math.min(rm+creditMonths(it,pl),dur-1)]+=Math.round(amt);}));
+  const u=planUnit(pl);const mlabel=[],idxOf={},pk=[];
+  for(let i=0;i<dur;i++){const d=periodDate(pl,i);const key=d.getFullYear()+'-'+d.getMonth();pk[i]=key;if(idxOf[key]==null){idxOf[key]=mlabel.length;mlabel.push(MON[d.getMonth()]+'-'+String(d.getFullYear()%100).padStart(2,'0'));}}
+  const M=Math.max(1,mlabel.length);const agg=arr=>{const o=Array(M).fill(0);for(let i=0;i<dur;i++)o[idxOf[pk[i]]]+=(arr[i]||0);return o;};
+  let cost=agg(costP).map(Math.round),rev=agg(revP).map(Math.round),aOut=agg(aOutP).map(Math.round),aIn=agg(aInP).map(Math.round);const planM=agg(planP);
+  const ovO=pl.planOut||{},ovI=pl.planIn||{};const clO={},clI={},hasO={},hasI={};(pl.cfLines||[]).forEach(x=>{if(x.type==='out'){hasO[x.m]=1;clO[x.m]=(clO[x.m]||0)+(+x.amt||0);}else{hasI[x.m]=1;clI[x.m]=(clI[x.m]||0)+(+x.amt||0);}});
+  cost=cost.map((v,m)=>hasO[m]?Math.round(clO[m]):(ovO[m]!=null?Math.round(+ovO[m]):v));
+  rev=rev.map((v,m)=>hasI[m]?Math.round(clI[m]):(ovI[m]!=null?Math.round(+ovI[m]):v));
+  return {months:mlabel,cost,revenue:rev,planM,dur:M,aOut,aIn,actualIn:aIn};}
 function cfCalc(cf){const n=cf.months.length;const net=[],cum=[],cumR=[],cumC=[];let s=0,cr=0,cc=0;
   for(let m=0;m<n;m++){const r=+cf.revenue[m]||0,c=+cf.cost[m]||0;net.push(r-c);s+=r-c;cum.push(s);cr+=r;cc+=c;cumR.push(cr);cumC.push(cc);}
   const peak=Math.min(0,...cum);return {net,cum,cumR,cumC,totR:cr,totC:cc,peak,peakM:cum.indexOf(peak),posM:cum.findIndex(x=>x>=0)};}
@@ -1061,7 +1089,7 @@ function phaseWin(no){const Pm={'ENG':[0,.30],'MEL':[.10,.60],'MIN':[.10,.60],'B
 function genScheduleData(){}
 function regenCashflowFromSchedule(){}
 function schedStats(p){const sc=buildSchedule(p);const pl=p.plan;const dur=sc.dur;const totW=sc.acts.reduce((a,x)=>a+x.weight,0)||100;
-  const planM=Array(dur).fill(0);sc.acts.forEach(a=>{const n=a.me-a.ms+1;const _w=sCurveW(n);for(let m=a.ms;m<=a.me;m++)planM[m]+=a.weight*_w[m-a.ms];});
+  const planM=Array(dur).fill(0);sc.acts.forEach(a=>{const s0=Math.max(0,Math.floor(a.ms)),e0=Math.min(dur-1,Math.floor(a.me));const n=Math.max(1,e0-s0+1);const _w=sCurveW(n);for(let m=s0;m<=e0;m++)planM[m]+=a.weight*(_w[m-s0]||0);});
   const planCum=[];let s=0;planM.forEach(v=>{s+=v;planCum.push(s);});
   const dd=Math.min(pl.dataDate||0,dur-1);const earned=sc.acts.reduce((a,x)=>a+x.weight*Math.min(100,+x.actualPct||0)/100,0);
   const actCum=[];for(let m=0;m<dur;m++){if(m>dd){actCum.push(null);continue;}const sh=planCum[dd]?planCum[m]/planCum[dd]:0;actCum.push(Math.min(100,earned*sh));}
@@ -1074,7 +1102,7 @@ function renderSchedule(el){const p=proj();ensurePlan(p);const k=schedStats(p);c
   const spi=k.planToDate?(k.earned/k.planToDate):0;
   const _kw=window.scrollY||0;const _ke=document.getElementById('ganttWrap');const _kx=_ke?_ke.scrollLeft:0,_ky=_ke?_ke.scrollTop:0;const _kk=!!_ke;
   el.innerHTML=`<div class="pagehead"><div><h2>L4 Schedule / Gantt <span style="font-weight:500;font-size:12px;color:var(--muted)">· Plan vs Actual tracking</span></h2><p>${esc(p.name)} · ${sc.months[0]}–${sc.months[sc.dur-1]} · แก้วันเริ่ม/ช่วงเวลา/ความคืบหน้าได้ในตาราง · progress ป้อนเข้า Cash Flow${p.l4&&p.l4.gen?` · <b style=\'color:#4f46e5\'>โหมด L4 อัตโนมัติ (E&I)</b> — Eng deliverables · Procurement packages · Installation ตามลำดับงาน · QA/QC`:``}</p></div>
-     <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">Data date:
+     <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">หน่วย:<select onchange="app.setUnit(this.value)" style="border:1px solid var(--line);border-radius:8px;padding:6px 8px"><option value="month" ${planUnit(p.plan)==='month'?'selected':''}>เดือน</option><option value="week" ${planUnit(p.plan)==='week'?'selected':''}>สัปดาห์</option><option value="day" ${planUnit(p.plan)==='day'?'selected':''}>วัน</option></select>Data date:
        <select onchange="app.setDataDate(this.value)" style="border:1px solid var(--line);border-radius:8px;padding:6px 8px">${sc.months.map((m,i)=>`<option value="${i}" ${i===k.dd?'selected':''}>${m}</option>`).join('')}</select>
        <button class="btn" onclick="app.setDataToday()" title="ตั้ง Data date = วันนี้">📍 Today</button>${p.l4&&p.l4.gen?`<button class="btn" onclick="app.revertL4()" title="กลับไปใช้แถวราย CBS">↩︎ CBS view</button>`:`<button class="btn primary" onclick="app.genL4Cmd()" title="สร้าง L4 ละเอียดอัตโนมัติจาก CBS (E&I)">⚙️ สร้าง L4 อัตโนมัติ</button>`}<button class="btn" onclick="app.scheduleWizard()">🗓️ Phase durations</button><button class="btn" onclick="app.exportSchedule()">⬇ Excel</button><button class="btn" onclick="window.print()">🖨️</button></div></div>
    <div class="kpis">
@@ -1359,13 +1387,33 @@ const app={
 
   setItemClaim(cid,iid,f,v){const it=proj().cats.find(c=>c.id===cid).items.find(i=>i.id===iid);if(!it)return;if(f==='claim')it.claim=(v===''||v==null)?undefined:parseNum(v);else if(f==='month')it.claimMonth=(v===''||v==null)?null:+v;else if(f==='credit')it.credit=(v===''||v==null)?null:Math.max(0,parseInt(v)||0);else if(f==='creditUnit')it.creditUnit=v;save();renderCost(document.getElementById('content'));},
   togS(k){expandedS[k]=!expandedS[k];renderSchedule(document.getElementById('content'));},
-  genL4Cmd(){const p=proj();if(!costTotal(p)){toast('ยังไม่มีข้อมูล CBS');return;}genL4(p);save();expandedS={};toast('สร้าง L4 อัตโนมัติแล้ว — ปรับ START/DUR/ACT% ได้');renderSchedule(document.getElementById('content'));},
+  genL4Cmd(){const p=proj();if(!costTotal(p)){toast('ยังไม่มีข้อมูล CBS');return;}app.genWizard();},
   revertL4(){const p=proj();p.l4=null;save();expandedS={};renderSchedule(document.getElementById('content'));},
-  setActual(id,tid,v){const _p=proj();if(_p.l4&&_p.l4.gen){const a=(_p.l4.acts||[]).find(x=>x.id===id);if(a)a.actualPct=Math.max(0,Math.min(100,parseNum(v)));save();renderSchedule(document.getElementById('content'));return;}const it=findItem(id);if(!it)return;const val=Math.max(0,Math.min(100,parseNum(v)));if(tid){const t=(it.tasks||[]).find(x=>x.id===tid);if(t)t.actualPct=val;}else it.actualPct=val;save();renderSchedule(document.getElementById('content'));},
+  setUnit(u){const p=proj();const pl=ensurePlan(p);const old=planUnit(pl);if(u===old||!UNIT_DAYS[u])return;const rd=UNIT_DAYS[old]/UNIT_DAYS[u];
+    if(!pl.startISO)pl.startISO=_isoOf(planStartDate(pl));pl.unit=u;
+    ['eng','proc','inst','comm'].forEach(k=>{if(pl.phases[k]){pl.phases[k].s=pl.phases[k].s*rd;pl.phases[k].dur=Math.max(0.5,pl.phases[k].dur*rd);}});
+    if(pl.dataDate)pl.dataDate=Math.round(pl.dataDate*rd);if(pl.payLag!=null)pl.payLag=Math.max(0,Math.round(pl.payLag*rd));
+    if(p.l4&&p.l4.gen){genL4(p);}else{p.cats.forEach(c=>c.items.forEach(it=>{if(it.ms!=null)it.ms=Math.round(it.ms*rd);if(it.me!=null)it.me=Math.round(it.me*rd);(it.tasks||[]).forEach(t=>{if(t.ms!=null)t.ms=Math.round(t.ms*rd);if(t.dur!=null)t.dur=Math.max(0.5,t.dur*rd);});}));}
+    save();renderSchedule(document.getElementById('content'));toast('เปลี่ยนหน่วยเป็น '+({month:'เดือน',week:'สัปดาห์',day:'วัน'}[u]));},
+  genWizard(){const p=proj();const pl=ensurePlan(p);const pool=l4Pools(p);const U={month:'เดือน',week:'สัปดาห์',day:'วัน'};const u=planUnit(pl);
+    const pct=v=>(v/pool.tot*100).toFixed(1)+'%';const PH=[['eng','Engineering & Design',pool.eng],['proc','Procurement',pool.proc],['inst','Installation',pool.inst],['comm','Testing & Commissioning',pool.comm]];
+    modal(`<h4>สร้างแผน L4 อัตโนมัติ (AI)</h4><div class="mbody wz">
+      <p class="mini">AI ถ่วงน้ำหนักแต่ละกิจกรรมตาม<b>มูลค่า</b>ให้แล้ว (ค่าของ→ซื้อ · ค่าแรง→ติดตั้ง) — กำหนดแค่หน่วยเวลา วันเริ่ม และช่วงเวลาแต่ละหัวข้อ</p>
+      <div class="field row" style="margin:0"><div><label>หน่วยเวลา</label><select id="gw_unit"><option value="month" ${u==='month'?'selected':''}>เดือน</option><option value="week" ${u==='week'?'selected':''}>สัปดาห์</option><option value="day" ${u==='day'?'selected':''}>วัน</option></select></div><div><label>วันเริ่มโครงการ</label><input id="gw_start" type="date" value="${_isoOf(planStartDate(pl))}"></div></div>
+      ${PH.map(x=>`<div class="field row" style="margin:8px 0 0"><div><label>${x[1]} <span style='color:#4f46e5;font-weight:700'>${pct(x[2])}</span></label><input id="gw_S_${x[0]}" type="number" min="1" step="any" value="${(pl.phases[x[0]].s|0)+1}" placeholder="เริ่ม (ลำดับ)"></div><div><label>ระยะเวลา (${U[u]})</label><input id="gw_D_${x[0]}" type="number" min="0.5" step="any" value="${pl.phases[x[0]].dur}"></div></div>`).join('')}
+      <p class="mini" style="margin-top:8px;color:#64748b">Document / QA-QC & Reports (${pct(pool.doc)}) กระจายครอบทั้งโครงการอัตโนมัติ</p>
+      <div class="field" style="margin-top:8px"><label>ระยะเวลาเก็บเงิน / Payment lag (${U[u]})</label><input id="gw_lag" type="number" min="0" step="any" value="${pl.payLag||0}"></div>
+     </div><div class="mfoot"><button class="btn" onclick="app.closeModal()">ยกเลิก</button><button class="btn primary" onclick="app.genWizardApply()">⚙️ สร้างแผน</button></div>`);},
+  genWizardApply(){const p=proj();const pl=ensurePlan(p);const u=document.getElementById('gw_unit').value;pl.unit=UNIT_DAYS[u]?u:'month';
+    const sd=document.getElementById('gw_start').value;if(sd){const d=new Date(sd);if(!isNaN(d)){pl.startISO=_isoOf(d);pl.startY=d.getFullYear();pl.startM=d.getMonth();}}
+    ['eng','proc','inst','comm'].forEach(k=>{const s=Math.max(0,(parseFloat(document.getElementById('gw_S_'+k).value)||1)-1);const dd=Math.max(0.5,parseFloat(document.getElementById('gw_D_'+k).value)||1);pl.phases[k]={s:s,dur:dd};});
+    pl.payLag=Math.max(0,parseFloat(document.getElementById('gw_lag').value)||0);
+    genL4(p);save();expandedS={};app.closeModal();nav('schedule');toast('สร้างแผน L4 (AI ถ่วงน้ำหนักตามมูลค่า) แล้ว');},
+  setActual(id,tid,v){const _p=proj();if(_p.l4&&_p.l4.gen){const a=(_p.l4.acts||[]).find(x=>x.id===id);if(a)a.actualPct=Math.max(0,Math.min(100,parseNum(v)));l4SyncClaims(_p);save();renderSchedule(document.getElementById('content'));return;}const it=findItem(id);if(!it)return;const val=Math.max(0,Math.min(100,parseNum(v)));if(tid){const t=(it.tasks||[]).find(x=>x.id===tid);if(t)t.actualPct=val;}else it.actualPct=val;save();renderSchedule(document.getElementById('content'));},
   setTaskField(id,tid,f,v){const it=findItem(id);if(!it||!it.tasks)return;const t=it.tasks.find(x=>x.id===tid);if(!t)return;if(f==='name')t.name=v;else if(f==='wt')t.wt=Math.max(0,parseNum(v));save();renderSchedule(document.getElementById('content'));},
   addTask(id){const _p=proj();if(_p.l4&&_p.l4.gen)return;const it=findItem(id);if(!it)return;const sc=buildSchedule(proj());const end=sc.dur-1;const s=(it.ms!=null?it.ms:0);const e=(it.me!=null?it.me:Math.min(s+2,end));const dur=Math.max(1,e-s+1);if(!it.tasks||!it.tasks.length){it.tasks=[{id:tid_(),name:it.name,wt:100,ms:s,dur:dur,actualPct:+it.actualPct||0}];}it.tasks.push({id:tid_(),name:'Task '+(it.tasks.length+1),wt:0,ms:s,dur:dur,actualPct:0});save();expandedS['it_'+id]=true;renderSchedule(document.getElementById('content'));},
   delTask(id,tid){const it=findItem(id);if(!it||!it.tasks)return;it.tasks=it.tasks.filter(x=>x.id!==tid);if(!it.tasks.length)delete it.tasks;save();renderSchedule(document.getElementById('content'));},
-  setActF(id,tid,f,v){const _p=proj();if(_p.l4&&_p.l4.gen){const a=(_p.l4.acts||[]).find(x=>x.id===id);if(!a)return;const sc2=buildSchedule(_p);const end2=sc2.dur-1;if(f==='ms'){const d=a.me-a.ms;a.ms=Math.max(0,Math.min(end2,+v||0));a.me=Math.max(a.ms,Math.min(end2,a.ms+d));}else if(f==='dur'){const d=Math.max(1,parseInt(v)||1);a.me=Math.min(end2,a.ms+d-1);}save();renderSchedule(document.getElementById('content'));return;}const it=findItem(id);if(!it)return;const sc=buildSchedule(proj());const end=sc.dur-1;if(tid){const t=(it.tasks||[]).find(x=>x.id===tid);if(!t)return;if(f==='ms')t.ms=Math.max(0,Math.min(end,+v));else if(f==='dur')t.dur=Math.max(1,parseInt(v)||1);}else{if(f==='ms'){it.ms=Math.max(0,Math.min(end,+v));if((it.me!=null?it.me:end)<it.ms)it.me=it.ms;}else if(f==='dur'){const d=Math.max(1,parseInt(v)||1);const s=(it.ms!=null?it.ms:0);it.ms=s;it.me=Math.min(s+d-1,end);}}save();renderSchedule(document.getElementById('content'));},
+  setActF(id,tid,f,v){const _p=proj();if(_p.l4&&_p.l4.gen){const a=(_p.l4.acts||[]).find(x=>x.id===id);if(!a)return;const sc2=buildSchedule(_p);const end2=sc2.dur-1;if(f==='ms'){const d=a.me-a.ms;a.ms=Math.max(0,Math.min(end2,+v||0));a.me=Math.max(a.ms,Math.min(end2,a.ms+d));}else if(f==='dur'){const d=Math.max(0.5,parseFloat(v)||1);a.me=Math.min(end2,a.ms+d-1);}l4SyncClaims(_p);save();renderSchedule(document.getElementById('content'));return;}const it=findItem(id);if(!it)return;const sc=buildSchedule(proj());const end=sc.dur-1;if(tid){const t=(it.tasks||[]).find(x=>x.id===tid);if(!t)return;if(f==='ms')t.ms=Math.max(0,Math.min(end,+v));else if(f==='dur')t.dur=Math.max(1,parseInt(v)||1);}else{if(f==='ms'){it.ms=Math.max(0,Math.min(end,+v));if((it.me!=null?it.me:end)<it.ms)it.me=it.ms;}else if(f==='dur'){const d=Math.max(0.5,parseFloat(v)||1);const s=(it.ms!=null?it.ms:0);it.ms=s;it.me=Math.min(s+d-1,end);}}save();renderSchedule(document.getElementById('content'));},
   addSub(hEnc){const hh=decodeURIComponent(hEnc);const sc=proj().schedule;const same=sc.acts.filter(a=>(a.h1name||'Other')===hh);
     const ms=same.length?Math.min(...same.map(a=>a.ms)):0;const me=same.length?Math.max(...same.map(a=>a.me)):Math.min(2,sc.months.length-1);
     sc.acts.push({id:uid(),wbs:'',name:'New sub-activity',h1name:hh,weight:0,ms,me,actualPct:0});save();drawSchedule();},
@@ -1378,8 +1426,8 @@ const app={
     sc.acts.forEach(a=>a.weight=a.weight/s*100);save();regenCashflowFor(proj());renderSchedule(document.getElementById('content'));toast('Weights normalized to 100%');},
   importSchedule(){document.getElementById('dataMenu').classList.remove('open');const fi=document.getElementById('schedInput');fi.value='';fi.click();},
   scheduleTemplate(){document.getElementById('dataMenu').classList.remove('open');buildSchedTemplate();},
-  setDataDate(v){ensurePlan(proj()).dataDate=+v;save();renderSchedule(document.getElementById('content'));},
-  setDataToday(){const p=proj();ensurePlan(p);const now=new Date();const idx=(now.getFullYear()-p.plan.startY)*12+(now.getMonth()-p.plan.startM);const sc=buildSchedule(p);p.plan.dataDate=Math.max(0,Math.min(sc.dur-1,idx));save();renderSchedule(document.getElementById('content'));},
+  setDataDate(v){const _p=proj();ensurePlan(_p).dataDate=+v;l4SyncClaims(_p);save();renderSchedule(document.getElementById('content'));},
+  setDataToday(){const p=proj();ensurePlan(p);const now=new Date();const pl=p.plan;const u=planUnit(pl);const sd=planStartDate(pl);let idx;if(u==='month'){idx=(now.getFullYear()-sd.getFullYear())*12+(now.getMonth()-sd.getMonth());}else{const days=Math.floor((now-sd)/86400000);idx=Math.floor(days/(u==='week'?7:1));}const sc=buildSchedule(p);p.plan.dataDate=Math.max(0,Math.min(sc.dur-1,idx));l4SyncClaims(p);save();renderSchedule(document.getElementById('content'));},
   exportSchedule(){buildScheduleExcel();},
   cashflowTemplate(){document.getElementById('dataMenu').classList.remove('open');cashflowTemplateBuild();},
   uploadCashflow(){document.getElementById('dataMenu').classList.remove('open');const fi=document.getElementById('cfInput');fi.value='';fi.click();},
