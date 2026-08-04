@@ -400,7 +400,7 @@ function renderTimesheet(el){const p=proj();ensureMP(p);const pl=ensurePlan(p);
 function renderGantt(el){const p=proj();const sc=buildSchedule(p);const dur=sc.dur;const months=sc.months;const dd=Math.min(p.plan.dataDate||0,dur-1);
   if(!sc.acts.length){el.innerHTML=`<div class="pagehead"><div><h2>Gantt Chart</h2><p>Generated from your L4 schedule.</p></div></div><div class="card"><div class="body" style="text-align:center;padding:40px"><p class="mini">No L4 activities yet — set phase durations in L4 Weighted Schedule first.</p><button class="btn primary" onclick="nav('schedule')">Go to L4 Schedule</button></div></div>`;return;}
   const CW=46,LW=300,rowH=30;const totalW=dur*CW;
-  const PC={eng:'#4f46e5',proc:'#0ea5e9',inst:'#10b981',comm:'#f59e0b',ind:'#8b5cf6'};
+  const PC={eng:'#4f46e5',proc:'#0ea5e9',inst:'#10b981',comm:'#f59e0b',ind:'#8b5cf6',doc:'#e11d48'};
   const rows=[];
   ['eng','proc','inst','comm','ind'].forEach((ph,pi)=>{const list=sc.acts.filter(a=>a.phase===ph);if(!list.length)return;
     const pms=Math.min.apply(0,list.map(a=>a.ms)),pme=Math.max.apply(0,list.map(a=>a.me));
@@ -810,7 +810,7 @@ function drawCBS(){
 
 /* ===== CASH FLOW ===== */
 const PHASE_OF={ENG:'eng',DOC:'eng',MEL:'proc',MIN:'proc',BLK:'proc',STF:'inst',SUB:'comm',TCF:'ind',TOL:'ind',RNT:'ind',TRN:'ind',SAF:'ind',ENV:'ind',UTL:'ind',OHC:'ind'};
-const PHNAME={eng:'Engineering & Design',proc:'Procurement',inst:'Installation',comm:'Testing & Commissioning',ind:'Indirect / Site'};
+const PHNAME={eng:'Engineering & Design',proc:'Procurement',inst:'Installation',comm:'Testing & Commissioning',ind:'Indirect / Site',doc:'Document / QA-QC & Reports'};
 const PHKEYS=['eng','proc','inst','comm'];
 const LABOR_FRAC={ENG:0.807,DOC:0.807,MEL:0,MIN:0,BLK:0,STF:0.954,SUB:0.954,TCF:0,TOL:0,RNT:0,TRN:0,SAF:0.30,ENV:0.30,UTL:0,OHC:0};
 function labFrac(it,cno){let lp;if(it.labPct!=null&&it.labPct!=='')lp=+it.labPct;else if(it.lab!=null&&(+it.budget||0)>0)lp=(+it.lab||0)/(+it.budget)*100;else lp=(LABOR_FRAC[cno]!=null?LABOR_FRAC[cno]:0)*100;return Math.max(0,Math.min(100,lp))/100;}
@@ -843,7 +843,93 @@ function projClaim(p){let t=0;p.cats.forEach(c=>t+=catClaim(c));return t;}
 function claimReceipts(p){const dur=planMonths(ensurePlan(p)).length;const arr=Array(dur).fill(0);p.cats.forEach(c=>c.items.forEach(it=>{const amt=itemClaimAmt(it);if(amt<=0)return;const rm=(+it.claimMonth||0)+((it.credit!=null)?+it.credit:(p.plan.payLag||0));arr[Math.min(Math.max(rm,0),dur-1)]+=amt;}));return arr;}
 function contractTotal(p){let t=0;p.cats.forEach(c=>c.items.forEach(i=>t+=(+i.budget||0)));return t;}
 function findItem(id){const p=proj();for(const c of p.cats){const it=c.items.find(i=>i.id===id);if(it)return it;}return null;}
-function buildSchedule(p){const pl=ensurePlan(p);const months=planMonths(pl);const dur=months.length;const end=dur-1;const tot=costTotal(p)||1;const acts=[];
+/* ===== L4 AUTO-GENERATOR (E&I) ===== */
+function _l4lc(s){return (s||'').toString().toLowerCase();}
+function pkgOf(name){var d=_l4lc(name);var H=function(){for(var i=0;i<arguments.length;i++){if(d.indexOf(arguments[i])>=0)return true;}return false;};
+ if(H('gland','แกลนด์'))return 'Cable Gland & Accessories';
+ if(H('tray','ราง','ladder','wireway'))return 'Cable Tray & Accessories';
+ if(H('conduit','ท่อร้อย','emt','imc',' rsc','flexible','flex ','rigid pipe'))return 'Conduit & Accessories';
+ if(H('junction','pull box','local box','terminal box','โลคอล',' jb'))return 'Junction Boxes & Accessories';
+ if(H('support','c-channel','channel','unistrut','strut','bracket','hanger','เหล็ก','steel','ซัพพอร์ท'))return 'Steel Support & Hanger';
+ if(H('instrument cable','signal cable','control cable','สายสัญญาณ','rtd cable','thermocouple cable','compensating','coaxial','fo cable','fiber'))return 'Instrument Cable';
+ if(H('power cable','cv-','xlpe','mv cable','lv cable','nyy','vct','cv ','0.6/1','24kv','22kv','33kv','11kv','สายไฟ','สายเมน'))return 'Power Cable';
+ if(H('transmitter','gauge','switch','detector','sensor','rtd','thermocouple','valve','flow','level','pressure','temperature','analyzer','positioner','solenoid','instrument'))return 'Field Instruments';
+ if(H('light','luminaire','โคมไฟ','lamp','fixture','flood'))return 'Lighting & Small Power';
+ if(H('ground','earth','สายดิน','bonding','lightning'))return 'Grounding Material';
+ if(H('panel','mcc','switchgear','distribution board',' db ','transformer','vsd','vfd','ups','battery','rack','cabinet','dcs','plc'))return 'Panel / MCC / Equipment';
+ return 'Other Materials';}
+
+function genL4(p){var pl=ensurePlan(p);var end=Math.max(1,planEnd(pl))-1;
+ var cl=function(x){return Math.max(0,Math.min(end,Math.round(x)));};
+ var W=function(k,def){var w=pl.phases[k]||def||{s:0,dur:2};return {s:cl(w.s),e:cl(w.s+Math.max(1,w.dur)-1)};};
+ var ew=W('eng'),pw=W('proc'),iw=W('inst'),cw=W('comm');
+ var tot=costTotal(p)||1;
+ var engPool=0,docPool=0,commPool=0,pkgMat={},pkgLab={},instLab=0;
+ p.cats.forEach(function(c){c.items.forEach(function(it){if(isMargin(it))return;var m=Math.max(0,budMat(it)),l=Math.max(0,budLab(it));if(m<=0&&l<=0)return;var nm=it.name||c.name;
+   if(c.no==='ENG'){engPool+=m+l;return;} if(c.no==='DOC'){docPool+=m+l;return;}
+   if(m>0){var g=pkgOf(nm);pkgMat[g]=(pkgMat[g]||0)+m;}
+   if(c.no==='SUB'){commPool+=l;return;}
+   if(l>0){instLab+=l;if(c.no==='STF'){pkgLab.__STF=(pkgLab.__STF||0)+l;}else{var g2=pkgOf(nm);pkgLab[g2]=(pkgLab[g2]||0)+l;}}
+ });});
+ var testReserve=Math.round(instLab*0.06);commPool+=testReserve;var instPool=Math.max(0,instLab-testReserve);
+ var acts=[];var push=function(phase,group,name,val,ms,me){acts.push({id:uid(),phase:phase,group:group,name:name,val:Math.round(val||0),ms:cl(ms),me:Math.max(cl(ms),cl(me)),actualPct:0});};
+ var laySeq=function(n,s,e,ov){var span=Math.max(1,e-s+1);var each=Math.max(1,Math.round(span/n*(1+(ov||0))));var step=(n>1)?Math.max(1,Math.round((span-each)/(n-1))):0;var o=[];for(var i=0;i<n;i++){var ms=Math.min(e,s+i*step);o.push([ms,Math.min(e,ms+each-1)]);}return o;};
+
+ /* Engineering deliverables */
+ var eng=[['Material approval & Specification (all)',0.18],['Location / Layout plan',0.10],['Single line diagram (SLD)',0.12],['Schematic & Wiring / Connection diagram',0.16],['Cable schedule & routing',0.12],['Loop diagram (instrument)',0.12],['Termination / Hook-up drawing',0.12],['As-built drawing',0.08]];
+ var eL=laySeq(eng.length,ew.s,ew.e,0.4);eng.forEach(function(x,i){push('eng','Engineering Deliverables',x[0],engPool*x[1],eL[i][0],eL[i][1]);});
+
+ /* Procurement packages */
+ var pOrder=['Panel / MCC / Equipment','Power Cable','Instrument Cable','Field Instruments','Steel Support & Hanger','Cable Tray & Accessories','Conduit & Accessories','Cable Gland & Accessories','Junction Boxes & Accessories','Lighting & Small Power','Grounding Material','Other Materials'];
+ var longLead={'Panel / MCC / Equipment':1,'Power Cable':1,'Instrument Cable':1,'Field Instruments':1};
+ var pspan=Math.max(1,pw.e-pw.s+1);
+ pOrder.forEach(function(g){var v=pkgMat[g]||0;if(v<=0)return;var ll=longLead[g];var ms=ll?pw.s:Math.min(pw.e,pw.s+Math.floor(pspan*0.25));var me=Math.min(pw.e,ms+Math.max(1,Math.round(pspan*(ll?0.85:0.6)))-1);push('proc','Procurement Packages',g,v,ms,me);});
+
+ /* Installation — dependency-sequenced (CPM) */
+ var gl=function(n){return pkgLab[n]||0;};var PL=gl('Power Cable'),IL=gl('Instrument Cable'),GL=gl('Cable Gland & Accessories');
+ var stages=[
+  {k:'scaf',name:'Scaffolding & access setup',group:'Site Preparation',deps:[]},
+  {k:'sup',name:'Support & hanger installation',group:'Support & Routing',deps:['scaf']},
+  {k:'tray',name:'Cable tray installation',group:'Support & Routing',deps:['sup']},
+  {k:'cond',name:'Conduit installation',group:'Support & Routing',deps:['sup']},
+  {k:'fi',name:'Field instrument & JB installation',group:'Field Devices',deps:['sup']},
+  {k:'pullP',name:'Cable pulling — power',group:'Cable Works',deps:['tray']},
+  {k:'pullI',name:'Cable pulling — instrument',group:'Cable Works',deps:['tray','cond']},
+  {k:'light',name:'Lighting & small power',group:'Cable Works',deps:['cond']},
+  {k:'gnd',name:'Grounding & bonding',group:'Termination',deps:['sup']},
+  {k:'panel',name:'Panel / MCC installation & connection',group:'Equipment',deps:['sup']},
+  {k:'termP',name:'Glanding & termination — power',group:'Termination',deps:['pullP','panel']},
+  {k:'termI',name:'Glanding & termination — instrument',group:'Termination',deps:['pullI','fi']}
+ ];
+ var slab={scaf:0,sup:gl('Steel Support & Hanger'),tray:gl('Cable Tray & Accessories'),cond:gl('Conduit & Accessories'),fi:gl('Field Instruments')+gl('Junction Boxes & Accessories'),pullP:0.6*PL,pullI:0.6*IL,light:gl('Lighting & Small Power'),gnd:gl('Grounding Material'),panel:gl('Panel / MCC / Equipment'),termP:0.4*PL+0.5*GL,termI:0.4*IL+0.5*GL};
+ var asum=0;for(var kk in slab)asum+=slab[kk];var extra=instPool-asum;
+ if(asum>0){for(var k2 in slab)slab[k2]+=extra*slab[k2]/asum;}else if(instPool>0){slab.sup=instPool*0.22;slab.tray=instPool*0.18;slab.pullP=instPool*0.22;slab.termP=instPool*0.14;slab.fi=instPool*0.14;slab.pullI=instPool*0.10;}
+ var dw={};stages.forEach(function(s){dw[s.k]=Math.max(1,Math.round((slab[s.k]||0)/(instPool||1)*24));});
+ var ES={},F={};var calc=function(k){if(F[k]!=null)return;var st=null;stages.forEach(function(s){if(s.k===k)st=s;});var e=0;st.deps.forEach(function(d){calc(d);e=Math.max(e,F[d]);});ES[k]=e;F[k]=e+dw[k];};
+ stages.forEach(function(s){calc(s.k);});var P=0;stages.forEach(function(s){P=Math.max(P,F[s.k]);});P=P||1;
+ var ispan=Math.max(1,iw.e-iw.s+1);var core={sup:1,tray:1,pullP:1,termP:1,pullI:1,termI:1};
+ stages.forEach(function(s){if((slab[s.k]||0)<=0&&!core[s.k])return;var ms=iw.s+Math.floor(ES[s.k]/P*ispan);var me=iw.s+Math.ceil(F[s.k]/P*ispan)-1;push('inst',s.group,s.name,slab[s.k]||0,ms,me);});
+
+ /* Testing & Commissioning */
+ var comm=[['Pre-commissioning & continuity test',0.30],['Loop check & function test',0.40],['Commissioning & punch list clearance',0.20],['System handover & final documentation',0.10]];
+ var cL=laySeq(comm.length,cw.s,cw.e,0.15);comm.forEach(function(x,i){push('comm','Testing & Commissioning',x[0],commPool*x[1],cL[i][0],cL[i][1]);});
+
+ /* Document / QA-QC & Reports */
+ push('doc','QA/QC & Inspection','Material receiving inspection',docPool*0.14,pw.s,iw.e);
+ push('doc','QA/QC & Inspection','RFI & inspection request (WIR)',docPool*0.12,iw.s,iw.e);
+ push('doc','QA/QC & Inspection','Work inspection per ITP',docPool*0.20,iw.s,cw.e);
+ push('doc','QA/QC & Inspection','NCR handling & close-out',docPool*0.10,cl(iw.s+1),cw.e);
+ push('doc','Reports','Daily report',docPool*0.14,0,end);
+ push('doc','Reports','Weekly report',docPool*0.14,0,end);
+ push('doc','Reports','Monthly progress report',docPool*0.16,0,end);
+
+ p.l4={gen:true,acts:acts,ts:Date.now()};return p.l4;}
+
+function buildSchedFromL4(p){var pl=ensurePlan(p);var months=planMonths(pl);var dur=months.length;var end=dur-1;var tot=costTotal(p)||1;
+ var acts=(p.l4.acts||[]).map(function(a){var ms=Math.max(0,Math.min(end,a.ms|0));var me=Math.max(ms,Math.min(end,a.me|0));return {id:a.id,taskId:null,catNo:'',catName:a.group,phase:a.phase,name:a.name,itemName:a.name,group:a.group,weight:(+a.val||0)/tot*100,budget:+a.val||0,ms:ms,me:me,actualPct:+a.actualPct||0,ref:a};});
+ return {months:months,acts:acts,dur:dur,tot:tot};}
+
+function buildSchedule(p){if(p.l4&&p.l4.gen)return buildSchedFromL4(p);const pl=ensurePlan(p);const months=planMonths(pl);const dur=months.length;const end=dur-1;const tot=costTotal(p)||1;const acts=[];
   p.cats.forEach(c=>{const ph=PHASE_OF[c.no]||'ind';
     let win=(ph==='ind')?{s:0,dur:dur}:pl.phases[ph];if(!win)win={s:0,dur:dur};
     let ws=Math.max(0,Math.min(end,win.s)),we=Math.max(ws,Math.min(end,win.s+win.dur-1));
@@ -987,10 +1073,10 @@ function renderSchedule(el){const p=proj();ensurePlan(p);const k=schedStats(p);c
      <button class="btn primary" onclick="app.scheduleWizard()">🗓️ Set phase durations</button></div></div>`;return;}
   const spi=k.planToDate?(k.earned/k.planToDate):0;
   const _kw=window.scrollY||0;const _ke=document.getElementById('ganttWrap');const _kx=_ke?_ke.scrollLeft:0,_ky=_ke?_ke.scrollTop:0;const _kk=!!_ke;
-  el.innerHTML=`<div class="pagehead"><div><h2>L4 Schedule / Gantt <span style="font-weight:500;font-size:12px;color:var(--muted)">· Plan vs Actual tracking</span></h2><p>${esc(p.name)} · ${sc.months[0]}–${sc.months[sc.dur-1]} · แก้วันเริ่ม/ช่วงเวลา/ความคืบหน้าได้ในตาราง · progress ป้อนเข้า Cash Flow</p></div>
+  el.innerHTML=`<div class="pagehead"><div><h2>L4 Schedule / Gantt <span style="font-weight:500;font-size:12px;color:var(--muted)">· Plan vs Actual tracking</span></h2><p>${esc(p.name)} · ${sc.months[0]}–${sc.months[sc.dur-1]} · แก้วันเริ่ม/ช่วงเวลา/ความคืบหน้าได้ในตาราง · progress ป้อนเข้า Cash Flow${p.l4&&p.l4.gen?` · <b style=\'color:#4f46e5\'>โหมด L4 อัตโนมัติ (E&I)</b> — Eng deliverables · Procurement packages · Installation ตามลำดับงาน · QA/QC`:``}</p></div>
      <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">Data date:
        <select onchange="app.setDataDate(this.value)" style="border:1px solid var(--line);border-radius:8px;padding:6px 8px">${sc.months.map((m,i)=>`<option value="${i}" ${i===k.dd?'selected':''}>${m}</option>`).join('')}</select>
-       <button class="btn" onclick="app.setDataToday()" title="ตั้ง Data date = วันนี้">📍 Today</button><button class="btn" onclick="app.scheduleWizard()">🗓️ Phase durations</button><button class="btn" onclick="app.exportSchedule()">⬇ Excel</button><button class="btn" onclick="window.print()">🖨️</button></div></div>
+       <button class="btn" onclick="app.setDataToday()" title="ตั้ง Data date = วันนี้">📍 Today</button>${p.l4&&p.l4.gen?`<button class="btn" onclick="app.revertL4()" title="กลับไปใช้แถวราย CBS">↩︎ CBS view</button>`:`<button class="btn primary" onclick="app.genL4Cmd()" title="สร้าง L4 ละเอียดอัตโนมัติจาก CBS (E&I)">⚙️ สร้าง L4 อัตโนมัติ</button>`}<button class="btn" onclick="app.scheduleWizard()">🗓️ Phase durations</button><button class="btn" onclick="app.exportSchedule()">⬇ Excel</button><button class="btn" onclick="window.print()">🖨️</button></div></div>
    <div class="kpis">
      ${kpi('Planned % (to date)',k.planPct.toFixed(2)+'%','by '+sc.months[k.dd],'#eef2ff','#4f46e5',iT)}
      ${kpi('Actual % complete',k.actPct.toFixed(2)+'%','earned '+cur()+' '+fmt(k.earned/100*sc.tot),'#ecfeff','#0ea5e9',iC,k.actPct>=k.planPct?'up':'down')}
@@ -1013,7 +1099,7 @@ function renderSchedule(el){const p=proj();ensurePlan(p);const k=schedStats(p);c
 function drawSchedule(){
   const p=proj();const sc=buildSchedule(p);const dur=sc.dur;const end=dur-1;const dd=Math.min(p.plan.dataDate||0,dur-1);const months=sc.months;
   const CW=44,LW=468,RH=30,W=dur*CW;
-  const PC={eng:'#4f46e5',proc:'#0ea5e9',inst:'#10b981',comm:'#f59e0b',ind:'#8b5cf6'};
+  const PC={eng:'#4f46e5',proc:'#0ea5e9',inst:'#10b981',comm:'#f59e0b',ind:'#8b5cf6',doc:'#e11d48'};
   const msel=(cur,cb)=>`<select onchange="${cb}" style="border:1px solid var(--line);border-radius:5px;padding:1px;font-size:10px;width:62px">${months.map((m,i)=>`<option value="${i}" ${i===cur?'selected':''}>${m}</option>`).join('')}</select>`;
   const grid=`repeating-linear-gradient(90deg,transparent,transparent ${CW-1}px,#f0f2f5 ${CW-1}px,#f0f2f5 ${CW}px)`;
   const pdtOf=a=>a.me<dd?100:(a.ms>dd?0:(((dd-a.ms+1)/(a.me-a.ms+1))*100));
@@ -1037,6 +1123,27 @@ function drawSchedule(){
        <div style="flex:1;padding:7px 10px">Activity</div><div style="width:66px;padding:7px 2px;text-align:center">Start</div><div style="width:40px;padding:7px 2px;text-align:center">Dur</div><div style="width:44px;padding:7px 2px;text-align:right">Plan%</div><div style="width:50px;padding:7px 4px;text-align:right">Act%</div></div>
      <div style="display:flex;width:${W}px">${months.map(m=>`<div style="width:${CW}px;flex:0 0 ${CW}px;text-align:center;font-size:9px;color:#94a3b8;padding:7px 0;border-left:1px solid #f0f2f5">${m}</div>`).join('')}</div></div>`;
   let R='';
+  const GEN=p.l4&&p.l4.gen;
+  if(GEN){['eng','proc','inst','comm','doc'].forEach((ph,pi)=>{const list=sc.acts.filter(a=>a.phase===ph);if(!list.length)return;
+    const col=PC[ph]||'#64748b';
+    const pms=Math.min.apply(0,list.map(a=>a.ms)),pme=Math.max.apply(0,list.map(a=>a.me));
+    const pw=list.reduce((s,x)=>s+x.weight,0),pe=list.reduce((s,x)=>s+x.weight*Math.min(100,+x.actualPct||0)/100,0);const pact=Math.min(100,pw?pe/pw*100:0);
+    let pp=0;list.forEach(a=>{const n=a.me-a.ms+1;for(let m=a.ms;m<=Math.min(a.me,dd);m++)pp+=a.weight/n;});const pplan=Math.min(100,pw?pp/pw*100:0);
+    const open=expandedS['ph_'+pi]!==false;
+    const gname=`<div style="flex:1;font-weight:800;font-size:12.5px;padding-left:6px;cursor:pointer;white-space:nowrap;overflow:hidden" onclick="app.togS('ph_'+${pi})">${open?'▾':'▸'} ${PHNAME[ph]||ph} <span style="font-weight:500;color:#94a3b8;font-size:10px">${pw.toFixed(0)}%</span></div><div style="width:66px"></div><div style="width:40px"></div><div style="width:44px;text-align:right;font-size:11px;color:#64748b;padding-right:4px">${pplan.toFixed(0)}%</div><div style="width:50px;text-align:right;font-weight:700;font-size:11px;padding-right:4px">${pact.toFixed(0)}%</div>`;
+    R+=`<div style="display:flex;height:${RH}px;border-bottom:1px solid var(--soft)"><div style="position:sticky;left:0;z-index:2;width:${LW}px;flex:0 0 ${LW}px;background:#f8fafc;border-right:1px solid var(--line);display:flex;align-items:center">${gname}</div>${barGroup(pms,pme,pact,col)}</div>`;
+    if(!open)return;
+    const groups=[];const gseen={};list.forEach(a=>{if(!gseen[a.group]){gseen[a.group]=1;groups.push(a.group);}});
+    groups.forEach((gn,gi)=>{const ga=list.filter(a=>a.group===gn);
+      const gms=Math.min.apply(0,ga.map(a=>a.ms)),gme=Math.max.apply(0,ga.map(a=>a.me));const gw=ga.reduce((s,x)=>s+x.weight,0),geu=ga.reduce((s,x)=>s+x.weight*Math.min(100,+x.actualPct||0)/100,0);const gact=Math.min(100,gw?geu/gw*100:0);
+      const gopen=expandedS['g_'+pi+'_'+gi]!==false;const showSub=!(groups.length===1&&gn===(PHNAME[ph]||ph));
+      if(showSub){const gnm=`<div style="flex:1;font-weight:600;font-size:11.5px;padding-left:20px;cursor:pointer;white-space:nowrap;overflow:hidden;text-overflow:ellipsis" onclick="app.togS('g_'+${pi}+'_'+${gi})">${gopen?'▾':'▸'} ${esc(gn)} <span style="color:#94a3b8;font-weight:400;font-size:10px">${gw.toFixed(0)}%</span></div><div style="width:66px"></div><div style="width:40px"></div><div style="width:44px"></div><div style="width:50px;text-align:right;font-size:11px;font-weight:600;padding-right:4px">${gact.toFixed(0)}%</div>`;
+        R+=`<div style="display:flex;height:${RH}px;border-bottom:1px solid var(--soft)"><div style="position:sticky;left:0;z-index:2;width:${LW}px;flex:0 0 ${LW}px;background:#fafbfc;border-right:1px solid var(--line);display:flex;align-items:center">${gnm}</div>${barGroup(gms,gme,gact,col)}</div>`;}
+      if(!gopen)return;
+      ga.forEach(a=>{const pdt=pdtOf(a);const indent=showSub?36:20;
+        R+=`<div style="display:flex;height:${RH}px;border-bottom:1px solid var(--soft)">${leftLeaf(esc(a.name),indent,a.ms,a.me-a.ms+1,pdt,(+a.actualPct||0),`app.setActF('${a.id}','','ms',this.value)`,`app.setActF('${a.id}','','dur',this.value)`,`app.setActual('${a.id}','',this.value)`)}${barLeaf(a.ms,a.me,+a.actualPct||0,pdt,col)}</div>`;});
+    });
+  });} else {
   ['eng','proc','inst','comm','ind'].forEach((ph,pi)=>{const list=sc.acts.filter(a=>a.phase===ph);if(!list.length)return;
     const col=PC[ph];const pms=Math.min.apply(0,list.map(a=>a.ms)),pme=Math.max.apply(0,list.map(a=>a.me));
     const pw=list.reduce((s,x)=>s+x.weight,0),pe=list.reduce((s,x)=>s+x.weight*Math.min(100,+x.actualPct||0)/100,0);const pact=Math.min(100,pw?pe/pw*100:0);
@@ -1061,7 +1168,7 @@ function drawSchedule(){
           R+=`<div style="display:flex;height:26px;border-bottom:1px solid var(--soft)"><div style="position:sticky;left:0;z-index:2;width:${LW}px;flex:0 0 ${LW}px;background:#fff;border-right:1px solid var(--line);padding-left:36px;display:flex;align-items:center"><button onclick="app.addTask('${iid}')" style="border:none;background:none;color:#4f46e5;cursor:pointer;font-size:11px;font-weight:600">＋ Add task</button></div><div style="width:${W}px;flex:0 0 ${W}px;background:${grid}"></div></div>`;}
       }
     });
-  });
+  });}
   const nowLeft=LW+dd*CW+CW/2;
   document.getElementById('scBody').innerHTML=head+`<div style="position:relative">${R}<div style="position:absolute;top:0;bottom:0;left:${nowLeft}px;width:2px;background:#ef4444;z-index:1;pointer-events:none"></div></div>`;
 }
@@ -1252,11 +1359,13 @@ const app={
 
   setItemClaim(cid,iid,f,v){const it=proj().cats.find(c=>c.id===cid).items.find(i=>i.id===iid);if(!it)return;if(f==='claim')it.claim=(v===''||v==null)?undefined:parseNum(v);else if(f==='month')it.claimMonth=(v===''||v==null)?null:+v;else if(f==='credit')it.credit=(v===''||v==null)?null:Math.max(0,parseInt(v)||0);else if(f==='creditUnit')it.creditUnit=v;save();renderCost(document.getElementById('content'));},
   togS(k){expandedS[k]=!expandedS[k];renderSchedule(document.getElementById('content'));},
-  setActual(id,tid,v){const it=findItem(id);if(!it)return;const val=Math.max(0,Math.min(100,parseNum(v)));if(tid){const t=(it.tasks||[]).find(x=>x.id===tid);if(t)t.actualPct=val;}else it.actualPct=val;save();renderSchedule(document.getElementById('content'));},
+  genL4Cmd(){const p=proj();if(!costTotal(p)){toast('ยังไม่มีข้อมูล CBS');return;}genL4(p);save();expandedS={};toast('สร้าง L4 อัตโนมัติแล้ว — ปรับ START/DUR/ACT% ได้');renderSchedule(document.getElementById('content'));},
+  revertL4(){const p=proj();p.l4=null;save();expandedS={};renderSchedule(document.getElementById('content'));},
+  setActual(id,tid,v){const _p=proj();if(_p.l4&&_p.l4.gen){const a=(_p.l4.acts||[]).find(x=>x.id===id);if(a)a.actualPct=Math.max(0,Math.min(100,parseNum(v)));save();renderSchedule(document.getElementById('content'));return;}const it=findItem(id);if(!it)return;const val=Math.max(0,Math.min(100,parseNum(v)));if(tid){const t=(it.tasks||[]).find(x=>x.id===tid);if(t)t.actualPct=val;}else it.actualPct=val;save();renderSchedule(document.getElementById('content'));},
   setTaskField(id,tid,f,v){const it=findItem(id);if(!it||!it.tasks)return;const t=it.tasks.find(x=>x.id===tid);if(!t)return;if(f==='name')t.name=v;else if(f==='wt')t.wt=Math.max(0,parseNum(v));save();renderSchedule(document.getElementById('content'));},
-  addTask(id){const it=findItem(id);if(!it)return;const sc=buildSchedule(proj());const end=sc.dur-1;const s=(it.ms!=null?it.ms:0);const e=(it.me!=null?it.me:Math.min(s+2,end));const dur=Math.max(1,e-s+1);if(!it.tasks||!it.tasks.length){it.tasks=[{id:tid_(),name:it.name,wt:100,ms:s,dur:dur,actualPct:+it.actualPct||0}];}it.tasks.push({id:tid_(),name:'Task '+(it.tasks.length+1),wt:0,ms:s,dur:dur,actualPct:0});save();expandedS['it_'+id]=true;renderSchedule(document.getElementById('content'));},
+  addTask(id){const _p=proj();if(_p.l4&&_p.l4.gen)return;const it=findItem(id);if(!it)return;const sc=buildSchedule(proj());const end=sc.dur-1;const s=(it.ms!=null?it.ms:0);const e=(it.me!=null?it.me:Math.min(s+2,end));const dur=Math.max(1,e-s+1);if(!it.tasks||!it.tasks.length){it.tasks=[{id:tid_(),name:it.name,wt:100,ms:s,dur:dur,actualPct:+it.actualPct||0}];}it.tasks.push({id:tid_(),name:'Task '+(it.tasks.length+1),wt:0,ms:s,dur:dur,actualPct:0});save();expandedS['it_'+id]=true;renderSchedule(document.getElementById('content'));},
   delTask(id,tid){const it=findItem(id);if(!it||!it.tasks)return;it.tasks=it.tasks.filter(x=>x.id!==tid);if(!it.tasks.length)delete it.tasks;save();renderSchedule(document.getElementById('content'));},
-  setActF(id,tid,f,v){const it=findItem(id);if(!it)return;const sc=buildSchedule(proj());const end=sc.dur-1;if(tid){const t=(it.tasks||[]).find(x=>x.id===tid);if(!t)return;if(f==='ms')t.ms=Math.max(0,Math.min(end,+v));else if(f==='dur')t.dur=Math.max(1,parseInt(v)||1);}else{if(f==='ms'){it.ms=Math.max(0,Math.min(end,+v));if((it.me!=null?it.me:end)<it.ms)it.me=it.ms;}else if(f==='dur'){const d=Math.max(1,parseInt(v)||1);const s=(it.ms!=null?it.ms:0);it.ms=s;it.me=Math.min(s+d-1,end);}}save();renderSchedule(document.getElementById('content'));},
+  setActF(id,tid,f,v){const _p=proj();if(_p.l4&&_p.l4.gen){const a=(_p.l4.acts||[]).find(x=>x.id===id);if(!a)return;const sc2=buildSchedule(_p);const end2=sc2.dur-1;if(f==='ms'){const d=a.me-a.ms;a.ms=Math.max(0,Math.min(end2,+v||0));a.me=Math.max(a.ms,Math.min(end2,a.ms+d));}else if(f==='dur'){const d=Math.max(1,parseInt(v)||1);a.me=Math.min(end2,a.ms+d-1);}save();renderSchedule(document.getElementById('content'));return;}const it=findItem(id);if(!it)return;const sc=buildSchedule(proj());const end=sc.dur-1;if(tid){const t=(it.tasks||[]).find(x=>x.id===tid);if(!t)return;if(f==='ms')t.ms=Math.max(0,Math.min(end,+v));else if(f==='dur')t.dur=Math.max(1,parseInt(v)||1);}else{if(f==='ms'){it.ms=Math.max(0,Math.min(end,+v));if((it.me!=null?it.me:end)<it.ms)it.me=it.ms;}else if(f==='dur'){const d=Math.max(1,parseInt(v)||1);const s=(it.ms!=null?it.ms:0);it.ms=s;it.me=Math.min(s+d-1,end);}}save();renderSchedule(document.getElementById('content'));},
   addSub(hEnc){const hh=decodeURIComponent(hEnc);const sc=proj().schedule;const same=sc.acts.filter(a=>(a.h1name||'Other')===hh);
     const ms=same.length?Math.min(...same.map(a=>a.ms)):0;const me=same.length?Math.max(...same.map(a=>a.me)):Math.min(2,sc.months.length-1);
     sc.acts.push({id:uid(),wbs:'',name:'New sub-activity',h1name:hh,weight:0,ms,me,actualPct:0});save();drawSchedule();},
@@ -1283,7 +1392,7 @@ const app={
      </div><div class="mfoot"><button class="btn" onclick="app.closeModal()">Cancel</button><button class="btn primary" onclick="app.runWizard()">Apply</button></div>`);},
   runWizard(){const p=proj();const pl=ensurePlan(p);pl.startM=+document.getElementById('wzM').value;pl.startY=+document.getElementById('wzY').value||pl.startY;pl.payLag=Math.max(0,+document.getElementById('wzLag').value||0);
     PHKEYS.forEach(kk=>{pl.phases[kk]={s:Math.max(0,(+document.getElementById('wzS_'+kk).value||1)-1),dur:Math.max(1,+document.getElementById('wzD_'+kk).value||1)};});
-    save();app.closeModal();nav('schedule');toast('Schedule updated — cash flow recalculated');},
+    if(p.l4&&p.l4.gen){genL4(p);}save();app.closeModal();nav('schedule');toast(p.l4&&p.l4.gen?'อัปเดตช่วงเวลา + สร้าง L4 ใหม่แล้ว':'Schedule updated — cash flow recalculated');},
   toggleMenu(e){e.stopPropagation();document.getElementById('dataMenu').classList.toggle('open');},
   setProj(k,v){proj()[k]=v;save();if(k==='name'||k==='currency')render();},
   tog(id){expanded[id]=!expanded[id];drawCBS();},
