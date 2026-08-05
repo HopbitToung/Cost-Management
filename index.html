@@ -1556,7 +1556,7 @@ function renderCost(el){
   const selBar=(function(){const ids=Object.keys(cbsSel).filter(k=>cbsSel[k]);if(!ids.length)return '';const bs='border:none;background:rgba(255,255,255,.22);color:#fff;border-radius:6px;padding:4px 10px;cursor:pointer;font-weight:600';return `<div style="position:sticky;top:0;z-index:6;background:#4f46e5;color:#fff;border-radius:10px;padding:9px 14px;margin-bottom:8px;display:flex;align-items:center;gap:10px;flex-wrap:wrap"><b>เลือก ${ids.length} รายการ</b><button style="${bs}" onclick="app.moveSelUp()">▲ ขึ้น</button><button style="${bs}" onclick="app.moveSelDown()">▼ ลง</button><span style="font-size:12px">ย้ายไปหมวด:</span><select onchange="app.moveSelTo(this.value)" style="color:#111;border-radius:6px;padding:4px 6px;border:none"><option value="">— เลือก —</option>${p.cats.map(c=>`<option value="${c.no}">${c.no} · ${esc(c.name)}</option>`).join('')}</select><button style="${bs};margin-left:auto" onclick="app.clearSel()">ล้าง</button></div>`;})();
   const bg1='background:#f8fafc',bg2='background:#f0f9ff';
   el.innerHTML=`<div class="pagehead"><div><h2>CBS Cost — BOQ (ค่าของ/ค่าแรง · Plan · Actual · Claim)</h2><p>Plan ${cur()} ${fmt(pM+pL)} (ของ ${fmt(pM)} · แรง ${fmt(pL)}) · Actual ${cur()} ${fmt(aM+aL)} · Rdy to Claim ${cur()} ${fmt(rc)} · ราคา/หน่วย × จำนวน = รวม${_wv?(' · <b style="color:#0f766e">WBS map '+_wv.mapped+'/'+_wv.total+'</b>'+(_wv.over.length?(' · <b style="color:#ef4444">'+_wv.over.length+' over-allocated ⚠</b>'):'')):''}</p></div>
-     <div style="display:flex;gap:8px"><button class="btn" onclick="app.expandAll(true)">Expand all</button><button class="btn" onclick="app.expandAll(false)">Collapse</button><button class="btn primary" onclick="app.importExcel()">⬆ Upload CBS</button></div></div>
+     <div style="display:flex;gap:8px"><button class="btn" onclick="app.expandAll(true)">Expand all</button><button class="btn" onclick="app.expandAll(false)">Collapse</button>${p.wbs?`<button class="btn" onclick="app.addFromWbsModal()" title="เพิ่มรายการจากฐานข้อมูล WBS">➕ จาก WBS</button>`:``}<button class="btn primary" onclick="app.importExcel()">⬆ Upload CBS</button></div></div>
    ${selBar}
    <div class="tbl-card scroll"><table class="ct" style="font-size:12px">
      <thead>
@@ -1934,7 +1934,7 @@ function schedStats(p){const sc=buildSchedule(p);const pl=p.plan;const dur=sc.du
   const actCum=[];for(let m=0;m<dur;m++){if(m>dd){actCum.push(null);continue;}const sh=planCum[dd]?planCum[m]/planCum[dd]:0;actCum.push(Math.min(100,earned*sh));}
   return {sc,dur,totW,planCum,actCum,dd,earned,planToDate:planCum[dd]||0,planPct:Math.min(100,planCum[dd]||0),actPct:Math.min(100,earned)};}
 let expandedS={};
-function renderSchedule(el){const p=proj();if(p.wbs&&p.wbsMode&&p.schedMode!=='l4')return renderWbsGantt(el);ensurePlan(p);const k=schedStats(p);const sc=k.sc;
+function renderSchedule(el){const p=proj();if(p.wbs&&p.wbsMode&&p.schedMode==='wbs')return renderWbsGantt(el);ensurePlan(p);const k=schedStats(p);const sc=k.sc;
   if(!sc.acts.length){el.innerHTML=`<div class="pagehead"><div><h2>L4 Schedule / Gantt</h2><p>L4 activities are generated from your CBS items (weighted by value).</p></div></div>
      <div class="card"><div class="body" style="text-align:center;padding:40px"><p class="mini" style="max-width:520px;margin:0 auto 16px">No CBS items with budget yet. Create a project from a quotation (CBS Cost), then set phase durations here.</p>
      <button class="btn primary" onclick="app.scheduleWizard()">🗓️ Set phase durations</button></div></div>`;return;}
@@ -2280,6 +2280,18 @@ const app={
     if(distribute)wbsAutoPlan(p);save();app.closeModal();renderWbsGantt(document.getElementById('content'));toast(distribute?'ตั้งปฏิทิน + กระจายแผนแล้ว':'ตั้งปฏิทินแล้ว ('+((pl.projPeriods)||'-')+' คาบ)');},
   wbsAutoDistribute(){const p=proj();if(!p.wbs)return;wbsAutoPlan(p);save();renderWbsGantt(document.getElementById('content'));toast('กระจายแผนอัตโนมัติทั้งเฟส 1-10 แล้ว');},
   schedModeSet(m){const p=proj();p.schedMode=m;if(m==='l4'&&!(p.l4&&p.l4.gen)&&costTotal(p)>0){genL4(p);}save();renderSchedule(document.getElementById('content'));toast(m==='l4'?'ใช้แผน L4 (ผูกเงิน CBS)':'ใช้แผน WBS (ฐานข้อมูล)');},
+  addFromWbsModal(){const p=proj();window._wbsPick={};
+    const tree=wbsMaster().map(function(l1){return `<details style="border-bottom:1px solid var(--soft)"><summary style="cursor:pointer;font-weight:800;font-size:12px;padding:5px 4px;background:#f1f5f9">${esc(l1.code)} ${esc(l1.name)}</summary>`+l1.children.map(function(l2){return `<div style="font-weight:600;font-size:11.5px;padding:3px 10px;color:#475569">${esc(l2.code)} ${esc(l2.name)}</div>`+l2.children.map(function(l3){return `<label style="display:block;padding:2px 24px;font-size:11.5px;cursor:pointer"><input type="checkbox" onchange="if(!window._wbsPick)window._wbsPick={};window._wbsPick['${l3.code}']=this.checked"> <span style="color:#94a3b8">${esc(l3.code)}</span> ${esc(l3.name)}</label>`;}).join('');}).join('')+`</details>`;}).join('');
+    const catOpt=p.cats.map(function(c){return `<option value="${c.no}" ${c.no==='ENG'?'selected':''}>${esc(c.no)} ${esc(c.name)}</option>`;}).join('');
+    modal(`<h4>เพิ่มรายการจากฐานข้อมูล WBS</h4><div class="mbody" style="max-height:60vh;overflow:auto">
+      <p class="mini">ติ๊กเลือกกิจกรรมจาก WBS (461 รายการ) → เพิ่มเข้า CBS เป็นรายการใหม่ (กลุ่ม = ชื่อ Work Package) ใช้ตั้ง schedule Engineering ฯลฯ · กรอกงบ/ราคาเองภายหลัง</p>
+      <div class="field" style="margin:0 0 8px"><label>เพิ่มเข้าหมวด CBS</label><select id="afwCat">${catOpt}</select></div>
+      <div style="border:1px solid var(--line);border-radius:8px">${tree}</div>
+      </div><div class="mfoot"><button class="btn" onclick="app.closeModal()">ยกเลิก</button><button class="btn primary" onclick="app.addFromWbsApply()">เพิ่มรายการที่เลือก</button></div>`);},
+  addFromWbsApply(){const p=proj();const cat=document.getElementById('afwCat').value;let c=p.cats.filter(function(x){return x.no===cat;})[0]||p.cats[0];
+    var map={};wbsMaster().forEach(function(l1){l1.children.forEach(function(l2){l2.children.forEach(function(l3){map[l3.code]={name:l3.name,grp:l2.name};});});});
+    var n=0;Object.keys(window._wbsPick||{}).forEach(function(code){if(window._wbsPick[code]&&map[code]){c.items.push({id:uid(),name:map[code].name,group:map[code].grp,budget:0,lab:0,actual:0,qty:1,unit:'Lot',matPrice:0,labPrice:0});n++;}});
+    if(p.l4&&p.l4.gen&&p.l4.grouped)genL4(p);save();app.closeModal();renderCost(document.getElementById('content'));toast('เพิ่ม '+n+' รายการจาก WBS เข้าหมวด '+cat);},
   wbsBaseline(){const p=proj();const S=wbsSchedule(p);let n=0;S.acts.forEach(a=>{a.baseMs=a.ms;a.baseDur=(a.me-a.ms+1);n++;});save();renderWbsGantt(document.getElementById('content'));toast('ตั้ง Baseline '+n+' กิจกรรมแล้ว');},
   wbsPhaseWin(l1id,which,v){const p=proj();const idx=Math.max(0,parseInt(v)||0);
     const l2s=p.wbs.nodes.filter(x=>x.parentId===l1id).map(x=>x.id);
