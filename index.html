@@ -969,14 +969,22 @@ function wbsSchedule(p){var pl=ensurePlan(p);var acts=wbsActs(p);var byCode={},b
     LF[a.id]=lf;LS[a.id]=lf-Math.max(1,a.dur)+1;}
   acts.slice().reverse().forEach(calcL);
   acts.forEach(function(a){a._es=ES[a.id];a._ef=EF[a.id];a._ls=LS[a.id];a._lf=LF[a.id];a._tf=Math.round((LS[a.id]||0)-(ES[a.id]||0));a._crit=(a._tf<=0);a.ms=ES[a.id];a.me=EF[a.id];a.pct=wbsProgress(a);});
-  var n=Math.max(1,projEnd+1);var months=[];for(var i=0;i<n;i++)months.push(periodLabel(pl,i));
+  var n=Math.max(1,projEnd+1,(pl.projPeriods||0));var months=[];for(var i=0;i<n;i++)months.push(periodLabel(pl,i));
   return {acts:acts,projEnd:projEnd,dur:n,months:months};}
 
+function wbsAutoPlan(p){var pl=ensurePlan(p);var T=Math.max(2,pl.projPeriods||planEnd(pl));var end=T-1;
+ var FRAC={"1.0":[0,1],"2.0":[0,1],"3.0":[0,0.30],"4.0":[0.12,0.60],"5.0":[0.08,0.25],"6.0":[0.22,0.50],"7.0":[0.28,0.85],"8.0":[0.68,0.90],"9.0":[0.85,0.97],"10.0":[0.88,1.0]};
+ p.wbs.nodes.filter(function(n){return n.level===1;}).forEach(function(l1){var f=FRAC[l1.code]||[0,1];var ps=Math.round(f[0]*end),pe=Math.max(ps,Math.round(f[1]*end));
+  var l2s=p.wbs.nodes.filter(function(n){return n.parentId===l1.id;}).map(function(n){return n.id;});
+  var acts=p.wbs.nodes.filter(function(n){return n.level===3&&n.scope&&l2s.indexOf(n.parentId)>=0;});var n=acts.length;if(!n)return;
+  var span=Math.max(1,pe-ps+1);var each=Math.max(1,Math.round(span/n*1.6));var step=(n>1)?Math.max(1,Math.round((span-each)/(n-1))):0;
+  acts.forEach(function(a,i){var ms=Math.min(pe,ps+i*step);a.smin=ms;a.dur=Math.max(1,Math.min(each,pe-ms+1));a.predText="";});});
+ pl.phases={eng:{s:0,dur:Math.max(1,Math.round(0.30*end))},proc:{s:Math.round(0.12*end),dur:Math.max(1,Math.round(0.48*end))},inst:{s:Math.round(0.28*end),dur:Math.max(1,Math.round(0.57*end))},comm:{s:Math.round(0.68*end),dur:Math.max(1,Math.round(0.32*end))}};}
 function renderWbsGantt(el){const p=proj();ensurePlan(p);const w=p.wbs;const S=wbsSchedule(p);const dur=S.dur;const months=S.months;const EVM=wbsEVM(p);
   const pl=p.plan;const U={month:'เดือน',week:'สัปดาห์',day:'วัน'};
   const crit=S.acts.filter(function(a){return a._crit;}).length;
   const _V=wbsMapValidate(p);const _mapInfo="CBS map "+_V.mapped+"/"+_V.total+(_V.over.length?(" · <b style=\"color:#ef4444\">"+_V.over.length+" over-allocated ⚠</b>"):(" · "+cur()+" "+fmt(Math.round(wbsTotalMapped(p)))));
-  const CW=34,LW=494,RH=26,W=dur*CW;
+  const CW=34,LW=556,RH=26,W=dur*CW;
   const grid=`repeating-linear-gradient(90deg,transparent,transparent ${CW-1}px,#f0f2f5 ${CW-1}px,#f0f2f5 ${CW}px)`;
   const msel=(cur,cb)=>`<select onchange="${cb}" style="border:1px solid var(--line);border-radius:4px;padding:1px;font-size:10px;width:58px">${months.map((m,i)=>`<option value="${i}" ${i===cur?'selected':''}>${m}</option>`).join('')}</select>`;
   const bar=(a)=>{const left=a.ms*CW,wd=Math.max(5,(a.me-a.ms+1)*CW-2);const col=a._crit?'#ef4444':'#4f46e5';
@@ -989,7 +997,7 @@ function renderWbsGantt(el){const p=proj();ensurePlan(p);const w=p.wbs;const S=w
   wbsKids(w,null).forEach(function(l1){const A1=S.acts.filter(function(a){return String(a.code).indexOf(l1.code.replace('.0',''))===0&&a.code.split('.')[0]===l1.code.split('.')[0];});
     if(!A1.length)return;const c1='g1_'+l1.id;const open=wbsCollapse[c1]!==true;
     const ms1=Math.min.apply(0,A1.map(a=>a.ms)),me1=Math.max.apply(0,A1.map(a=>a.me));
-    R+=`<div style="display:flex;height:${RH}px;border-bottom:1px solid var(--soft)"><div style="position:sticky;left:0;z-index:2;width:${LW}px;flex:0 0 ${LW}px;background:#1f2a44;color:#fff;display:flex;align-items:center;padding:0 8px"><span style="cursor:pointer;font-weight:800;font-size:12px" onclick="app.wbsTogC('${c1}')">${open?'▾':'▸'} ${esc(l1.code)} ${esc(l1.name)}</span></div>
+    R+=`<div style="display:flex;height:${RH}px;border-bottom:1px solid var(--soft)"><div style="position:sticky;left:0;z-index:2;width:${LW}px;flex:0 0 ${LW}px;background:#1f2a44;color:#fff;display:flex;align-items:center;gap:5px;padding:0 8px"><span style="flex:1;cursor:pointer;font-weight:800;font-size:12px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis" onclick="app.wbsTogC('${c1}')">${open?'▾':'▸'} ${esc(l1.code)} ${esc(l1.name)}</span><span style="font-size:9px;opacity:.75">เริ่ม</span>${msel(ms1,`app.wbsPhaseWin('${l1.id}','s',this.value)`)}<span style="font-size:9px;opacity:.75">จบ</span>${msel(me1,`app.wbsPhaseWin('${l1.id}','e',this.value)`)}</div>
       <div style="position:relative;width:${W}px;flex:0 0 ${W}px;background:${grid}"><div style="position:absolute;left:${ms1*CW}px;top:9px;width:${Math.max(5,(me1-ms1+1)*CW-2)}px;height:6px;background:#94a3b8;border-radius:3px"></div></div></div>`;
     if(!open)return;
     wbsKids(w,l1.id).forEach(function(l2){const A2=S.acts.filter(function(a){return a.parentId===l2.id;});if(!A2.length)return;
@@ -1004,8 +1012,9 @@ function renderWbsGantt(el){const p=proj();ensurePlan(p);const w=p.wbs;const S=w
           <div title="${esc(a.name)}" style="flex:1;padding-left:38px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;padding-right:4px">${nm}</div>
           <button title="ความสัมพันธ์/predecessor" onclick="app.wbsPred('${a.id}')" style="border:none;background:${(a.predText||'').trim()?'#eef2ff':'transparent'};color:#4f46e5;border-radius:4px;cursor:pointer;font-size:11px;width:22px">🔗</button>
           <button title="map CBS → budget" onclick="app.wbsMapPopup('${a.id}')" style="border:1px solid var(--line);background:${wbsActBudget(p,a.id)>0?'#ecfdf5':'#fff'};color:#0f766e;border-radius:4px;cursor:pointer;font-size:10px;width:62px;overflow:hidden;white-space:nowrap">${wbsActBudget(p,a.id)>0?fmtShort(wbsActBudget(p,a.id)):'฿ map'}</button>
-          <div style="width:34px;text-align:center"><input value="${a.dur}" onchange="app.wbsSetF('${a.id}','dur',this.value)" style="width:28px;text-align:center;border:1px solid var(--line);border-radius:4px;font-size:11px"></div>
           <div style="width:60px;text-align:center">${msel(a.ms,`app.wbsSetF('${a.id}','smin',this.value)`)}</div>
+          <div style="width:60px;text-align:center">${msel(a.me,`app.wbsSetF('${a.id}','me',this.value)`)}</div>
+          <div style="width:30px;text-align:center;font-size:11px;color:#64748b" title="ระยะเวลา (คำนวณ)">${a.me-a.ms+1}</div>
           <div style="width:38px;text-align:center;font-size:10.5px;color:${a._crit?'#ef4444':'#64748b'}" title="Total float">${a._tf}</div>
           <div style="width:44px;text-align:right;padding-right:4px"><button title="วัดความคืบหน้า (${wbsMethodOf(a)})" onclick="app.wbsMeasure('${a.id}')" style="width:40px;text-align:right;border:1px solid #c7d2fe;background:#eef2ff;color:#4f46e5;border-radius:4px;font-size:11px;font-weight:700;cursor:pointer;padding:2px 3px">${Math.round(+a.pct||0)}%</button></div></div>`;
         R+=`<div style="display:flex;height:${RH}px;border-bottom:1px solid var(--soft)">${left}${bar(a)}</div>`;});
@@ -1013,12 +1022,12 @@ function renderWbsGantt(el){const p=proj();ensurePlan(p);const w=p.wbs;const S=w
   });
   const head=`<div style="display:flex;position:sticky;top:0;z-index:5;background:var(--card);border-bottom:1px solid var(--line)">
      <div style="position:sticky;left:0;z-index:6;width:${LW}px;flex:0 0 ${LW}px;background:var(--card);border-right:1px solid var(--line);display:flex;font-size:10px;font-weight:700;color:#64748b;text-transform:uppercase">
-       <div style="flex:1;padding:6px 10px">WBS Activity</div><div style="width:22px"></div><div style="width:62px;padding:6px 0;text-align:center">Budget</div><div style="width:34px;padding:6px 0;text-align:center">Dur</div><div style="width:60px;padding:6px 0;text-align:center">Start</div><div style="width:38px;padding:6px 0;text-align:center">Float</div><div style="width:44px;padding:6px 2px;text-align:right">%</div></div>
+       <div style="flex:1;padding:6px 10px">WBS Activity</div><div style="width:22px"></div><div style="width:62px;padding:6px 0;text-align:center">Budget</div><div style="width:60px;padding:6px 0;text-align:center">Start</div><div style="width:60px;padding:6px 0;text-align:center">Finish</div><div style="width:30px;padding:6px 0;text-align:center">Dur</div><div style="width:38px;padding:6px 0;text-align:center">Float</div><div style="width:44px;padding:6px 2px;text-align:right">%</div></div>
      <div style="display:flex;width:${W}px">${months.map(m=>`<div style="width:${CW}px;flex:0 0 ${CW}px;text-align:center;font-size:8.5px;color:#94a3b8;padding:6px 0;border-left:1px solid #f0f2f5">${m}</div>`).join('')}</div></div>`;
   el.innerHTML=`<div class="pagehead"><div><h2>L4 Schedule / Gantt <span style="font-weight:500;font-size:12px;color:var(--muted)">· WBS · CPM</span></h2>
      <p>${esc(p.name)} · ${S.acts.length} กิจกรรมใน scope · Finish ${months[S.projEnd]||'-'} · <b style="color:#ef4444">${crit} critical</b> · หน่วย ${U[planUnit(pl)]} · ${_mapInfo}</p></div>
      <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">หน่วย:<select onchange="app.setUnit(this.value)" style="border:1px solid var(--line);border-radius:8px;padding:6px 8px"><option value="month" ${planUnit(pl)==='month'?'selected':''}>เดือน</option><option value="week" ${planUnit(pl)==='week'?'selected':''}>สัปดาห์</option><option value="day" ${planUnit(pl)==='day'?'selected':''}>วัน</option></select>
-       <button class="btn" onclick="app.wbsSetStart()">📅 วันเริ่มโครงการ</button><button class="btn" onclick="app.wbsBaseline()">📌 Baseline</button><button class="btn" onclick="app.wbsExportXlsx()">⬇ Excel</button><button class="btn" onclick="app.wbsImportXlsx()">⬆ Import</button></div></div>
+       <button class="btn primary" onclick="app.wbsPlanSetup()">📅 ตั้งค่าแผนโครงการ</button><button class="btn" onclick="app.wbsAutoDistribute()">⚙️ กระจายแผน</button><button class="btn" onclick="app.wbsBaseline()">📌 Baseline</button><button class="btn" onclick="app.wbsExportXlsx()">⬇ Excel</button><button class="btn" onclick="app.wbsImportXlsx()">⬆ Import</button></div></div>
    <div style="display:flex;gap:14px;margin:0 0 10px;font-size:11px;flex-wrap:wrap;align-items:center"><span style="color:#cbd5e1;font-weight:700">▬ Baseline</span><span style="color:#4f46e5;font-weight:700">▬ Forecast/Actual</span><span style="color:#ef4444;font-weight:700">▬ Critical (float≤0)</span> · แก้ Dur/Start/% ได้ · 🔗 กำหนด predecessor (เช่น 7.2.1FS+2)</div>
    ${(function(){const card=(t,v,s,c)=>`<div style="flex:1;min-width:112px;background:#f8fafc;border-radius:10px;padding:9px 11px"><div style="font-size:10px;color:#64748b;text-transform:uppercase;font-weight:700">${t}</div><div style="font-size:16px;font-weight:800;color:${c||'#0f172a'}">${v}</div><div style="font-size:10px;color:#94a3b8">${s||''}</div></div>`;return `<div class="card" style="margin-bottom:14px"><div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px"><h3 style="margin:0">Earned Value — PV · EV · AC</h3><div style="font-size:12px">Cost factor <input type="number" min="0" max="100" value="${(EVM.cf*100).toFixed(0)}" onchange="app.wbsSetCostFactor(this.value)" style="width:54px;text-align:right;border:1px solid var(--line);border-radius:6px;padding:3px">% (งบ→ต้นทุน)</div></div><div class="kpis" style="margin-top:10px;display:flex;gap:8px;flex-wrap:wrap">${card("BAC",cur()+" "+fmtShort(EVM.BAC),"งบรวม (mapped)")}${card("PV",fmtShort(EVM.PV),"แผน ณ วันนี้")}${card("EV",fmtShort(EVM.EV),EVM.pct.toFixed(0)+"% complete","#10b981")}${card("AC",fmtShort(EVM.AC),"ต้นทุนจริง","#ef4444")}${card("SPI",EVM.SPI.toFixed(2),"SV "+fmtShort(EVM.SV),EVM.SPI>=1?"#10b981":"#ef4444")}${card("CPI",EVM.CPI>0?EVM.CPI.toFixed(2):"—","EAC "+fmtShort(EVM.EAC),EVM.CPI>=1?"#10b981":(EVM.CPI>0?"#ef4444":"#94a3b8"))}</div><div style="display:flex;gap:10px;align-items:center;margin:10px 0 4px"><span style="font-size:12px;font-weight:700;white-space:nowrap">📍 Data date</span><input type="range" min="0" max="${dur-1}" value="${EVM.dd}" onchange="app.setDataDate(this.value)" style="flex:1;accent-color:#4f46e5"><span style="font-weight:800;background:#4f46e5;color:#fff;border-radius:8px;padding:4px 10px;font-size:12px">${months[EVM.dd]||''}</span></div><div class="chart-wrap" style="height:240px"><canvas id="wbsSC"></canvas></div></div>`;})()}
    <div class="tbl-card" id="wbsGanttWrap" style="overflow:auto;max-height:74vh;position:relative">${head}<div style="position:relative">${R}</div></div>`;
@@ -1365,21 +1374,25 @@ function wizDetect(rows){const KWS=['description','item','material','labour','la
   let cc=F(s=>wizHas(s,'หมวดหลัก','หมวดcbs','cbs','รหัสหมวด','code')&&!wizHas(s,'ประเภท','type','ชื่อ','ย่อย','sub','unit','material','labour','labor','price'));
   if(cc<0)cc=F(s=>wizHas(s,'หมวด','group')&&!wizHas(s,'ประเภท','type','ชื่อ','ย่อย','sub','unit','material','labour','labor','price','amount'));
   let nc=F(s=>wizHas(s,'ชื่อหมวด','หมวดย่อย','category name','ชื่อหมวดย่อย')&&!wizHas(s,'code','ประเภท','type','material','labour','labor','unit'));
+  let gc=F(s=>wizHas(s,'group','กลุ่ม','work package','package','กลุ่มงาน')&&!wizHas(s,'ประเภท','sub','ย่อย'));
+  let phc=F(s=>wizHas(s,'phase','เฟส','stage')&&!wizHas(s,'sub'));
   let tc=F(s=>wizHas(s,'ประเภท','type m','type l')&&!wizHas(s,'unit','material','labour','labor','price','amount','description'));
-  return {cols:{hr:hr,dc:dc,qc:qc,uc:uc,mat:mat,lab:lab,tot:tot,matQ:matQ,labQ:labQ,cc:cc,nc:nc,tc:tc},colNames:ch};}
-function wizExtract(rows,c){const lines=[];let section='';let catCode='',catName='',catType='';const hr=c.hr||0;
+  return {cols:{hr:hr,dc:dc,qc:qc,uc:uc,mat:mat,lab:lab,tot:tot,matQ:matQ,labQ:labQ,cc:cc,nc:nc,tc:tc,gc:gc,phc:phc},colNames:ch};}
+function wizExtract(rows,c){const lines=[];let section='';let catCode='',catName='',catType='',grpv='',phasev='';const hr=c.hr||0;
   for(let k=hr+1;k<rows.length;k++){const rw=rows[k];if(!rw)continue;const dv=c.dc>=0?rw[c.dc]:null;if(dv==null||String(dv).trim()==='')continue;
     const kd=wizKw(dv);if(['total','sub-total','subtotal','sub total','grand total','sum of','sum '].some(t=>kd.indexOf(t)===0))continue;
     if(c.cc>=0&&rw[c.cc]!=null&&String(rw[c.cc]).trim()!=='')catCode=String(rw[c.cc]).trim();
     if(c.nc>=0&&rw[c.nc]!=null&&String(rw[c.nc]).trim()!=='')catName=String(rw[c.nc]).trim();
     if(c.tc>=0&&rw[c.tc]!=null&&String(rw[c.tc]).trim()!=='')catType=String(rw[c.tc]).trim();
+    if(c.gc>=0&&rw[c.gc]!=null&&String(rw[c.gc]).trim()!=='')grpv=String(rw[c.gc]).trim();
+    if(c.phc>=0&&rw[c.phc]!=null&&String(rw[c.phc]).trim()!=='')phasev=String(rw[c.phc]).trim();
     const q=c.qc>=0?wizNum(rw[c.qc]):null;const qn=q||1;
     const matV=c.mat>=0?wizNum(rw[c.mat]):0;const labV=c.lab>=0?wizNum(rw[c.lab]):0;
     const mat=c.matQ?matV*qn:matV;const lab=c.labQ?labV*qn:labV;const tot=c.tot>=0?wizNum(rw[c.tot]):0;
     if(mat<=0&&lab<=0&&tot<=0){if(String(dv).trim().length>2)section=String(dv).trim();continue;}
     const budget=(mat>0||lab>0)?mat+lab:tot;if(budget<=0)continue;
     const unit=(c.uc>=0)?String(rw[c.uc]||'').trim():'';
-    lines.push({desc:String(dv).trim().slice(0,90),qty:q,unit:unit,matVal:matV,matQ:c.matQ,labVal:labV,labQ:c.labQ,mat:Math.round(mat),lab:Math.round(lab),budget:Math.round(budget),section:section,cat:catCode,catName:catName,catType:catType});}
+    lines.push({desc:String(dv).trim().slice(0,90),qty:q,unit:unit,matVal:matV,matQ:c.matQ,labVal:labV,labQ:c.labQ,mat:Math.round(mat),lab:Math.round(lab),budget:Math.round(budget),section:section,cat:catCode,catName:catName,catType:catType,group:grpv,phase:phasev});}
   return lines;}
 function wizGrand(wb){let best=0;wb.SheetNames.forEach(sn=>{const rows=XLSX.utils.sheet_to_json(wb.Sheets[sn],{header:1});rows.forEach(rw=>{if(!rw)return;const j=rw.map(wizKw).join(' ');if(wizHas(j,'grand total','total cost','total (direct','net total','รวมทั้งสิ้น','ราคารวม','total amount','contract amount')){rw.forEach(v=>{const n=wizNum(v);if(n>best&&n<1e12)best=n;});}});});return Math.round(best);}
 function wizAnalyze(wb){const meta=/read me|cover|instruction|assumption|org|hse|layout|design|daywork|设备/;const out=[];
@@ -1397,7 +1410,7 @@ function wizRender(){if(!wizSheets)return;
      ${s.include?`<div style="display:flex;gap:7px;flex-wrap:wrap;margin-top:8px;font-size:11px;align-items:center;color:#64748b">
        รายการ:${csel(s,si,'dc',c.dc)} ค่าของ:${csel(s,si,'mat',c.mat)}<label style="font-size:10px"><input type="checkbox" ${c.matQ?'checked':''} onchange="app.wizSetCol(${si},'matQ',this.checked?1:0)">×Q</label>
        ค่าแรง:${csel(s,si,'lab',c.lab)}<label style="font-size:10px"><input type="checkbox" ${c.labQ?'checked':''} onchange="app.wizSetCol(${si},'labQ',this.checked?1:0)">×Q</label>
-       รวม:${csel(s,si,'tot',c.tot)} Qty:${csel(s,si,'qc',c.qc)} หน่วย:${csel(s,si,'uc',c.uc)} หมวด:${csel(s,si,'cc',c.cc)} ประเภท:${csel(s,si,'tc',c.tc)}</div>`:''}</div>`;}).join('');
+       รวม:${csel(s,si,'tot',c.tot)} Qty:${csel(s,si,'qc',c.qc)} หน่วย:${csel(s,si,'uc',c.uc)} หมวด:${csel(s,si,'cc',c.cc)} Group:${csel(s,si,'gc',c.gc)} Phase:${csel(s,si,'phc',c.phc)}</div>`:''}</div>`;}).join('');
   modal(`<h4>Smart Import — นำเข้าใบเสนอราคา (แบบไหนก็ได้)</h4><div class="mbody" style="max-height:60vh;overflow:auto">
     <p class="mini" style="margin-bottom:10px">เลือก sheet + ตรวจ/แก้คอลัมน์ → ระบบคิดยอดให้ทันที เทียบยอดจริง (แก้ ×Q ถ้าค่าเป็นราคาต่อหน่วยต้องคูณจำนวน)</p>${rows}
     <div style="border-top:2px solid var(--line);margin-top:6px;padding-top:12px;display:flex;flex-direction:column;gap:8px">
@@ -1648,7 +1661,43 @@ function pkgOf(name){var d=_l4lc(name);var H=function(){for(var i=0;i<arguments.
  return 'Other Materials';}
 
 function _fi(p,id){for(var i=0;i<p.cats.length;i++){var c=p.cats[i];for(var j=0;j<c.items.length;j++)if(c.items[j].id===id)return c.items[j];}return null;}
-function genL4(p){var pl=ensurePlan(p);var end=Math.max(1,planEnd(pl))-1;
+function genL4Groups(p){var pl=ensurePlan(p);var end=Math.max(1,planEnd(pl))-1;
+ var cl=function(x){return Math.max(0,Math.min(end,Math.round(x)));};
+ var W=function(k,def){var w=pl.phases[k]||def||{s:0,dur:2};return {s:cl(w.s),e:cl(w.s+Math.max(1,w.dur)-1)};};
+ var ew=W('eng'),pw=W('proc'),iw=W('inst'),cw=W('comm');
+ var IND={TCF:1,TOL:1,RNT:1,TRN:1,UTL:1,OHC:1};
+ var norm=function(ph){ph=(''+(ph||'')).toLowerCase();if(ph.indexOf('eng')>=0)return 'eng';if(ph.indexOf('test')>=0||ph.indexOf('commission')>=0)return 'comm';if(ph.indexOf('final')>=0||ph==='doc'||ph.indexOf('document')>=0)return 'doc';if(ph.indexOf('construct')>=0||ph.indexOf('install')>=0)return 'inst';if(ph.indexOf('proc')>=0)return 'proc';return '';};
+ var engPool=0,docPool=0,commPool=0,gMat={},gLab={},gMemM={},gMemL={},gPhase={},order=[];
+ var addOrder=function(g){if(order.indexOf(g)<0)order.push(g);};
+ p.cats.forEach(function(c){c.items.forEach(function(it){if(isMargin(it))return;var m=Math.max(0,budMat(it)),l=Math.max(0,budLab(it));if(m<=0&&l<=0)return;var nm=it.name||c.name;var phn=norm(it.phase);
+   if(c.no==='ENG'||phn==='eng'){engPool+=m+l;return;}
+   if(c.no==='DOC'||phn==='doc'){docPool+=m+l;return;}
+   if(IND[c.no])return;
+   var g=(it.group&&(''+it.group).trim())||pkgOf(nm);addOrder(g);
+   if(m>0){gMat[g]=(gMat[g]||0)+m;(gMemM[g]=gMemM[g]||[]).push({id:it.id,val:m});}
+   if(l>0){gLab[g]=(gLab[g]||0)+l;(gMemL[g]=gMemL[g]||[]).push({id:it.id,val:l});var lp=(c.no==='SUB'||phn==='comm')?'comm':'inst';if(!gPhase[g])gPhase[g]=lp;}
+ });});
+ var tot=costTotal(p)||1;var acts=[];
+ var push=function(phase,group,name,val,ms,me,items,dim){var a={id:uid(),phase:phase,group:group,name:name,val:Math.round(val||0),ms:cl(ms),me:Math.max(cl(ms),cl(me)),actualPct:0};if(items){a.items=items;a.dim=dim;}acts.push(a);};
+ var laySeq=function(n,s,e,ov){n=Math.max(1,n);var span=Math.max(1,e-s+1);var each=Math.max(1,Math.round(span/n*(1+(ov||0))));var step=(n>1)?Math.max(1,Math.round((span-each)/(n-1))):0;var o=[];for(var i=0;i<n;i++){var ms=Math.min(e,s+i*step);o.push([ms,Math.min(e,ms+each-1)]);}return o;};
+ var eng=[['Material approval & Specification (all)',0.18],['Location / Layout plan',0.10],['Single line diagram (SLD)',0.12],['Schematic & Wiring / Connection diagram',0.16],['Cable schedule & routing',0.12],['Loop diagram (instrument)',0.12],['Termination / Hook-up drawing',0.12],['As-built drawing',0.08]];
+ var eL=laySeq(eng.length,ew.s,ew.e,0.4);eng.forEach(function(x,i){push('eng','Engineering Deliverables',x[0],engPool*x[1],eL[i][0],eL[i][1]);});
+ var procG=order.filter(function(g){return (gMat[g]||0)>0;});
+ var pL=laySeq(procG.length,pw.s,pw.e,0.5);procG.forEach(function(g,i){push('proc','Procurement Packages',g,gMat[g],pL[i][0],pL[i][1],gMemM[g],'mat');});
+ var instG=order.filter(function(g){return (gLab[g]||0)>0&&(gPhase[g]||'inst')==='inst';});
+ var iL=laySeq(instG.length,iw.s,iw.e,0.3);instG.forEach(function(g,i){push('inst','Installation by group',g,gLab[g],iL[i][0],iL[i][1],gMemL[g],'lab');});
+ var testG=order.filter(function(g){return (gLab[g]||0)>0&&gPhase[g]==='comm';});
+ var comm=[['Pre-commissioning & continuity test',0.30],['Loop check & function test',0.40],['Commissioning & punch list',0.20],['System handover',0.10]];
+ var cL=laySeq(comm.length,cw.s,cw.e,0.15);comm.forEach(function(x,i){push('comm','Testing & Commissioning',x[0],commPool*x[1],cL[i][0],cL[i][1]);});
+ var tL=laySeq(testG.length,cw.s,cw.e,0.2);testG.forEach(function(g,i){push('comm','Testing by group',g,gLab[g],tL[i][0],tL[i][1],gMemL[g],'lab');});
+ push('doc','QA/QC & Inspection','Material receiving inspection',docPool*0.14,pw.s,iw.e);
+ push('doc','QA/QC & Inspection','Work inspection per ITP',docPool*0.26,iw.s,cw.e);
+ push('doc','QA/QC & Inspection','NCR handling & close-out',docPool*0.10,cl(iw.s+1),cw.e);
+ push('doc','Reports','Daily / Weekly report',docPool*0.25,0,end);
+ push('doc','Reports','Monthly & Final documentation',docPool*0.25,0,end);
+ p.l4={gen:true,grouped:true,acts:acts,ts:Date.now()};l4SyncClaims(p);return p.l4;}
+
+function genL4(p){var _hg=false;p.cats.forEach(function(c){c.items.forEach(function(it){if(it.group&&(''+it.group).trim())_hg=true;});});if(_hg)return genL4Groups(p);var pl=ensurePlan(p);var end=Math.max(1,planEnd(pl))-1;
  var cl=function(x){return Math.max(0,Math.min(end,Math.round(x)));};
  var W=function(k,def){var w=pl.phases[k]||def||{s:0,dur:2};return {s:cl(w.s),e:cl(w.s+Math.max(1,w.dur)-1)};};
  var ew=W('eng'),pw=W('proc'),iw=W('inst'),cw=W('comm');
@@ -2156,7 +2205,7 @@ const app={
   wizImport(){const inc=wizSheets.filter(s=>s.include);if(!inc.length){toast('ยังไม่ได้เลือก sheet');return;}
     const cats={};CBS.forEach(c=>cats[c[1]]={id:uid(),grp:c[0],no:c[1],name:c[2],type:c[3],items:[]});
     let imported=0,need=0,n=0;
-    inc.forEach(s=>s.lines.forEach(ln=>{let code,review;if(ln.cat){code=String(ln.cat).trim().toUpperCase();if(!cats[code]){cats[code]={id:uid(),grp:'A',no:code,name:(ln.catName||code),type:((ln.catType||'M').toString().trim().toUpperCase().charAt(0)||'M'),items:[]};}review=false;}else{code=autoMapCode((ln.section?ln.section+' ':'')+ln.desc);review=!code;if(!code)code='OHC';if(!cats[code])code='OHC';}const q=(+ln.qty||1);let mp,lp;if((ln.mat||0)>0||(ln.lab||0)>0){mp=ln.matQ?(+ln.matVal||0):((+ln.matVal||0)/q);lp=ln.labQ?(+ln.labVal||0):((+ln.labVal||0)/q);}else{mp=(+ln.budget||0);lp=0;}const it={id:uid(),name:ln.desc,qty:q,unit:ln.unit||'',matPrice:mp,labPrice:lp,budget:Math.round(mp*q+lp*q),lab:Math.round(lp*q),actual:0,review:review};cats[code].items.push(it);imported+=it.budget;n++;if(review)need++;}));
+    inc.forEach(s=>s.lines.forEach(ln=>{let code,review;if(ln.cat){code=String(ln.cat).trim().toUpperCase();if(!cats[code]){cats[code]={id:uid(),grp:'A',no:code,name:(ln.catName||code),type:((ln.catType||'M').toString().trim().toUpperCase().charAt(0)||'M'),items:[]};}review=false;}else{code=autoMapCode((ln.section?ln.section+' ':'')+ln.desc);review=!code;if(!code)code='OHC';if(!cats[code])code='OHC';}const q=(+ln.qty||1);let mp,lp;if((ln.mat||0)>0||(ln.lab||0)>0){mp=ln.matQ?(+ln.matVal||0):((+ln.matVal||0)/q);lp=ln.labQ?(+ln.labVal||0):((+ln.labVal||0)/q);}else{mp=(+ln.budget||0);lp=0;}const it={id:uid(),name:ln.desc,qty:q,unit:ln.unit||'',matPrice:mp,labPrice:lp,budget:Math.round(mp*q+lp*q),lab:Math.round(lp*q),actual:0,review:review,group:ln.group||'',phase:ln.phase||''};cats[code].items.push(it);imported+=it.budget;n++;if(review)need++;}));
     if(wizAdj&&wizSrc>0&&Math.abs(wizSrc-imported)>=1){const d=Math.round(wizSrc-imported);cats['OHC'].items.push({id:uid(),name:'ปรับยอดให้ตรงใบเสนอราคา (Adjustment)',budget:d,lab:0,actual:0,review:true});imported+=d;n++;}
     const meta=wizMeta||{};wizMeta=null;
     if(meta.replace){const p=proj();p.cats.forEach(c=>{const nc=cats[c.no];if(nc)c.items=nc.items;});Object.keys(cats).forEach(k=>{if(cats[k].items.length&&!p.cats.some(c=>c.no===k))p.cats.push(cats[k]);});expanded={};p.cats.forEach(c=>{if(c.items.length)expanded[c.id]=true;});save();app.closeModal();nav('cost');toast('แทนที่ CBS · '+n+' รายการ · '+cur()+' '+fmt(Math.round(imported))+(need?(' · '+need+' ต้องตรวจ ⚠'):''));return;}
@@ -2196,7 +2245,7 @@ const app={
   wbsSetName(id,v){const p=proj();if(!p.wbs)return;const n=p.wbs.nodes.filter(x=>x.id===id)[0];if(n)n.name=v;save();},
   wbsSchedRerender(){renderWbsGantt(document.getElementById('content'));},
   wbsSetF(id,f,v){const p=proj();if(!p.wbs)return;const n=p.wbs.nodes.filter(x=>x.id===id)[0];if(!n)return;
-    if(f==='dur')n.dur=Math.max(1,parseFloat(v)||1);else if(f==='smin')n.smin=Math.max(0,parseInt(v)||0);else if(f==='pct')n.pct=Math.max(0,Math.min(100,parseNum(v)));save();renderWbsGantt(document.getElementById('content'));},
+    if(f==='dur')n.dur=Math.max(1,parseFloat(v)||1);else if(f==='smin')n.smin=Math.max(0,parseInt(v)||0);else if(f==='me'){const S=wbsSchedule(p);const a=S.acts.filter(x=>x.id===id)[0];if(a)n.dur=Math.max(1,(parseInt(v)||0)-a.ms+1);}else if(f==='pct')n.pct=Math.max(0,Math.min(100,parseNum(v)));save();renderWbsGantt(document.getElementById('content'));},
   wbsPred(id){const p=proj();const n=p.wbs.nodes.filter(x=>x.id===id)[0];if(!n)return;const acts=wbsActs(p).filter(x=>x.id!==id);
     const list=acts.map(a=>`<div style="padding:2px 6px;cursor:pointer;font-size:11px;border-bottom:1px solid var(--soft)" onclick="var i=document.getElementById('predTxt');i.value=(i.value.trim()?i.value.trim()+',':'')+'${a.code}';">${esc(a.code)} · ${esc(a.name)}</div>`).join('');
     modal(`<h4>Predecessor — ${esc(n.code)} ${esc(n.name)}</h4><div class="mbody"><p class="mini">พิมพ์รหัสกิจกรรมก่อนหน้า คั่นด้วย , — ใส่ความสัมพันธ์/lag ได้ เช่น <b>7.2.1</b>, <b>7.1.3FS+2</b>, <b>3.2.5SS-1</b> (FS/SS/FF/SF · +/- lag เป็นจำนวนหน่วยเวลา)</p>
@@ -2208,7 +2257,26 @@ const app={
       <div class="field row" style="margin:0"><div><label>หน่วยเวลา</label><select id="wsU"><option value="month" ${U==='month'?'selected':''}>เดือน</option><option value="week" ${U==='week'?'selected':''}>สัปดาห์</option><option value="day" ${U==='day'?'selected':''}>วัน</option></select></div><div><label>วันเริ่ม</label><input id="wsD" type="date" value="${_isoOf(planStartDate(pl))}"></div></div>
       </div><div class="mfoot"><button class="btn" onclick="app.closeModal()">ยกเลิก</button><button class="btn primary" onclick="app.wbsSetStartApply()">ตกลง</button></div>`);},
   wbsSetStartApply(){const p=proj();const pl=ensurePlan(p);pl.unit=document.getElementById('wsU').value;const sd=document.getElementById('wsD').value;if(sd){const d=new Date(sd);if(!isNaN(d)){pl.startISO=_isoOf(d);pl.startY=d.getFullYear();pl.startM=d.getMonth();}}save();app.closeModal();renderWbsGantt(document.getElementById('content'));},
+  wbsPlanSetup(){const p=proj();const pl=ensurePlan(p);const U=planUnit(pl);const endIdx=Math.max(1,(pl.projPeriods||planEnd(pl))-1);
+    modal(`<h4>ตั้งค่าแผนโครงการ (ปฏิทิน)</h4><div class="mbody wz">
+      <p class="mini">กำหนดหน่วยเวลา + วันเริ่ม–วันจบโครงการอิสระ แล้วกด "กระจายแผน" เพื่อวางเฟส 1-10 ทั้งโครงการอัตโนมัติ (ปรับรายกิจกรรมทีหลังได้)</p>
+      <div class="field row" style="margin:0"><div><label>หน่วยเวลา</label><select id="psU"><option value="month" ${U==='month'?'selected':''}>เดือน</option><option value="week" ${U==='week'?'selected':''}>สัปดาห์</option><option value="day" ${U==='day'?'selected':''}>วัน</option></select></div><div><label>วันเริ่มโครงการ</label><input id="psS" type="date" value="${_isoOf(planStartDate(pl))}"></div></div>
+      <div class="field"><label>วันจบโครงการ (กำหนดเอง)</label><input id="psE" type="date" value="${_isoOf(periodDate(pl,endIdx))}"></div>
+      </div><div class="mfoot"><button class="btn" onclick="app.closeModal()">ยกเลิก</button><button class="btn" onclick="app.wbsPlanApply(false)">บันทึกปฏิทิน</button><button class="btn primary" onclick="app.wbsPlanApply(true)">บันทึก + กระจายแผน</button></div>`);},
+  wbsPlanApply(distribute){const p=proj();const pl=ensurePlan(p);pl.unit=document.getElementById('psU').value;
+    const sd=document.getElementById('psS').value;if(sd){const d=new Date(sd);if(!isNaN(d)){pl.startISO=_isoOf(d);pl.startY=d.getFullYear();pl.startM=d.getMonth();}}
+    const ed=document.getElementById('psE').value;if(ed){const idx=periodIndexOfDate(pl,ed);if(idx>0)pl.projPeriods=idx+1;}
+    if(distribute)wbsAutoPlan(p);save();app.closeModal();renderWbsGantt(document.getElementById('content'));toast(distribute?'ตั้งปฏิทิน + กระจายแผนแล้ว':'ตั้งปฏิทินแล้ว ('+((pl.projPeriods)||'-')+' คาบ)');},
+  wbsAutoDistribute(){const p=proj();if(!p.wbs)return;wbsAutoPlan(p);save();renderWbsGantt(document.getElementById('content'));toast('กระจายแผนอัตโนมัติทั้งเฟส 1-10 แล้ว');},
   wbsBaseline(){const p=proj();const S=wbsSchedule(p);let n=0;S.acts.forEach(a=>{a.baseMs=a.ms;a.baseDur=(a.me-a.ms+1);n++;});save();renderWbsGantt(document.getElementById('content'));toast('ตั้ง Baseline '+n+' กิจกรรมแล้ว');},
+  wbsPhaseWin(l1id,which,v){const p=proj();const idx=Math.max(0,parseInt(v)||0);
+    const l2s=p.wbs.nodes.filter(x=>x.parentId===l1id).map(x=>x.id);
+    const S=wbsSchedule(p);const acts=S.acts.filter(a=>l2s.indexOf(a.parentId)>=0);if(!acts.length){toast('เฟสนี้ยังไม่มีกิจกรรมใน scope');return;}
+    let cs=Math.min.apply(0,acts.map(a=>a.ms)),ce=Math.max.apply(0,acts.map(a=>a.me));
+    let s=cs,e=ce;if(which==='s')s=idx;else e=idx;if(e<s){if(which==='s')e=s;else s=e;}
+    const cspan=Math.max(1,ce-cs),nspan=Math.max(0,e-s);
+    acts.forEach(function(a){const r0=(a.ms-cs)/cspan,r1=(a.me-cs)/cspan;const nms=Math.round(s+r0*nspan);const nme=Math.round(s+r1*nspan);const n=p.wbs.nodes.filter(x=>x.id===a.id)[0];if(n){n.smin=Math.max(0,nms);n.dur=Math.max(1,nme-nms+1);}});
+    save();renderWbsGantt(document.getElementById('content'));toast('ปรับช่วงเฟสแล้ว — กิจกรรมย่อยจัดให้พอดี');},
   wbsMapPopup(wbsId){const p=proj();wbsEnsureMap(p);const n=p.wbs.nodes.filter(x=>x.id===wbsId)[0];if(!n)return;
     const rows=p.wbsMap.filter(m=>m.wbsId===wbsId).map(function(m){const r=cbsItemRef(p,m.cbsItemId);const nm=r?(r.cat.no+' · '+r.it.name):'(ลบแล้ว)';const bud=r?(+r.it.budget||0):0;const tp=cbsAllocPct(p,m.cbsItemId);
       return `<tr style="border-bottom:1px solid var(--soft)"><td style="padding:3px 6px;font-size:11.5px">${esc(nm)}</td><td style="text-align:right;padding:3px 6px;color:#64748b">${cur()} ${fmt(Math.round(bud))}</td><td style="text-align:right;padding:3px 6px"><input type="number" min="0" max="100" value="${m.pct}" onchange="app.wbsMapSet('${m.id}',this.value)" style="width:52px;text-align:right;border:1px solid ${tp>100.01?'#ef4444':'var(--line)'};border-radius:5px">%</td><td style="text-align:right;padding:3px 6px;font-size:11px">${cur()} ${fmt(Math.round(bud*(+m.pct||0)/100))}</td><td><button onclick="app.wbsMapDel('${m.id}')" style="border:none;background:none;color:#ef4444;cursor:pointer">×</button></td></tr>`;}).join('');
