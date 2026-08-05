@@ -184,6 +184,8 @@ tr.act2 td.pin input{width:70px;border:1px solid var(--line);border-radius:7px;p
       <a data-view="dashboard"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="9"/><rect x="14" y="3" width="7" height="5"/><rect x="14" y="12" width="7" height="9"/><rect x="3" y="16" width="7" height="5"/></svg>Dashboard</a>
       <a data-view="quote"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><path d="M14 2v6h6M9 13h6M9 17h4"/></svg>Quotations</a>
       <a data-view="cost"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 3h18v18H3z"/><path d="M3 9h18M3 15h18M12 3v18"/></svg>CBS Cost</a>
+      <a data-view="wbs"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 3h7v7H3zM14 3h7v4h-7zM14 10h7v4h-7zM10 6h4M12 6v11M12 17h9"/></svg>WBS</a>
+      <a data-view="ops"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2v4M12 18v4M2 12h4M18 12h4M5 5l3 3M16 16l3 3M19 5l-3 3M8 16l-3 3"/><circle cx="12" cy="12" r="3"/></svg>Ops &amp; Controls</a>
       <a data-view="cashflow"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 3v18h18"/><path d="M7 14l4-4 4 3 5-6"/></svg>Cash Flow &amp; S-Curve</a>
       <a data-view="schedule"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="4" width="18" height="16" rx="2"/><path d="M8 4v16M3 10h5M8 8h4M8 13h7M8 16h9"/></svg>L4 Schedule / Gantt</a>
       <a data-view="manpower"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="9" cy="7" r="3"/><path d="M2 21v-2a4 4 0 0 1 4-4h6a4 4 0 0 1 4 4v2"/><path d="M16 3.5a3 3 0 0 1 0 5.8M20 21v-2a4 4 0 0 0-3-3.85"/></svg>Manpower &amp; Equipment</a>
@@ -250,8 +252,784 @@ function regenCashflowFor(p){}
 const TYPECOL={M:'#4f46e5',L:'#0ea5e9',E:'#f59e0b',O:'#94a3b8'};
 const TYPENAME={M:'Material',L:'Labor',E:'Equipment',O:'Other'};
 
+/* ===== P0.1 SEUS E&I MASTER WBS ===== */
+const WBS_MASTER_TSV=`1.0	Project Management & Controls	1.1	Project Initiation & Contract Review	1.1.1	Contract handover from tender	Project Controls	LS	Weighted milestone or measurable deliverable
+1.0	Project Management & Controls	1.1	Project Initiation & Contract Review	1.1.2	Contract scope review	Project Controls	LS	Weighted milestone or measurable deliverable
+1.0	Project Management & Controls	1.1	Project Initiation & Contract Review	1.1.3	Deliverables register	Project Controls	Document	0/100 or 20/80 by submission/approval
+1.0	Project Management & Controls	1.1	Project Initiation & Contract Review	1.1.4	Client requirements register	Project Controls	Document	0/100 or 20/80 by submission/approval
+1.0	Project Management & Controls	1.1	Project Initiation & Contract Review	1.1.5	Kick-off meeting	Project Controls	LS	Weighted milestone or measurable deliverable
+1.0	Project Management & Controls	1.1	Project Initiation & Contract Review	1.1.6	Project execution plan	Project Controls	Document	0/100 or 20/80 by submission/approval
+1.0	Project Management & Controls	1.1	Project Initiation & Contract Review	1.1.7	Project organization chart	Project Controls	LS	Weighted milestone or measurable deliverable
+1.0	Project Management & Controls	1.1	Project Initiation & Contract Review	1.1.8	Responsibility assignment matrix (RACI)	Project Controls	Document	0/100 or 20/80 by submission/approval
+1.0	Project Management & Controls	1.1	Project Initiation & Contract Review	1.1.9	Communication matrix	Project Controls	Document	0/100 or 20/80 by submission/approval
+1.0	Project Management & Controls	1.1	Project Initiation & Contract Review	1.1.10	Project coding and document numbering	Project Controls	LS	Weighted milestone or measurable deliverable
+1.0	Project Management & Controls	1.2	Planning & Scheduling	1.2.1	Baseline schedule development	Project Controls	Document	0/100 or 20/80 by submission/approval
+1.0	Project Management & Controls	1.2	Planning & Scheduling	1.2.2	WBS and activity coding	Project Controls	LS	Weighted milestone or measurable deliverable
+1.0	Project Management & Controls	1.2	Planning & Scheduling	1.2.3	Milestone register	Project Controls	Document	0/100 or 20/80 by submission/approval
+1.0	Project Management & Controls	1.2	Planning & Scheduling	1.2.4	Schedule narrative	Project Controls	Document	0/100 or 20/80 by submission/approval
+1.0	Project Management & Controls	1.2	Planning & Scheduling	1.2.5	Critical path review	Project Controls	LS	Weighted milestone or measurable deliverable
+1.0	Project Management & Controls	1.2	Planning & Scheduling	1.2.6	Look-ahead schedule	Project Controls	Document	0/100 or 20/80 by submission/approval
+1.0	Project Management & Controls	1.2	Planning & Scheduling	1.2.7	Weekly schedule update	Project Controls	Document	0/100 or 20/80 by submission/approval
+1.0	Project Management & Controls	1.2	Planning & Scheduling	1.2.8	Monthly schedule update	Project Controls	Document	0/100 or 20/80 by submission/approval
+1.0	Project Management & Controls	1.2	Planning & Scheduling	1.2.9	Recovery schedule	Project Controls	Document	0/100 or 20/80 by submission/approval
+1.0	Project Management & Controls	1.2	Planning & Scheduling	1.2.10	Schedule risk analysis	Project Controls	Document	0/100 or 20/80 by submission/approval
+1.0	Project Management & Controls	1.3	Cost & Commercial Control	1.3.1	Control budget establishment	Project Controls	LS	Weighted milestone or measurable deliverable
+1.0	Project Management & Controls	1.3	Cost & Commercial Control	1.3.2	CBS-WBS mapping	Project Controls	LS	Weighted milestone or measurable deliverable
+1.0	Project Management & Controls	1.3	Cost & Commercial Control	1.3.3	Cost code setup	Project Controls	LS	Milestone-based 0/50/100
+1.0	Project Management & Controls	1.3	Cost & Commercial Control	1.3.4	Commitment tracking	Project Controls	LS	Weighted milestone or measurable deliverable
+1.0	Project Management & Controls	1.3	Cost & Commercial Control	1.3.5	Actual cost tracking	Project Controls	LS	Weighted milestone or measurable deliverable
+1.0	Project Management & Controls	1.3	Cost & Commercial Control	1.3.6	Estimate at completion	Project Controls	LS	Weighted milestone or measurable deliverable
+1.0	Project Management & Controls	1.3	Cost & Commercial Control	1.3.7	Cash flow forecast	Project Controls	LS	Weighted milestone or measurable deliverable
+1.0	Project Management & Controls	1.3	Cost & Commercial Control	1.3.8	Progress claim preparation	Project Controls	LS	Weighted milestone or measurable deliverable
+1.0	Project Management & Controls	1.3	Cost & Commercial Control	1.3.9	Variation order management	Project Controls	LS	Weighted milestone or measurable deliverable
+1.0	Project Management & Controls	1.3	Cost & Commercial Control	1.3.10	Claim and extension of time management	Project Controls	LS	Weighted milestone or measurable deliverable
+1.0	Project Management & Controls	1.3	Cost & Commercial Control	1.3.11	Final account close-out	Project Controls	LS	Weighted milestone or measurable deliverable
+1.0	Project Management & Controls	1.4	Progress Measurement & Reporting	1.4.1	Progress measurement procedure	Project Controls	Document	0/100 or 20/80 by submission/approval
+1.0	Project Management & Controls	1.4	Progress Measurement & Reporting	1.4.2	Weighting system approval	Project Controls	LS	Weighted milestone or measurable deliverable
+1.0	Project Management & Controls	1.4	Progress Measurement & Reporting	1.4.3	Rules of credit setup	Project Controls	LS	Milestone-based 0/50/100
+1.0	Project Management & Controls	1.4	Progress Measurement & Reporting	1.4.4	Daily progress reporting	Project Controls	Document	0/100 or 20/80 by submission/approval
+1.0	Project Management & Controls	1.4	Progress Measurement & Reporting	1.4.5	Weekly progress report	Project Controls	Document	0/100 or 20/80 by submission/approval
+1.0	Project Management & Controls	1.4	Progress Measurement & Reporting	1.4.6	Monthly progress report	Project Controls	Document	0/100 or 20/80 by submission/approval
+1.0	Project Management & Controls	1.4	Progress Measurement & Reporting	1.4.7	S-curve update	Project Controls	LS	Weighted milestone or measurable deliverable
+1.0	Project Management & Controls	1.4	Progress Measurement & Reporting	1.4.8	KPI dashboard update	Project Controls	LS	Weighted milestone or measurable deliverable
+1.0	Project Management & Controls	1.4	Progress Measurement & Reporting	1.4.9	Productivity reporting	Project Controls	Document	0/100 or 20/80 by submission/approval
+1.0	Project Management & Controls	1.4	Progress Measurement & Reporting	1.4.10	Management review	Project Controls	LS	Weighted milestone or measurable deliverable
+1.0	Project Management & Controls	1.5	Risk, Interface & Change Management	1.5.1	Risk register setup	Project Controls	Document	0/100 or 20/80 by submission/approval
+1.0	Project Management & Controls	1.5	Risk, Interface & Change Management	1.5.2	Risk review meeting	Project Controls	LS	Weighted milestone or measurable deliverable
+1.0	Project Management & Controls	1.5	Risk, Interface & Change Management	1.5.3	Opportunity register	Project Controls	Document	0/100 or 20/80 by submission/approval
+1.0	Project Management & Controls	1.5	Risk, Interface & Change Management	1.5.4	Interface register	Project Controls	Document	0/100 or 20/80 by submission/approval
+1.0	Project Management & Controls	1.5	Risk, Interface & Change Management	1.5.5	Technical query management	Project Controls	LS	Weighted milestone or measurable deliverable
+1.0	Project Management & Controls	1.5	Risk, Interface & Change Management	1.5.6	RFI management	Project Controls	LS	Weighted milestone or measurable deliverable
+1.0	Project Management & Controls	1.5	Risk, Interface & Change Management	1.5.7	Change control	Project Controls	LS	Weighted milestone or measurable deliverable
+1.0	Project Management & Controls	1.5	Risk, Interface & Change Management	1.5.8	Decision log	Project Controls	LS	Weighted milestone or measurable deliverable
+1.0	Project Management & Controls	1.5	Risk, Interface & Change Management	1.5.9	Action tracking	Project Controls	LS	Weighted milestone or measurable deliverable
+1.0	Project Management & Controls	1.5	Risk, Interface & Change Management	1.5.10	Lessons learned register	Project Controls	Document	0/100 or 20/80 by submission/approval
+2.0	HSE, Quality & Regulatory	2.1	HSE Management	2.1.1	Project HSE plan	HSE / QAQC	Document	0/100 or 20/80 by submission/approval
+2.0	HSE, Quality & Regulatory	2.1	HSE Management	2.1.2	Job safety analysis / JSA	HSE / QAQC	LS	Weighted milestone or measurable deliverable
+2.0	HSE, Quality & Regulatory	2.1	HSE Management	2.1.3	Method statement HSE review	HSE / QAQC	LS	Weighted milestone or measurable deliverable
+2.0	HSE, Quality & Regulatory	2.1	HSE Management	2.1.4	Permit-to-work planning	HSE / QAQC	Document	0/100 or 20/80 by submission/approval
+2.0	HSE, Quality & Regulatory	2.1	HSE Management	2.1.5	Safety induction	HSE / QAQC	LS	Weighted milestone or measurable deliverable
+2.0	HSE, Quality & Regulatory	2.1	HSE Management	2.1.6	Toolbox talk program	HSE / QAQC	LS	Weighted milestone or measurable deliverable
+2.0	HSE, Quality & Regulatory	2.1	HSE Management	2.1.7	Emergency response plan	HSE / QAQC	Document	0/100 or 20/80 by submission/approval
+2.0	HSE, Quality & Regulatory	2.1	HSE Management	2.1.8	Lifting plan	HSE / QAQC	Document	0/100 or 20/80 by submission/approval
+2.0	HSE, Quality & Regulatory	2.1	HSE Management	2.1.9	Working at height plan	HSE / QAQC	Document	0/100 or 20/80 by submission/approval
+2.0	HSE, Quality & Regulatory	2.1	HSE Management	2.1.10	Confined space plan	HSE / QAQC	Document	0/100 or 20/80 by submission/approval
+2.0	HSE, Quality & Regulatory	2.1	HSE Management	2.1.11	HSE inspection and audit	HSE / QAQC	ea/System	Completed and accepted records / total planned
+2.0	HSE, Quality & Regulatory	2.1	HSE Management	2.1.12	Incident reporting and close-out	HSE / QAQC	Document	0/100 or 20/80 by submission/approval
+2.0	HSE, Quality & Regulatory	2.2	Quality Management	2.2.1	Project quality plan	HSE / QAQC	Document	0/100 or 20/80 by submission/approval
+2.0	HSE, Quality & Regulatory	2.2	Quality Management	2.2.2	Inspection and test plan (ITP)	HSE / QAQC	Document	0/100 or 20/80 by submission/approval
+2.0	HSE, Quality & Regulatory	2.2	Quality Management	2.2.3	Quality control procedures	HSE / QAQC	Document	0/100 or 20/80 by submission/approval
+2.0	HSE, Quality & Regulatory	2.2	Quality Management	2.2.4	Welding procedure / qualification	HSE / QAQC	Document	0/100 or 20/80 by submission/approval
+2.0	HSE, Quality & Regulatory	2.2	Quality Management	2.2.5	Calibration control	HSE / QAQC	ea/System	Completed and accepted records / total planned
+2.0	HSE, Quality & Regulatory	2.2	Quality Management	2.2.6	Material traceability	HSE / QAQC	LS	Weighted milestone or measurable deliverable
+2.0	HSE, Quality & Regulatory	2.2	Quality Management	2.2.7	Inspection request / WIR-RFI	HSE / QAQC	ea/System	Completed and accepted records / total planned
+2.0	HSE, Quality & Regulatory	2.2	Quality Management	2.2.8	NCR management	HSE / QAQC	LS	Weighted milestone or measurable deliverable
+2.0	HSE, Quality & Regulatory	2.2	Quality Management	2.2.9	Punch management	HSE / QAQC	ea/System	Completed and accepted records / total planned
+2.0	HSE, Quality & Regulatory	2.2	Quality Management	2.2.10	Quality audit	HSE / QAQC	LS	Weighted milestone or measurable deliverable
+2.0	HSE, Quality & Regulatory	2.2	Quality Management	2.2.11	Turnover dossier index	HSE / QAQC	Document	0/100 or 20/80 by submission/approval
+2.0	HSE, Quality & Regulatory	2.3	Regulatory & Authority	2.3.1	Applicable codes and standards register	HSE / QAQC	Document	0/100 or 20/80 by submission/approval
+2.0	HSE, Quality & Regulatory	2.3	Regulatory & Authority	2.3.2	Hazardous area compliance	HSE / QAQC	LS	Weighted milestone or measurable deliverable
+2.0	HSE, Quality & Regulatory	2.3	Regulatory & Authority	2.3.3	Professional engineer review	HSE / QAQC	LS	Weighted milestone or measurable deliverable
+2.0	HSE, Quality & Regulatory	2.3	Regulatory & Authority	2.3.4	Authority submission	HSE / QAQC	LS	Weighted milestone or measurable deliverable
+2.0	HSE, Quality & Regulatory	2.3	Regulatory & Authority	2.3.5	Permit and license tracking	HSE / QAQC	LS	Weighted milestone or measurable deliverable
+2.0	HSE, Quality & Regulatory	2.3	Regulatory & Authority	2.3.6	Third-party inspection coordination	HSE / QAQC	ea/System	Completed and accepted records / total planned
+2.0	HSE, Quality & Regulatory	2.3	Regulatory & Authority	2.3.7	Certification and statutory records	HSE / QAQC	Document	0/100 or 20/80 by submission/approval
+3.0	Engineering	3.1	Engineering Management	3.1.1	Engineering execution plan	Engineering	Document	0/100 or 20/80 by submission/approval
+3.0	Engineering	3.1	Engineering Management	3.1.2	Engineering deliverables register	Engineering	Document	0/100 or 20/80 by submission/approval
+3.0	Engineering	3.1	Engineering Management	3.1.3	Engineering schedule	Engineering	Document	0/100 or 20/80 by submission/approval
+3.0	Engineering	3.1	Engineering Management	3.1.4	Design input review	Engineering	LS	Weighted milestone or measurable deliverable
+3.0	Engineering	3.1	Engineering Management	3.1.5	Site survey / data collection	Engineering	LS	Weighted milestone or measurable deliverable
+3.0	Engineering	3.1	Engineering Management	3.1.6	Interface coordination	Engineering	LS	Weighted milestone or measurable deliverable
+3.0	Engineering	3.1	Engineering Management	3.1.7	IDC / interdisciplinary check	Engineering	ea/System	Completed and accepted records / total planned
+3.0	Engineering	3.1	Engineering Management	3.1.8	Client review and comment resolution	Engineering	LS	Weighted milestone or measurable deliverable
+3.0	Engineering	3.1	Engineering Management	3.1.9	IFC release control	Engineering	LS	Weighted milestone or measurable deliverable
+3.0	Engineering	3.1	Engineering Management	3.1.10	Engineering change control	Engineering	LS	Weighted milestone or measurable deliverable
+3.0	Engineering	3.2	Electrical Engineering	3.2.1	Electrical design criteria	Engineering	LS	Weighted milestone or measurable deliverable
+3.0	Engineering	3.2	Electrical Engineering	3.2.2	Load list	Engineering	Document	0/100 or 20/80 by submission/approval
+3.0	Engineering	3.2	Electrical Engineering	3.2.3	Single line diagram	Engineering	Document	0/100 or 20/80 by submission/approval
+3.0	Engineering	3.2	Electrical Engineering	3.2.4	Short circuit calculation	Engineering	LS	Weighted milestone or measurable deliverable
+3.0	Engineering	3.2	Electrical Engineering	3.2.5	Load flow study	Engineering	LS	Weighted milestone or measurable deliverable
+3.0	Engineering	3.2	Electrical Engineering	3.2.6	Motor starting study	Engineering	LS	Weighted milestone or measurable deliverable
+3.0	Engineering	3.2	Electrical Engineering	3.2.7	Protection coordination study	Engineering	LS	Weighted milestone or measurable deliverable
+3.0	Engineering	3.2	Electrical Engineering	3.2.8	Cable sizing calculation	Engineering	LS	Weighted milestone or measurable deliverable
+3.0	Engineering	3.2	Electrical Engineering	3.2.9	Voltage drop calculation	Engineering	LS	Weighted milestone or measurable deliverable
+3.0	Engineering	3.2	Electrical Engineering	3.2.10	Transformer sizing	Engineering	ea	Installed and inspected quantity / total quantity
+3.0	Engineering	3.2	Electrical Engineering	3.2.11	UPS and battery sizing	Engineering	LS	Weighted milestone or measurable deliverable
+3.0	Engineering	3.2	Electrical Engineering	3.2.12	MCC and switchgear specification	Engineering	ea	Installed and inspected quantity / total quantity
+3.0	Engineering	3.2	Electrical Engineering	3.2.13	Electrical equipment datasheets	Engineering	Document	0/100 or 20/80 by submission/approval
+3.0	Engineering	3.2	Electrical Engineering	3.2.14	Power distribution layout	Engineering	LS	Weighted milestone or measurable deliverable
+3.0	Engineering	3.2	Electrical Engineering	3.2.15	Cable routing layout	Engineering	LS	Weighted milestone or measurable deliverable
+3.0	Engineering	3.2	Electrical Engineering	3.2.16	Cable tray layout	Engineering	m	Installed quantity / total quantity
+3.0	Engineering	3.2	Electrical Engineering	3.2.17	Underground duct bank layout	Engineering	LS	Weighted milestone or measurable deliverable
+3.0	Engineering	3.2	Electrical Engineering	3.2.18	Lighting layout and calculation	Engineering	LS	Weighted milestone or measurable deliverable
+3.0	Engineering	3.2	Electrical Engineering	3.2.19	Small power layout	Engineering	LS	Weighted milestone or measurable deliverable
+3.0	Engineering	3.2	Electrical Engineering	3.2.20	Grounding and bonding layout	Engineering	LS	Weighted milestone or measurable deliverable
+3.0	Engineering	3.2	Electrical Engineering	3.2.21	Lightning protection layout	Engineering	LS	Weighted milestone or measurable deliverable
+3.0	Engineering	3.2	Electrical Engineering	3.2.22	Electrical installation details	Engineering	ea	Installed and inspected quantity / total quantity
+3.0	Engineering	3.2	Electrical Engineering	3.2.23	Cable schedule	Engineering	Document	0/100 or 20/80 by submission/approval
+3.0	Engineering	3.2	Electrical Engineering	3.2.24	Termination schedule	Engineering	Document	0/100 or 20/80 by submission/approval
+3.0	Engineering	3.2	Electrical Engineering	3.2.25	Electrical MTO	Engineering	LS	Weighted milestone or measurable deliverable
+3.0	Engineering	3.3	Instrumentation & Control Engineering	3.3.1	Instrument design basis	Engineering	ea	Installed and inspected quantity / total quantity
+3.0	Engineering	3.3	Instrumentation & Control Engineering	3.3.2	Instrument index	Engineering	ea	Installed and inspected quantity / total quantity
+3.0	Engineering	3.3	Instrumentation & Control Engineering	3.3.3	I/O list	Engineering	Document	0/100 or 20/80 by submission/approval
+3.0	Engineering	3.3	Instrumentation & Control Engineering	3.3.4	Instrument datasheets	Engineering	Document	0/100 or 20/80 by submission/approval
+3.0	Engineering	3.3	Instrumentation & Control Engineering	3.3.5	Control valve datasheets	Engineering	Document	0/100 or 20/80 by submission/approval
+3.0	Engineering	3.3	Instrumentation & Control Engineering	3.3.6	On-off valve datasheets	Engineering	Document	0/100 or 20/80 by submission/approval
+3.0	Engineering	3.3	Instrumentation & Control Engineering	3.3.7	Analyzer datasheets	Engineering	Document	0/100 or 20/80 by submission/approval
+3.0	Engineering	3.3	Instrumentation & Control Engineering	3.3.8	Junction box schedule	Engineering	Document	0/100 or 20/80 by submission/approval
+3.0	Engineering	3.3	Instrumentation & Control Engineering	3.3.9	Cable schedule - instrument	Engineering	Document	0/100 or 20/80 by submission/approval
+3.0	Engineering	3.3	Instrumentation & Control Engineering	3.3.10	Instrument location plan	Engineering	Document	0/100 or 20/80 by submission/approval
+3.0	Engineering	3.3	Instrumentation & Control Engineering	3.3.11	JB location plan	Engineering	Document	0/100 or 20/80 by submission/approval
+3.0	Engineering	3.3	Instrumentation & Control Engineering	3.3.12	Instrument cable routing	Engineering	ea	Installed and inspected quantity / total quantity
+3.0	Engineering	3.3	Instrumentation & Control Engineering	3.3.13	Hook-up drawings	Engineering	Document	0/100 or 20/80 by submission/approval
+3.0	Engineering	3.3	Instrumentation & Control Engineering	3.3.14	Loop diagrams	Engineering	Document	0/100 or 20/80 by submission/approval
+3.0	Engineering	3.3	Instrumentation & Control Engineering	3.3.15	Termination diagrams	Engineering	Document	0/100 or 20/80 by submission/approval
+3.0	Engineering	3.3	Instrumentation & Control Engineering	3.3.16	Interconnection diagrams	Engineering	Document	0/100 or 20/80 by submission/approval
+3.0	Engineering	3.3	Instrumentation & Control Engineering	3.3.17	Logic diagrams	Engineering	Document	0/100 or 20/80 by submission/approval
+3.0	Engineering	3.3	Instrumentation & Control Engineering	3.3.18	Cause and effect matrix	Engineering	Document	0/100 or 20/80 by submission/approval
+3.0	Engineering	3.3	Instrumentation & Control Engineering	3.3.19	Control narrative	Engineering	Document	0/100 or 20/80 by submission/approval
+3.0	Engineering	3.3	Instrumentation & Control Engineering	3.3.20	PLC/DCS/SIS architecture	Engineering	LS	Weighted milestone or measurable deliverable
+3.0	Engineering	3.3	Instrumentation & Control Engineering	3.3.21	Network architecture	Engineering	LS	Weighted milestone or measurable deliverable
+3.0	Engineering	3.3	Instrumentation & Control Engineering	3.3.22	Modbus register mapping	Engineering	Document	0/100 or 20/80 by submission/approval
+3.0	Engineering	3.3	Instrumentation & Control Engineering	3.3.23	Instrument air distribution	Engineering	ea	Installed and inspected quantity / total quantity
+3.0	Engineering	3.3	Instrumentation & Control Engineering	3.3.24	Instrument MTO	Engineering	ea	Installed and inspected quantity / total quantity
+3.0	Engineering	3.4	Telecom, F&G and Security Engineering	3.4.1	PAGA design	Engineering	LS	Weighted milestone or measurable deliverable
+3.0	Engineering	3.4	Telecom, F&G and Security Engineering	3.4.2	CCTV design	Engineering	LS	Weighted milestone or measurable deliverable
+3.0	Engineering	3.4	Telecom, F&G and Security Engineering	3.4.3	Access control design	Engineering	LS	Weighted milestone or measurable deliverable
+3.0	Engineering	3.4	Telecom, F&G and Security Engineering	3.4.4	LAN / fiber optic design	Engineering	LS	Weighted milestone or measurable deliverable
+3.0	Engineering	3.4	Telecom, F&G and Security Engineering	3.4.5	Fire alarm design	Engineering	LS	Weighted milestone or measurable deliverable
+3.0	Engineering	3.4	Telecom, F&G and Security Engineering	3.4.6	Gas detection design	Engineering	LS	Weighted milestone or measurable deliverable
+3.0	Engineering	3.4	Telecom, F&G and Security Engineering	3.4.7	Flame detection design	Engineering	LS	Weighted milestone or measurable deliverable
+3.0	Engineering	3.4	Telecom, F&G and Security Engineering	3.4.8	Telecom block diagrams	Engineering	Document	0/100 or 20/80 by submission/approval
+3.0	Engineering	3.4	Telecom, F&G and Security Engineering	3.4.9	Network topology	Engineering	LS	Weighted milestone or measurable deliverable
+3.0	Engineering	3.4	Telecom, F&G and Security Engineering	3.4.10	Equipment and cable schedules	Engineering	Document	0/100 or 20/80 by submission/approval
+3.0	Engineering	3.4	Telecom, F&G and Security Engineering	3.4.11	System interface matrix	Engineering	Document	0/100 or 20/80 by submission/approval
+3.0	Engineering	3.5	Construction Engineering	3.5.1	Constructability review	Engineering	LS	Weighted milestone or measurable deliverable
+3.0	Engineering	3.5	Construction Engineering	3.5.2	Field verification	Engineering	LS	Weighted milestone or measurable deliverable
+3.0	Engineering	3.5	Construction Engineering	3.5.3	Temporary works design	Engineering	LS	Weighted milestone or measurable deliverable
+3.0	Engineering	3.5	Construction Engineering	3.5.4	Cable support shop drawings	Engineering	Document	0/100 or 20/80 by submission/approval
+3.0	Engineering	3.5	Construction Engineering	3.5.5	Instrument stand shop drawings	Engineering	Document	0/100 or 20/80 by submission/approval
+3.0	Engineering	3.5	Construction Engineering	3.5.6	JB support shop drawings	Engineering	Document	0/100 or 20/80 by submission/approval
+3.0	Engineering	3.5	Construction Engineering	3.5.7	Panel foundation details	Engineering	ea	Installed and inspected quantity / total quantity
+3.0	Engineering	3.5	Construction Engineering	3.5.8	Field routing sketches	Engineering	LS	Weighted milestone or measurable deliverable
+3.0	Engineering	3.5	Construction Engineering	3.5.9	Work pack preparation	Engineering	LS	Weighted milestone or measurable deliverable
+3.0	Engineering	3.5	Construction Engineering	3.5.10	Material take-off update	Engineering	LS	Weighted milestone or measurable deliverable
+3.0	Engineering	3.5	Construction Engineering	3.5.11	Red-line and field change control	Engineering	LS	Weighted milestone or measurable deliverable
+4.0	Procurement & Vendor Management	4.1	Procurement Planning	4.1.1	Procurement plan	Procurement	Document	0/100 or 20/80 by submission/approval
+4.0	Procurement & Vendor Management	4.1	Procurement Planning	4.1.2	Approved vendor list	Procurement	Document	0/100 or 20/80 by submission/approval
+4.0	Procurement & Vendor Management	4.1	Procurement Planning	4.1.3	Procurement schedule	Procurement	Document	0/100 or 20/80 by submission/approval
+4.0	Procurement & Vendor Management	4.1	Procurement Planning	4.1.4	Long lead item register	Procurement	Document	0/100 or 20/80 by submission/approval
+4.0	Procurement & Vendor Management	4.1	Procurement Planning	4.1.5	Purchase requisition plan	Procurement	Document	0/100 or 20/80 by submission/approval
+4.0	Procurement & Vendor Management	4.1	Procurement Planning	4.1.6	Expediting plan	Procurement	Document	0/100 or 20/80 by submission/approval
+4.0	Procurement & Vendor Management	4.1	Procurement Planning	4.1.7	Inspection and logistics plan	Procurement	Document	0/100 or 20/80 by submission/approval
+4.0	Procurement & Vendor Management	4.2	Technical Procurement	4.2.1	Material requisition	Procurement	LS	Weighted milestone or measurable deliverable
+4.0	Procurement & Vendor Management	4.2	Technical Procurement	4.2.2	Request for quotation	Procurement	LS	Weighted milestone or measurable deliverable
+4.0	Procurement & Vendor Management	4.2	Technical Procurement	4.2.3	Technical bid evaluation	Procurement	LS	Weighted milestone or measurable deliverable
+4.0	Procurement & Vendor Management	4.2	Technical Procurement	4.2.4	Technical clarification	Procurement	LS	Weighted milestone or measurable deliverable
+4.0	Procurement & Vendor Management	4.2	Technical Procurement	4.2.5	Vendor selection recommendation	Procurement	LS	Weighted milestone or measurable deliverable
+4.0	Procurement & Vendor Management	4.2	Technical Procurement	4.2.6	Purchase order technical attachment	Procurement	LS	Weighted milestone or measurable deliverable
+4.0	Procurement & Vendor Management	4.3	Vendor Document & Manufacturing	4.3.1	Vendor document register	Procurement	Document	0/100 or 20/80 by submission/approval
+4.0	Procurement & Vendor Management	4.3	Vendor Document & Manufacturing	4.3.2	Vendor drawing review	Procurement	Document	0/100 or 20/80 by submission/approval
+4.0	Procurement & Vendor Management	4.3	Vendor Document & Manufacturing	4.3.3	Manufacturing schedule	Procurement	Document	0/100 or 20/80 by submission/approval
+4.0	Procurement & Vendor Management	4.3	Vendor Document & Manufacturing	4.3.4	Production monitoring	Procurement	LS	Weighted milestone or measurable deliverable
+4.0	Procurement & Vendor Management	4.3	Vendor Document & Manufacturing	4.3.5	Inspection notification	Procurement	ea/System	Completed and accepted records / total planned
+4.0	Procurement & Vendor Management	4.3	Vendor Document & Manufacturing	4.3.6	Factory acceptance test (FAT)	Procurement	ea/System	Completed and accepted records / total planned
+4.0	Procurement & Vendor Management	4.3	Vendor Document & Manufacturing	4.3.7	Inspection release note	Procurement	ea/System	Completed and accepted records / total planned
+4.0	Procurement & Vendor Management	4.3	Vendor Document & Manufacturing	4.3.8	Manufacturing record book	Procurement	Document	0/100 or 20/80 by submission/approval
+4.0	Procurement & Vendor Management	4.4	Logistics & Delivery	4.4.1	Packing and preservation	Procurement	LS	Weighted milestone or measurable deliverable
+4.0	Procurement & Vendor Management	4.4	Logistics & Delivery	4.4.2	Shipping document preparation	Procurement	LS	Weighted milestone or measurable deliverable
+4.0	Procurement & Vendor Management	4.4	Logistics & Delivery	4.4.3	Freight booking	Procurement	LS	Weighted milestone or measurable deliverable
+4.0	Procurement & Vendor Management	4.4	Logistics & Delivery	4.4.4	Customs clearance	Procurement	LS	Weighted milestone or measurable deliverable
+4.0	Procurement & Vendor Management	4.4	Logistics & Delivery	4.4.5	Transport to site	Procurement	LS	Weighted milestone or measurable deliverable
+4.0	Procurement & Vendor Management	4.4	Logistics & Delivery	4.4.6	Material receiving	Procurement	LS	Weighted milestone or measurable deliverable
+4.0	Procurement & Vendor Management	4.4	Logistics & Delivery	4.4.7	Receiving inspection	Procurement	ea/System	Completed and accepted records / total planned
+4.0	Procurement & Vendor Management	4.4	Logistics & Delivery	4.4.8	Material discrepancy report	Procurement	Document	0/100 or 20/80 by submission/approval
+4.0	Procurement & Vendor Management	4.4	Logistics & Delivery	4.4.9	Warehouse storage	Procurement	LS	Weighted milestone or measurable deliverable
+4.0	Procurement & Vendor Management	4.4	Logistics & Delivery	4.4.10	Preservation and inventory control	Procurement	LS	Weighted milestone or measurable deliverable
+4.0	Procurement & Vendor Management	4.4	Logistics & Delivery	4.4.11	Material issue to construction	Procurement	LS	Weighted milestone or measurable deliverable
+4.0	Procurement & Vendor Management	4.5	Procurement Packages	4.5.1	Switchgear / MCC / DB	Procurement	ea	Installed and inspected quantity / total quantity
+4.0	Procurement & Vendor Management	4.5	Procurement Packages	4.5.2	Transformer	Procurement	ea	Installed and inspected quantity / total quantity
+4.0	Procurement & Vendor Management	4.5	Procurement Packages	4.5.3	UPS / battery / charger	Procurement	LS	Weighted milestone or measurable deliverable
+4.0	Procurement & Vendor Management	4.5	Procurement Packages	4.5.4	VFD / soft starter	Procurement	LS	Weighted milestone or measurable deliverable
+4.0	Procurement & Vendor Management	4.5	Procurement Packages	4.5.5	Control panels / PLC / DCS / SIS	Procurement	ea	Installed and inspected quantity / total quantity
+4.0	Procurement & Vendor Management	4.5	Procurement Packages	4.5.6	Field instruments	Procurement	ea	Installed and inspected quantity / total quantity
+4.0	Procurement & Vendor Management	4.5	Procurement Packages	4.5.7	Control and on-off valves	Procurement	ea	Installed and inspected quantity / total quantity
+4.0	Procurement & Vendor Management	4.5	Procurement Packages	4.5.8	Analyzers and shelters	Procurement	LS	Weighted milestone or measurable deliverable
+4.0	Procurement & Vendor Management	4.5	Procurement Packages	4.5.9	Power cables	Procurement	LS	Weighted milestone or measurable deliverable
+4.0	Procurement & Vendor Management	4.5	Procurement Packages	4.5.10	Control and instrument cables	Procurement	ea	Installed and inspected quantity / total quantity
+4.0	Procurement & Vendor Management	4.5	Procurement Packages	4.5.11	Fiber optic and telecom cables	Procurement	LS	Weighted milestone or measurable deliverable
+4.0	Procurement & Vendor Management	4.5	Procurement Packages	4.5.12	Cable tray / ladder / duct	Procurement	m	Installed quantity / total quantity
+4.0	Procurement & Vendor Management	4.5	Procurement Packages	4.5.13	Conduit and accessories	Procurement	m	Installed quantity / total quantity
+4.0	Procurement & Vendor Management	4.5	Procurement Packages	4.5.14	Junction boxes	Procurement	ea	Installed and inspected quantity / total quantity
+4.0	Procurement & Vendor Management	4.5	Procurement Packages	4.5.15	Cable glands and termination accessories	Procurement	LS	Weighted milestone or measurable deliverable
+4.0	Procurement & Vendor Management	4.5	Procurement Packages	4.5.16	Lighting and small power	Procurement	LS	Weighted milestone or measurable deliverable
+4.0	Procurement & Vendor Management	4.5	Procurement Packages	4.5.17	Grounding and lightning materials	Procurement	LS	Weighted milestone or measurable deliverable
+4.0	Procurement & Vendor Management	4.5	Procurement Packages	4.5.18	Instrument tubing and fittings	Procurement	m	Installed quantity / total quantity
+4.0	Procurement & Vendor Management	4.5	Procurement Packages	4.5.19	Steel supports and bulk materials	Procurement	LS	Weighted milestone or measurable deliverable
+4.0	Procurement & Vendor Management	4.5	Procurement Packages	4.5.20	Tools and special test equipment	Procurement	ea/System	Completed and accepted records / total planned
+5.0	Mobilization, Site Facilities & Enabling Works	5.1	Mobilization	5.1.1	Key staff mobilization	Construction Management	LS	Milestone-based 0/50/100
+5.0	Mobilization, Site Facilities & Enabling Works	5.1	Mobilization	5.1.2	Construction manpower mobilization	Construction Management	LS	Milestone-based 0/50/100
+5.0	Mobilization, Site Facilities & Enabling Works	5.1	Mobilization	5.1.3	Equipment mobilization	Construction Management	LS	Milestone-based 0/50/100
+5.0	Mobilization, Site Facilities & Enabling Works	5.1	Mobilization	5.1.4	Site induction and access pass	Construction Management	LS	Weighted milestone or measurable deliverable
+5.0	Mobilization, Site Facilities & Enabling Works	5.1	Mobilization	5.1.5	Mobilization inspection	Construction Management	ea/System	Completed and accepted records / total planned
+5.0	Mobilization, Site Facilities & Enabling Works	5.2	Temporary Facilities	5.2.1	Site office setup	Construction Management	LS	Milestone-based 0/50/100
+5.0	Mobilization, Site Facilities & Enabling Works	5.2	Temporary Facilities	5.2.2	Warehouse and laydown yard	Construction Management	LS	Weighted milestone or measurable deliverable
+5.0	Mobilization, Site Facilities & Enabling Works	5.2	Temporary Facilities	5.2.3	Workshop and fabrication area	Construction Management	LS	Weighted milestone or measurable deliverable
+5.0	Mobilization, Site Facilities & Enabling Works	5.2	Temporary Facilities	5.2.4	Temporary power	Construction Management	LS	Weighted milestone or measurable deliverable
+5.0	Mobilization, Site Facilities & Enabling Works	5.2	Temporary Facilities	5.2.5	Temporary lighting	Construction Management	LS	Weighted milestone or measurable deliverable
+5.0	Mobilization, Site Facilities & Enabling Works	5.2	Temporary Facilities	5.2.6	Temporary water	Construction Management	LS	Weighted milestone or measurable deliverable
+5.0	Mobilization, Site Facilities & Enabling Works	5.2	Temporary Facilities	5.2.7	Temporary communication and internet	Construction Management	LS	Weighted milestone or measurable deliverable
+5.0	Mobilization, Site Facilities & Enabling Works	5.2	Temporary Facilities	5.2.8	Welfare and sanitation	Construction Management	LS	Weighted milestone or measurable deliverable
+5.0	Mobilization, Site Facilities & Enabling Works	5.2	Temporary Facilities	5.2.9	Security and access control	Construction Management	LS	Weighted milestone or measurable deliverable
+5.0	Mobilization, Site Facilities & Enabling Works	5.2	Temporary Facilities	5.2.10	Waste management facilities	Construction Management	LS	Weighted milestone or measurable deliverable
+5.0	Mobilization, Site Facilities & Enabling Works	5.3	Site Preparation & Access	5.3.1	Site survey and benchmarks	Construction Management	LS	Weighted milestone or measurable deliverable
+5.0	Mobilization, Site Facilities & Enabling Works	5.3	Site Preparation & Access	5.3.2	Work area handover	Construction Management	LS	Weighted milestone or measurable deliverable
+5.0	Mobilization, Site Facilities & Enabling Works	5.3	Site Preparation & Access	5.3.3	Barricade and signage	Construction Management	LS	Weighted milestone or measurable deliverable
+5.0	Mobilization, Site Facilities & Enabling Works	5.3	Site Preparation & Access	5.3.4	Access road and working platform	Construction Management	LS	Weighted milestone or measurable deliverable
+5.0	Mobilization, Site Facilities & Enabling Works	5.3	Site Preparation & Access	5.3.5	Scaffolding planning and erection	Construction Management	Document	0/100 or 20/80 by submission/approval
+5.0	Mobilization, Site Facilities & Enabling Works	5.3	Site Preparation & Access	5.3.6	Lifting access preparation	Construction Management	LS	Weighted milestone or measurable deliverable
+5.0	Mobilization, Site Facilities & Enabling Works	5.3	Site Preparation & Access	5.3.7	Existing service identification	Construction Management	LS	Weighted milestone or measurable deliverable
+6.0	Fabrication & Prefabrication	6.1	Support Fabrication	6.1.1	Material cutting	Fabrication	LS	Weighted milestone or measurable deliverable
+6.0	Fabrication & Prefabrication	6.1	Support Fabrication	6.1.2	Fit-up and welding	Fabrication	LS	Weighted milestone or measurable deliverable
+6.0	Fabrication & Prefabrication	6.1	Support Fabrication	6.1.3	Dimensional inspection	Fabrication	ea/System	Completed and accepted records / total planned
+6.0	Fabrication & Prefabrication	6.1	Support Fabrication	6.1.4	Surface preparation	Fabrication	LS	Weighted milestone or measurable deliverable
+6.0	Fabrication & Prefabrication	6.1	Support Fabrication	6.1.5	Painting / galvanizing	Fabrication	LS	Weighted milestone or measurable deliverable
+6.0	Fabrication & Prefabrication	6.1	Support Fabrication	6.1.6	Identification and tagging	Fabrication	LS	Weighted milestone or measurable deliverable
+6.0	Fabrication & Prefabrication	6.1	Support Fabrication	6.1.7	Delivery to installation area	Fabrication	ea	Installed and inspected quantity / total quantity
+6.0	Fabrication & Prefabrication	6.2	Panel and JB Assembly	6.2.1	Panel / JB internal assembly	Fabrication	ea	Installed and inspected quantity / total quantity
+6.0	Fabrication & Prefabrication	6.2	Panel and JB Assembly	6.2.2	Terminal block installation	Fabrication	ea	Installed and inspected quantity / total quantity
+6.0	Fabrication & Prefabrication	6.2	Panel and JB Assembly	6.2.3	Cable gland plate preparation	Fabrication	LS	Weighted milestone or measurable deliverable
+6.0	Fabrication & Prefabrication	6.2	Panel and JB Assembly	6.2.4	Internal wiring	Fabrication	LS	Weighted milestone or measurable deliverable
+6.0	Fabrication & Prefabrication	6.2	Panel and JB Assembly	6.2.5	Nameplate and tagging	Fabrication	LS	Weighted milestone or measurable deliverable
+6.0	Fabrication & Prefabrication	6.2	Panel and JB Assembly	6.2.6	Continuity and insulation test	Fabrication	ea/System	Completed and accepted records / total planned
+6.0	Fabrication & Prefabrication	6.2	Panel and JB Assembly	6.2.7	Factory / workshop inspection	Fabrication	ea/System	Completed and accepted records / total planned
+6.0	Fabrication & Prefabrication	6.3	Cable and Tubing Prefabrication	6.3.1	Cable drum preparation	Fabrication	LS	Weighted milestone or measurable deliverable
+6.0	Fabrication & Prefabrication	6.3	Cable and Tubing Prefabrication	6.3.2	Cable cutting and pre-measurement	Fabrication	LS	Weighted milestone or measurable deliverable
+6.0	Fabrication & Prefabrication	6.3	Cable and Tubing Prefabrication	6.3.3	Cable end preparation	Fabrication	LS	Weighted milestone or measurable deliverable
+6.0	Fabrication & Prefabrication	6.3	Cable and Tubing Prefabrication	6.3.4	Tube cutting and bending	Fabrication	LS	Weighted milestone or measurable deliverable
+6.0	Fabrication & Prefabrication	6.3	Cable and Tubing Prefabrication	6.3.5	Hook-up spool preparation	Fabrication	LS	Weighted milestone or measurable deliverable
+6.0	Fabrication & Prefabrication	6.3	Cable and Tubing Prefabrication	6.3.6	Cleaning for oxygen service	Fabrication	LS	Weighted milestone or measurable deliverable
+6.0	Fabrication & Prefabrication	6.3	Cable and Tubing Prefabrication	6.3.7	Prefabrication inspection	Fabrication	ea/System	Completed and accepted records / total planned
+7.0	Construction & Installation	7.1	Underground & Civil Interface	7.1.1	Excavation permit and survey	E&I Construction	LS	Weighted milestone or measurable deliverable
+7.0	Construction & Installation	7.1	Underground & Civil Interface	7.1.2	Cable trench excavation	E&I Construction	LS	Weighted milestone or measurable deliverable
+7.0	Construction & Installation	7.1	Underground & Civil Interface	7.1.3	Duct bank installation	E&I Construction	ea	Installed and inspected quantity / total quantity
+7.0	Construction & Installation	7.1	Underground & Civil Interface	7.1.4	Underground conduit installation	E&I Construction	m	Installed quantity / total quantity
+7.0	Construction & Installation	7.1	Underground & Civil Interface	7.1.5	Manhole / handhole installation	E&I Construction	ea	Installed and inspected quantity / total quantity
+7.0	Construction & Installation	7.1	Underground & Civil Interface	7.1.6	Road crossing installation	E&I Construction	ea	Installed and inspected quantity / total quantity
+7.0	Construction & Installation	7.1	Underground & Civil Interface	7.1.7	Earthing grid underground installation	E&I Construction	ea	Installed and inspected quantity / total quantity
+7.0	Construction & Installation	7.1	Underground & Civil Interface	7.1.8	Backfilling and compaction	E&I Construction	LS	Weighted milestone or measurable deliverable
+7.0	Construction & Installation	7.1	Underground & Civil Interface	7.1.9	Concrete and foundation interface	E&I Construction	LS	Weighted milestone or measurable deliverable
+7.0	Construction & Installation	7.1	Underground & Civil Interface	7.1.10	Underground inspection and as-built survey	E&I Construction	ea/System	Completed and accepted records / total planned
+7.0	Construction & Installation	7.2	Supports, Tray, Ladder & Conduit	7.2.1	Survey and marking	E&I Construction	LS	Weighted milestone or measurable deliverable
+7.0	Construction & Installation	7.2	Supports, Tray, Ladder & Conduit	7.2.2	Support fabrication	E&I Construction	LS	Weighted milestone or measurable deliverable
+7.0	Construction & Installation	7.2	Supports, Tray, Ladder & Conduit	7.2.3	Support installation	E&I Construction	ea	Installed and inspected quantity / total quantity
+7.0	Construction & Installation	7.2	Supports, Tray, Ladder & Conduit	7.2.4	Cable tray installation	E&I Construction	m	Installed quantity / total quantity
+7.0	Construction & Installation	7.2	Supports, Tray, Ladder & Conduit	7.2.5	Cable ladder installation	E&I Construction	m	Installed quantity / total quantity
+7.0	Construction & Installation	7.2	Supports, Tray, Ladder & Conduit	7.2.6	Cable duct installation	E&I Construction	ea	Installed and inspected quantity / total quantity
+7.0	Construction & Installation	7.2	Supports, Tray, Ladder & Conduit	7.2.7	Tray fittings and accessories	E&I Construction	m	Installed quantity / total quantity
+7.0	Construction & Installation	7.2	Supports, Tray, Ladder & Conduit	7.2.8	Tray cover installation	E&I Construction	m	Installed quantity / total quantity
+7.0	Construction & Installation	7.2	Supports, Tray, Ladder & Conduit	7.2.9	Expansion joint installation	E&I Construction	ea	Installed and inspected quantity / total quantity
+7.0	Construction & Installation	7.2	Supports, Tray, Ladder & Conduit	7.2.10	Conduit installation	E&I Construction	m	Installed quantity / total quantity
+7.0	Construction & Installation	7.2	Supports, Tray, Ladder & Conduit	7.2.11	Flexible conduit installation	E&I Construction	m	Installed quantity / total quantity
+7.0	Construction & Installation	7.2	Supports, Tray, Ladder & Conduit	7.2.12	Cable transit / fire stop installation	E&I Construction	ea	Installed and inspected quantity / total quantity
+7.0	Construction & Installation	7.2	Supports, Tray, Ladder & Conduit	7.2.13	Earthing and bonding	E&I Construction	LS	Weighted milestone or measurable deliverable
+7.0	Construction & Installation	7.2	Supports, Tray, Ladder & Conduit	7.2.14	Inspection and punch clearance	E&I Construction	ea/System	Completed and accepted records / total planned
+7.0	Construction & Installation	7.3	Electrical Equipment Installation	7.3.1	Transformer installation	E&I Construction	ea	Installed and inspected quantity / total quantity
+7.0	Construction & Installation	7.3	Electrical Equipment Installation	7.3.2	Switchgear installation	E&I Construction	ea	Installed and inspected quantity / total quantity
+7.0	Construction & Installation	7.3	Electrical Equipment Installation	7.3.3	MCC installation	E&I Construction	ea	Installed and inspected quantity / total quantity
+7.0	Construction & Installation	7.3	Electrical Equipment Installation	7.3.4	Distribution board installation	E&I Construction	ea	Installed and inspected quantity / total quantity
+7.0	Construction & Installation	7.3	Electrical Equipment Installation	7.3.5	UPS installation	E&I Construction	ea	Installed and inspected quantity / total quantity
+7.0	Construction & Installation	7.3	Electrical Equipment Installation	7.3.6	Battery and charger installation	E&I Construction	ea	Installed and inspected quantity / total quantity
+7.0	Construction & Installation	7.3	Electrical Equipment Installation	7.3.7	VFD / soft starter installation	E&I Construction	ea	Installed and inspected quantity / total quantity
+7.0	Construction & Installation	7.3	Electrical Equipment Installation	7.3.8	Local control station installation	E&I Construction	ea	Installed and inspected quantity / total quantity
+7.0	Construction & Installation	7.3	Electrical Equipment Installation	7.3.9	Motor electrical connection	E&I Construction	LS	Weighted milestone or measurable deliverable
+7.0	Construction & Installation	7.3	Electrical Equipment Installation	7.3.10	Panel alignment and leveling	E&I Construction	ea	Installed and inspected quantity / total quantity
+7.0	Construction & Installation	7.3	Electrical Equipment Installation	7.3.11	Equipment grounding	E&I Construction	LS	Weighted milestone or measurable deliverable
+7.0	Construction & Installation	7.3	Electrical Equipment Installation	7.3.12	Pre-energization inspection	E&I Construction	ea/System	Completed and accepted records / total planned
+7.0	Construction & Installation	7.4	Power, Control & Instrument Cable Works	7.4.1	Cable drum receiving and inspection	E&I Construction	ea/System	Completed and accepted records / total planned
+7.0	Construction & Installation	7.4	Power, Control & Instrument Cable Works	7.4.2	Cable route readiness check	E&I Construction	ea/System	Completed and accepted records / total planned
+7.0	Construction & Installation	7.4	Power, Control & Instrument Cable Works	7.4.3	Cable drum setup	E&I Construction	LS	Milestone-based 0/50/100
+7.0	Construction & Installation	7.4	Power, Control & Instrument Cable Works	7.4.4	Cable pulling - MV/HV	E&I Construction	m	Installed quantity / total quantity
+7.0	Construction & Installation	7.4	Power, Control & Instrument Cable Works	7.4.5	Cable pulling - LV power	E&I Construction	m	Installed quantity / total quantity
+7.0	Construction & Installation	7.4	Power, Control & Instrument Cable Works	7.4.6	Cable pulling - control	E&I Construction	m	Installed quantity / total quantity
+7.0	Construction & Installation	7.4	Power, Control & Instrument Cable Works	7.4.7	Cable pulling - instrument	E&I Construction	m	Installed quantity / total quantity
+7.0	Construction & Installation	7.4	Power, Control & Instrument Cable Works	7.4.8	Cable pulling - fire resistant	E&I Construction	m	Installed quantity / total quantity
+7.0	Construction & Installation	7.4	Power, Control & Instrument Cable Works	7.4.9	Fiber optic cable pulling	E&I Construction	m	Installed quantity / total quantity
+7.0	Construction & Installation	7.4	Power, Control & Instrument Cable Works	7.4.10	Cable dressing and cleating	E&I Construction	LS	Weighted milestone or measurable deliverable
+7.0	Construction & Installation	7.4	Power, Control & Instrument Cable Works	7.4.11	Cable identification and tagging	E&I Construction	LS	Weighted milestone or measurable deliverable
+7.0	Construction & Installation	7.4	Power, Control & Instrument Cable Works	7.4.12	Cable gland installation	E&I Construction	ea	Installed and inspected quantity / total quantity
+7.0	Construction & Installation	7.4	Power, Control & Instrument Cable Works	7.4.13	Cable termination - power	E&I Construction	LS	Weighted milestone or measurable deliverable
+7.0	Construction & Installation	7.4	Power, Control & Instrument Cable Works	7.4.14	Cable termination - control	E&I Construction	LS	Weighted milestone or measurable deliverable
+7.0	Construction & Installation	7.4	Power, Control & Instrument Cable Works	7.4.15	Cable termination - instrument	E&I Construction	ea	Installed and inspected quantity / total quantity
+7.0	Construction & Installation	7.4	Power, Control & Instrument Cable Works	7.4.16	Fiber optic splicing and termination	E&I Construction	LS	Weighted milestone or measurable deliverable
+7.0	Construction & Installation	7.4	Power, Control & Instrument Cable Works	7.4.17	Cable sealing and heat shrink	E&I Construction	LS	Weighted milestone or measurable deliverable
+7.0	Construction & Installation	7.4	Power, Control & Instrument Cable Works	7.4.18	Continuity / insulation resistance test	E&I Construction	ea/System	Completed and accepted records / total planned
+7.0	Construction & Installation	7.4	Power, Control & Instrument Cable Works	7.4.19	Hi-pot / VLF test where required	E&I Construction	ea/System	Completed and accepted records / total planned
+7.0	Construction & Installation	7.4	Power, Control & Instrument Cable Works	7.4.20	Cable records and punch clearance	E&I Construction	Document	0/100 or 20/80 by submission/approval
+7.0	Construction & Installation	7.5	Grounding, Lightning, Lighting & Small Power	7.5.1	Grounding conductor installation	E&I Construction	m	Installed quantity / total quantity
+7.0	Construction & Installation	7.5	Grounding, Lightning, Lighting & Small Power	7.5.2	Earth rod and earth pit installation	E&I Construction	ea	Installed and inspected quantity / total quantity
+7.0	Construction & Installation	7.5	Grounding, Lightning, Lighting & Small Power	7.5.3	Equipment bonding	E&I Construction	LS	Weighted milestone or measurable deliverable
+7.0	Construction & Installation	7.5	Grounding, Lightning, Lighting & Small Power	7.5.4	Grounding resistance test	E&I Construction	ea/System	Completed and accepted records / total planned
+7.0	Construction & Installation	7.5	Grounding, Lightning, Lighting & Small Power	7.5.5	Lightning protection installation	E&I Construction	ea	Installed and inspected quantity / total quantity
+7.0	Construction & Installation	7.5	Grounding, Lightning, Lighting & Small Power	7.5.6	Lighting pole installation	E&I Construction	ea	Installed and inspected quantity / total quantity
+7.0	Construction & Installation	7.5	Grounding, Lightning, Lighting & Small Power	7.5.7	Lighting fixture installation	E&I Construction	ea	Installed and inspected quantity / total quantity
+7.0	Construction & Installation	7.5	Grounding, Lightning, Lighting & Small Power	7.5.8	Emergency lighting installation	E&I Construction	ea	Installed and inspected quantity / total quantity
+7.0	Construction & Installation	7.5	Grounding, Lightning, Lighting & Small Power	7.5.9	Receptacle and small power installation	E&I Construction	ea	Installed and inspected quantity / total quantity
+7.0	Construction & Installation	7.5	Grounding, Lightning, Lighting & Small Power	7.5.10	Lighting panel connection	E&I Construction	ea	Installed and inspected quantity / total quantity
+7.0	Construction & Installation	7.5	Grounding, Lightning, Lighting & Small Power	7.5.11	Lighting functional test	E&I Construction	ea/System	Completed and accepted records / total planned
+7.0	Construction & Installation	7.5	Grounding, Lightning, Lighting & Small Power	7.5.12	Lux measurement	E&I Construction	LS	Weighted milestone or measurable deliverable
+7.0	Construction & Installation	7.6	Field Instrument Installation	7.6.1	Instrument receiving inspection	E&I Construction	ea	Installed and inspected quantity / total quantity
+7.0	Construction & Installation	7.6	Field Instrument Installation	7.6.2	Instrument calibration	E&I Construction	ea	Installed and inspected quantity / total quantity
+7.0	Construction & Installation	7.6	Field Instrument Installation	7.6.3	Stanchion / stand installation	E&I Construction	ea	Installed and inspected quantity / total quantity
+7.0	Construction & Installation	7.6	Field Instrument Installation	7.6.4	Junction box installation	E&I Construction	ea	Installed and inspected quantity / total quantity
+7.0	Construction & Installation	7.6	Field Instrument Installation	7.6.5	Pressure instrument installation	E&I Construction	ea	Installed and inspected quantity / total quantity
+7.0	Construction & Installation	7.6	Field Instrument Installation	7.6.6	Temperature instrument installation	E&I Construction	ea	Installed and inspected quantity / total quantity
+7.0	Construction & Installation	7.6	Field Instrument Installation	7.6.7	Flow instrument installation	E&I Construction	ea	Installed and inspected quantity / total quantity
+7.0	Construction & Installation	7.6	Field Instrument Installation	7.6.8	Level instrument installation	E&I Construction	ea	Installed and inspected quantity / total quantity
+7.0	Construction & Installation	7.6	Field Instrument Installation	7.6.9	Analyzer installation	E&I Construction	ea	Installed and inspected quantity / total quantity
+7.0	Construction & Installation	7.6	Field Instrument Installation	7.6.10	Gas detector installation	E&I Construction	ea	Installed and inspected quantity / total quantity
+7.0	Construction & Installation	7.6	Field Instrument Installation	7.6.11	Flame / smoke / heat detector installation	E&I Construction	ea	Installed and inspected quantity / total quantity
+7.0	Construction & Installation	7.6	Field Instrument Installation	7.6.12	Control valve installation support	E&I Construction	ea	Installed and inspected quantity / total quantity
+7.0	Construction & Installation	7.6	Field Instrument Installation	7.6.13	On-off valve / MOV accessory installation	E&I Construction	ea	Installed and inspected quantity / total quantity
+7.0	Construction & Installation	7.6	Field Instrument Installation	7.6.14	Solenoid valve and limit switch installation	E&I Construction	ea	Installed and inspected quantity / total quantity
+7.0	Construction & Installation	7.6	Field Instrument Installation	7.6.15	Instrument grounding and tagging	E&I Construction	ea	Installed and inspected quantity / total quantity
+7.0	Construction & Installation	7.6	Field Instrument Installation	7.6.16	Installation inspection and punch clearance	E&I Construction	ea	Installed and inspected quantity / total quantity
+7.0	Construction & Installation	7.7	Instrument Tubing & Hook-up	7.7.1	Instrument air header installation	E&I Construction	ea	Installed and inspected quantity / total quantity
+7.0	Construction & Installation	7.7	Instrument Tubing & Hook-up	7.7.2	Air manifold installation	E&I Construction	ea	Installed and inspected quantity / total quantity
+7.0	Construction & Installation	7.7	Instrument Tubing & Hook-up	7.7.3	Tube support installation	E&I Construction	ea	Installed and inspected quantity / total quantity
+7.0	Construction & Installation	7.7	Instrument Tubing & Hook-up	7.7.4	Instrument air tubing	E&I Construction	m	Installed quantity / total quantity
+7.0	Construction & Installation	7.7	Instrument Tubing & Hook-up	7.7.5	Impulse tubing	E&I Construction	m	Installed quantity / total quantity
+7.0	Construction & Installation	7.7	Instrument Tubing & Hook-up	7.7.6	Pneumatic signal tubing	E&I Construction	m	Installed quantity / total quantity
+7.0	Construction & Installation	7.7	Instrument Tubing & Hook-up	7.7.7	Hook-up fittings and valves	E&I Construction	ea	Installed and inspected quantity / total quantity
+7.0	Construction & Installation	7.7	Instrument Tubing & Hook-up	7.7.8	Tubing flushing / blowing	E&I Construction	m	Installed quantity / total quantity
+7.0	Construction & Installation	7.7	Instrument Tubing & Hook-up	7.7.9	Leak test	E&I Construction	ea/System	Completed and accepted records / total planned
+7.0	Construction & Installation	7.7	Instrument Tubing & Hook-up	7.7.10	Oxygen service cleaning verification	E&I Construction	LS	Weighted milestone or measurable deliverable
+7.0	Construction & Installation	7.7	Instrument Tubing & Hook-up	7.7.11	Tubing identification and inspection	E&I Construction	m	Installed quantity / total quantity
+7.0	Construction & Installation	7.8	Control Systems, Telecom & F&G Installation	7.8.1	DCS / SIS / PLC panel installation	E&I Construction	ea	Installed and inspected quantity / total quantity
+7.0	Construction & Installation	7.8	Control Systems, Telecom & F&G Installation	7.8.2	Remote I/O panel installation	E&I Construction	ea	Installed and inspected quantity / total quantity
+7.0	Construction & Installation	7.8	Control Systems, Telecom & F&G Installation	7.8.3	Marshalling cabinet installation	E&I Construction	ea	Installed and inspected quantity / total quantity
+7.0	Construction & Installation	7.8	Control Systems, Telecom & F&G Installation	7.8.4	Network cabinet installation	E&I Construction	ea	Installed and inspected quantity / total quantity
+7.0	Construction & Installation	7.8	Control Systems, Telecom & F&G Installation	7.8.5	PAGA equipment installation	E&I Construction	ea	Installed and inspected quantity / total quantity
+7.0	Construction & Installation	7.8	Control Systems, Telecom & F&G Installation	7.8.6	CCTV equipment installation	E&I Construction	ea	Installed and inspected quantity / total quantity
+7.0	Construction & Installation	7.8	Control Systems, Telecom & F&G Installation	7.8.7	Access control equipment installation	E&I Construction	ea	Installed and inspected quantity / total quantity
+7.0	Construction & Installation	7.8	Control Systems, Telecom & F&G Installation	7.8.8	Fire alarm panel and device installation	E&I Construction	ea	Installed and inspected quantity / total quantity
+7.0	Construction & Installation	7.8	Control Systems, Telecom & F&G Installation	7.8.9	F&G panel and device installation	E&I Construction	ea	Installed and inspected quantity / total quantity
+7.0	Construction & Installation	7.8	Control Systems, Telecom & F&G Installation	7.8.10	LAN / fiber network installation	E&I Construction	ea	Installed and inspected quantity / total quantity
+7.0	Construction & Installation	7.8	Control Systems, Telecom & F&G Installation	7.8.11	Internal panel cabling	E&I Construction	ea	Installed and inspected quantity / total quantity
+7.0	Construction & Installation	7.8	Control Systems, Telecom & F&G Installation	7.8.12	System grounding	E&I Construction	LS	Weighted milestone or measurable deliverable
+7.0	Construction & Installation	7.8	Control Systems, Telecom & F&G Installation	7.8.13	Vendor installation inspection	E&I Construction	ea	Installed and inspected quantity / total quantity
+8.0	Pre-Commissioning & Mechanical Completion	8.1	Mechanical Completion	8.1.1	System / subsystem definition	Pre-Commissioning	LS	Weighted milestone or measurable deliverable
+8.0	Pre-Commissioning & Mechanical Completion	8.1	Mechanical Completion	8.1.2	MC dossier preparation	Pre-Commissioning	Document	0/100 or 20/80 by submission/approval
+8.0	Pre-Commissioning & Mechanical Completion	8.1	Mechanical Completion	8.1.3	Construction completion walkdown	Pre-Commissioning	ea/System	Completed and accepted records / total planned
+8.0	Pre-Commissioning & Mechanical Completion	8.1	Mechanical Completion	8.1.4	Category A/B/C punch listing	Pre-Commissioning	Document	0/100 or 20/80 by submission/approval
+8.0	Pre-Commissioning & Mechanical Completion	8.1	Mechanical Completion	8.1.5	Punch rectification	Pre-Commissioning	ea/System	Completed and accepted records / total planned
+8.0	Pre-Commissioning & Mechanical Completion	8.1	Mechanical Completion	8.1.6	MC certificate preparation and approval	Pre-Commissioning	Document	0/100 or 20/80 by submission/approval
+8.0	Pre-Commissioning & Mechanical Completion	8.2	Electrical Pre-Commissioning	8.2.1	Visual inspection	Pre-Commissioning	ea/System	Completed and accepted records / total planned
+8.0	Pre-Commissioning & Mechanical Completion	8.2	Electrical Pre-Commissioning	8.2.2	Continuity test	Pre-Commissioning	ea/System	Completed and accepted records / total planned
+8.0	Pre-Commissioning & Mechanical Completion	8.2	Electrical Pre-Commissioning	8.2.3	Insulation resistance test	Pre-Commissioning	ea/System	Completed and accepted records / total planned
+8.0	Pre-Commissioning & Mechanical Completion	8.2	Electrical Pre-Commissioning	8.2.4	Hi-pot / VLF test	Pre-Commissioning	ea/System	Completed and accepted records / total planned
+8.0	Pre-Commissioning & Mechanical Completion	8.2	Electrical Pre-Commissioning	8.2.5	Grounding resistance test	Pre-Commissioning	ea/System	Completed and accepted records / total planned
+8.0	Pre-Commissioning & Mechanical Completion	8.2	Electrical Pre-Commissioning	8.2.6	Protection relay test	Pre-Commissioning	ea/System	Completed and accepted records / total planned
+8.0	Pre-Commissioning & Mechanical Completion	8.2	Electrical Pre-Commissioning	8.2.7	Transformer test	Pre-Commissioning	ea	Installed and inspected quantity / total quantity
+8.0	Pre-Commissioning & Mechanical Completion	8.2	Electrical Pre-Commissioning	8.2.8	Switchgear functional test	Pre-Commissioning	ea	Installed and inspected quantity / total quantity
+8.0	Pre-Commissioning & Mechanical Completion	8.2	Electrical Pre-Commissioning	8.2.9	MCC functional test	Pre-Commissioning	ea	Installed and inspected quantity / total quantity
+8.0	Pre-Commissioning & Mechanical Completion	8.2	Electrical Pre-Commissioning	8.2.10	UPS and battery test	Pre-Commissioning	ea/System	Completed and accepted records / total planned
+8.0	Pre-Commissioning & Mechanical Completion	8.2	Electrical Pre-Commissioning	8.2.11	Motor solo run / rotation check	Pre-Commissioning	ea/System	Completed and accepted records / total planned
+8.0	Pre-Commissioning & Mechanical Completion	8.2	Electrical Pre-Commissioning	8.2.12	Energization readiness review	Pre-Commissioning	LS	Weighted milestone or measurable deliverable
+8.0	Pre-Commissioning & Mechanical Completion	8.3	Instrument Pre-Commissioning	8.3.1	Calibration verification	Pre-Commissioning	ea/System	Completed and accepted records / total planned
+8.0	Pre-Commissioning & Mechanical Completion	8.3	Instrument Pre-Commissioning	8.3.2	Loop continuity check	Pre-Commissioning	ea/System	Completed and accepted records / total planned
+8.0	Pre-Commissioning & Mechanical Completion	8.3	Instrument Pre-Commissioning	8.3.3	Point-to-point check	Pre-Commissioning	ea/System	Completed and accepted records / total planned
+8.0	Pre-Commissioning & Mechanical Completion	8.3	Instrument Pre-Commissioning	8.3.4	I/O check	Pre-Commissioning	ea/System	Completed and accepted records / total planned
+8.0	Pre-Commissioning & Mechanical Completion	8.3	Instrument Pre-Commissioning	8.3.5	Loop check	Pre-Commissioning	ea/System	Completed and accepted records / total planned
+8.0	Pre-Commissioning & Mechanical Completion	8.3	Instrument Pre-Commissioning	8.3.6	Valve stroke test	Pre-Commissioning	ea	Installed and inspected quantity / total quantity
+8.0	Pre-Commissioning & Mechanical Completion	8.3	Instrument Pre-Commissioning	8.3.7	Analyzer calibration and validation	Pre-Commissioning	ea/System	Completed and accepted records / total planned
+8.0	Pre-Commissioning & Mechanical Completion	8.3	Instrument Pre-Commissioning	8.3.8	Instrument air leak test	Pre-Commissioning	ea	Installed and inspected quantity / total quantity
+8.0	Pre-Commissioning & Mechanical Completion	8.3	Instrument Pre-Commissioning	8.3.9	Network communication test	Pre-Commissioning	ea/System	Completed and accepted records / total planned
+8.0	Pre-Commissioning & Mechanical Completion	8.3	Instrument Pre-Commissioning	8.3.10	Modbus mapping verification	Pre-Commissioning	LS	Weighted milestone or measurable deliverable
+8.0	Pre-Commissioning & Mechanical Completion	8.3	Instrument Pre-Commissioning	8.3.11	Cause and effect dry test	Pre-Commissioning	ea/System	Completed and accepted records / total planned
+8.0	Pre-Commissioning & Mechanical Completion	8.3	Instrument Pre-Commissioning	8.3.12	SIS / ESD functional test	Pre-Commissioning	ea/System	Completed and accepted records / total planned
+8.0	Pre-Commissioning & Mechanical Completion	8.4	Telecom, F&G & Security Pre-Commissioning	8.4.1	PAGA functional test	Pre-Commissioning	ea/System	Completed and accepted records / total planned
+8.0	Pre-Commissioning & Mechanical Completion	8.4	Telecom, F&G & Security Pre-Commissioning	8.4.2	CCTV functional test	Pre-Commissioning	ea/System	Completed and accepted records / total planned
+8.0	Pre-Commissioning & Mechanical Completion	8.4	Telecom, F&G & Security Pre-Commissioning	8.4.3	Access control functional test	Pre-Commissioning	ea/System	Completed and accepted records / total planned
+8.0	Pre-Commissioning & Mechanical Completion	8.4	Telecom, F&G & Security Pre-Commissioning	8.4.4	Fire alarm device test	Pre-Commissioning	ea/System	Completed and accepted records / total planned
+8.0	Pre-Commissioning & Mechanical Completion	8.4	Telecom, F&G & Security Pre-Commissioning	8.4.5	Gas detector functional test	Pre-Commissioning	ea	Installed and inspected quantity / total quantity
+8.0	Pre-Commissioning & Mechanical Completion	8.4	Telecom, F&G & Security Pre-Commissioning	8.4.6	Flame detector functional test	Pre-Commissioning	ea	Installed and inspected quantity / total quantity
+8.0	Pre-Commissioning & Mechanical Completion	8.4	Telecom, F&G & Security Pre-Commissioning	8.4.7	Integrated communication test	Pre-Commissioning	ea/System	Completed and accepted records / total planned
+9.0	Commissioning, Start-up & Performance	9.1	Commissioning Preparation	9.1.1	Commissioning plan	Commissioning	Document	0/100 or 20/80 by submission/approval
+9.0	Commissioning, Start-up & Performance	9.1	Commissioning Preparation	9.1.2	Commissioning procedures	Commissioning	Document	0/100 or 20/80 by submission/approval
+9.0	Commissioning, Start-up & Performance	9.1	Commissioning Preparation	9.1.3	System turnover acceptance	Commissioning	LS	Weighted milestone or measurable deliverable
+9.0	Commissioning, Start-up & Performance	9.1	Commissioning Preparation	9.1.4	Commissioning organization	Commissioning	LS	Weighted milestone or measurable deliverable
+9.0	Commissioning, Start-up & Performance	9.1	Commissioning Preparation	9.1.5	Vendor mobilization	Commissioning	LS	Milestone-based 0/50/100
+9.0	Commissioning, Start-up & Performance	9.1	Commissioning Preparation	9.1.6	Spare parts and consumables readiness	Commissioning	LS	Weighted milestone or measurable deliverable
+9.0	Commissioning, Start-up & Performance	9.1	Commissioning Preparation	9.1.7	Permit and energization coordination	Commissioning	LS	Weighted milestone or measurable deliverable
+9.0	Commissioning, Start-up & Performance	9.2	Cold Commissioning	9.2.1	Electrical energization	Commissioning	LS	Weighted milestone or measurable deliverable
+9.0	Commissioning, Start-up & Performance	9.2	Cold Commissioning	9.2.2	Control system power-up	Commissioning	LS	Weighted milestone or measurable deliverable
+9.0	Commissioning, Start-up & Performance	9.2	Cold Commissioning	9.2.3	Network and communication validation	Commissioning	LS	Weighted milestone or measurable deliverable
+9.0	Commissioning, Start-up & Performance	9.2	Cold Commissioning	9.2.4	Functional and sequence testing	Commissioning	ea/System	Completed and accepted records / total planned
+9.0	Commissioning, Start-up & Performance	9.2	Cold Commissioning	9.2.5	Interlock test	Commissioning	ea/System	Completed and accepted records / total planned
+9.0	Commissioning, Start-up & Performance	9.2	Cold Commissioning	9.2.6	Cause and effect test	Commissioning	ea/System	Completed and accepted records / total planned
+9.0	Commissioning, Start-up & Performance	9.2	Cold Commissioning	9.2.7	Alarm and trip test	Commissioning	ea/System	Completed and accepted records / total planned
+9.0	Commissioning, Start-up & Performance	9.2	Cold Commissioning	9.2.8	Control valve functional test	Commissioning	ea	Installed and inspected quantity / total quantity
+9.0	Commissioning, Start-up & Performance	9.3	Hot Commissioning & Start-up	9.3.1	Live process loop verification	Commissioning	LS	Weighted milestone or measurable deliverable
+9.0	Commissioning, Start-up & Performance	9.3	Hot Commissioning & Start-up	9.3.2	Start-up support	Commissioning	LS	Weighted milestone or measurable deliverable
+9.0	Commissioning, Start-up & Performance	9.3	Hot Commissioning & Start-up	9.3.3	Process interlock verification	Commissioning	LS	Weighted milestone or measurable deliverable
+9.0	Commissioning, Start-up & Performance	9.3	Hot Commissioning & Start-up	9.3.4	Tuning support	Commissioning	LS	Weighted milestone or measurable deliverable
+9.0	Commissioning, Start-up & Performance	9.3	Hot Commissioning & Start-up	9.3.5	Troubleshooting	Commissioning	LS	Weighted milestone or measurable deliverable
+9.0	Commissioning, Start-up & Performance	9.3	Hot Commissioning & Start-up	9.3.6	Operational punch clearance	Commissioning	ea/System	Completed and accepted records / total planned
+9.0	Commissioning, Start-up & Performance	9.4	Performance & Reliability	9.4.1	Performance test	Commissioning	ea/System	Completed and accepted records / total planned
+9.0	Commissioning, Start-up & Performance	9.4	Performance & Reliability	9.4.2	Reliability run	Commissioning	LS	Weighted milestone or measurable deliverable
+9.0	Commissioning, Start-up & Performance	9.4	Performance & Reliability	9.4.3	Final acceptance test	Commissioning	ea/System	Completed and accepted records / total planned
+9.0	Commissioning, Start-up & Performance	9.4	Performance & Reliability	9.4.4	Operator training	Commissioning	LS	Weighted milestone or measurable deliverable
+9.0	Commissioning, Start-up & Performance	9.4	Performance & Reliability	9.4.5	Maintenance training	Commissioning	LS	Weighted milestone or measurable deliverable
+9.0	Commissioning, Start-up & Performance	9.4	Performance & Reliability	9.4.6	Commissioning records close-out	Commissioning	Document	0/100 or 20/80 by submission/approval
+10.0	Final Documentation, Handover & Close-out	10.1	As-built & Final Engineering	10.1.1	Red-line collection	Close-out	LS	Weighted milestone or measurable deliverable
+10.0	Final Documentation, Handover & Close-out	10.1	As-built & Final Engineering	10.1.2	As-built drawing preparation	Close-out	Document	0/100 or 20/80 by submission/approval
+10.0	Final Documentation, Handover & Close-out	10.1	As-built & Final Engineering	10.1.3	As-built verification	Close-out	LS	Weighted milestone or measurable deliverable
+10.0	Final Documentation, Handover & Close-out	10.1	As-built & Final Engineering	10.1.4	Final cable schedule	Close-out	Document	0/100 or 20/80 by submission/approval
+10.0	Final Documentation, Handover & Close-out	10.1	As-built & Final Engineering	10.1.5	Final instrument index and I/O list	Close-out	Document	0/100 or 20/80 by submission/approval
+10.0	Final Documentation, Handover & Close-out	10.1	As-built & Final Engineering	10.1.6	Final loop and termination drawings	Close-out	Document	0/100 or 20/80 by submission/approval
+10.0	Final Documentation, Handover & Close-out	10.1	As-built & Final Engineering	10.1.7	Final MTO and material reconciliation	Close-out	LS	Weighted milestone or measurable deliverable
+10.0	Final Documentation, Handover & Close-out	10.2	Turnover Documentation	10.2.1	QA/QC dossier	Close-out	Document	0/100 or 20/80 by submission/approval
+10.0	Final Documentation, Handover & Close-out	10.2	Turnover Documentation	10.2.2	Electrical test records	Close-out	Document	0/100 or 20/80 by submission/approval
+10.0	Final Documentation, Handover & Close-out	10.2	Turnover Documentation	10.2.3	Calibration certificates	Close-out	Document	0/100 or 20/80 by submission/approval
+10.0	Final Documentation, Handover & Close-out	10.2	Turnover Documentation	10.2.4	Loop folders	Close-out	LS	Weighted milestone or measurable deliverable
+10.0	Final Documentation, Handover & Close-out	10.2	Turnover Documentation	10.2.5	FAT / SAT records	Close-out	Document	0/100 or 20/80 by submission/approval
+10.0	Final Documentation, Handover & Close-out	10.2	Turnover Documentation	10.2.6	Vendor data books	Close-out	LS	Weighted milestone or measurable deliverable
+10.0	Final Documentation, Handover & Close-out	10.2	Turnover Documentation	10.2.7	O&M manuals	Close-out	Document	0/100 or 20/80 by submission/approval
+10.0	Final Documentation, Handover & Close-out	10.2	Turnover Documentation	10.2.8	Spare parts list	Close-out	Document	0/100 or 20/80 by submission/approval
+10.0	Final Documentation, Handover & Close-out	10.2	Turnover Documentation	10.2.9	Training records	Close-out	Document	0/100 or 20/80 by submission/approval
+10.0	Final Documentation, Handover & Close-out	10.2	Turnover Documentation	10.2.10	Warranty certificates	Close-out	Document	0/100 or 20/80 by submission/approval
+10.0	Final Documentation, Handover & Close-out	10.2	Turnover Documentation	10.2.11	Turnover package compilation	Close-out	LS	Weighted milestone or measurable deliverable
+10.0	Final Documentation, Handover & Close-out	10.3	Handover & Acceptance	10.3.1	System handover	Close-out	LS	Weighted milestone or measurable deliverable
+10.0	Final Documentation, Handover & Close-out	10.3	Handover & Acceptance	10.3.2	Provisional acceptance	Close-out	LS	Weighted milestone or measurable deliverable
+10.0	Final Documentation, Handover & Close-out	10.3	Handover & Acceptance	10.3.3	Final punch clearance	Close-out	ea/System	Completed and accepted records / total planned
+10.0	Final Documentation, Handover & Close-out	10.3	Handover & Acceptance	10.3.4	Final acceptance	Close-out	LS	Weighted milestone or measurable deliverable
+10.0	Final Documentation, Handover & Close-out	10.3	Handover & Acceptance	10.3.5	Warranty handover	Close-out	LS	Weighted milestone or measurable deliverable
+10.0	Final Documentation, Handover & Close-out	10.4	Demobilization & Close-out	10.4.1	Surplus material reconciliation	Close-out	LS	Weighted milestone or measurable deliverable
+10.0	Final Documentation, Handover & Close-out	10.4	Demobilization & Close-out	10.4.2	Tools and equipment demobilization	Close-out	LS	Milestone-based 0/50/100
+10.0	Final Documentation, Handover & Close-out	10.4	Demobilization & Close-out	10.4.3	Temporary facility removal	Close-out	LS	Milestone-based 0/50/100
+10.0	Final Documentation, Handover & Close-out	10.4	Demobilization & Close-out	10.4.4	Site restoration	Close-out	LS	Milestone-based 0/50/100
+10.0	Final Documentation, Handover & Close-out	10.4	Demobilization & Close-out	10.4.5	Final account	Close-out	LS	Weighted milestone or measurable deliverable
+10.0	Final Documentation, Handover & Close-out	10.4	Demobilization & Close-out	10.4.6	Contract close-out	Close-out	LS	Weighted milestone or measurable deliverable
+10.0	Final Documentation, Handover & Close-out	10.4	Demobilization & Close-out	10.4.7	Project archive	Close-out	LS	Weighted milestone or measurable deliverable
+10.0	Final Documentation, Handover & Close-out	10.4	Demobilization & Close-out	10.4.8	Lessons learned workshop	Close-out	LS	Weighted milestone or measurable deliverable
+10.0	Final Documentation, Handover & Close-out	10.4	Demobilization & Close-out	10.4.9	Project close-out report	Close-out	Document	0/100 or 20/80 by submission/approval`;
+const WBS_ROC={"Document 20-40-40": [["Draft prepared", "20", "Internal check complete"], ["Submitted to client", "40", "Transmittal number"], ["Approved / AFC", "40", "Approved status"]], "Procurement 10-20-15-35-20": [["PO issued", "10", "Approved PO"], ["Vendor documents approved", "20", "Approved VDR"], ["Manufacturing complete / FAT", "15", "FAT or release note"], ["Delivered to site", "35", "Delivery note + MIR"], ["Accepted and preserved", "20", "MIR accepted"]], "Cable 5-60-10-15-10": [["Route ready / drum setup", "5", "Route release"], ["Cable pulled", "60", "Installed quantity"], ["Glanded", "10", "Inspection record"], ["Terminated", "15", "Termination record"], ["Tested and accepted", "10", "IR/continuity test"]], "Instrument 10-20-30-20-20": [["Received and calibrated", "10", "Calibration certificate"], ["Support installed", "20", "WIR accepted"], ["Instrument mounted", "30", "WIR accepted"], ["Hook-up/tubing/cable complete", "20", "Inspection accepted"], ["Loop checked and accepted", "20", "Loop folder"]], "Tray 10-25-45-10-10": [["Survey and marking", "10", "Survey record"], ["Supports installed", "25", "WIR accepted"], ["Tray/ladder installed", "45", "Installed length accepted"], ["Accessories/cover complete", "10", "WIR accepted"], ["Bonding and final inspection", "10", "Inspection accepted"]], "MC 20-30-30-20": [["Construction complete", "20", "Completion walkdown"], ["A-punch closed", "30", "Punch register"], ["Test records complete", "30", "Turnover index"], ["MC certificate accepted", "20", "Signed MC certificate"]]};
+const WBS_PHASE_WEIGHT={'1.0':'4-8%','2.0':'3-6%','3.0':'5-15%','4.0':'10-45%','5.0':'2-6%','6.0':'2-10%','7.0':'30-65%','8.0':'5-15%','9.0':'3-10%','10.0':'2-6%'};
+const WBS_TEMPLATES=[
+ {id:'full',name:'Full E&I EPC',desc:'ครบทุกเฟส Engineering→Procurement→Construction→Commissioning→Close-out',excludeL1:[],excludeL2:[]},
+ {id:'construction',name:'E&I Construction Only',desc:'งานก่อสร้าง/ติดตั้ง (ลูกค้า/บุคคลอื่นออกแบบ) — ตัดเฟส Engineering',excludeL1:['3.0'],excludeL2:[]},
+ {id:'electrical',name:'Electrical Only',desc:'งานไฟฟ้ากำลัง — ตัดงานเครื่องมือวัด/เทเลคอม',excludeL1:[],excludeL2:['3.3','3.4','7.6','7.7','7.8','8.3','8.4','9.?']},
+ {id:'instrument',name:'Instrument Only',desc:'งานเครื่องมือวัด/ควบคุม — ตัดงานไฟฟ้ากำลัง/อุปกรณ์ไฟฟ้า',excludeL1:[],excludeL2:['3.2','7.3','7.5']},
+ {id:'shutdown',name:'Shutdown / Turnaround',desc:'งานหยุดซ่อม — เน้นติดตั้ง ทดสอบ คอมมิชชัน',includeL1:['1.0','2.0','5.0','7.0','8.0','9.0','10.0'],excludeL2:[]}
+];
+let _wbsTree=null;
+function wbsMaster(){if(_wbsTree)return _wbsTree;const l1m={},l2m={},tree=[];
+ WBS_MASTER_TSV.split('\n').forEach(function(line){if(!line)return;var r=line.split('\t');var l1=r[0],l1n=r[1],l2=r[2],l2n=r[3],l3=r[4],name=r[5],disc=r[6],unit=r[7],roc=r[8];if(!l1)return;
+  var p1=l1m[l1];if(!p1){p1={code:l1,name:l1n,level:1,children:[]};l1m[l1]=p1;tree.push(p1);}
+  var p2=l2m[l2];if(!p2){p2={code:l2,name:l2n,level:2,parent:l1,children:[]};l2m[l2]=p2;p1.children.push(p2);}
+  p2.children.push({code:l3,name:name,level:3,disc:disc,unit:unit,roc:roc,parent:l2});});
+ _wbsTree=tree;return tree;}
+function wbsInstantiate(tplId){var tpl=WBS_TEMPLATES.filter(function(t){return t.id===tplId;})[0]||WBS_TEMPLATES[0];
+ var inc1=tpl.includeL1?tpl.includeL1:null;var ex1=tpl.excludeL1||[];var ex2=tpl.excludeL2||[];
+ var has=function(a,v){return a.indexOf(v)>=0;};var nodes=[];
+ wbsMaster().forEach(function(l1){var on1=(inc1?has(inc1,l1.code):true)&&!has(ex1,l1.code);var id1=uid();
+  nodes.push({id:id1,code:l1.code,level:1,name:l1.name,parentId:null,scope:on1});
+  l1.children.forEach(function(l2){var on2=on1&&!has(ex2,l2.code);var id2=uid();
+   nodes.push({id:id2,code:l2.code,level:2,name:l2.name,parentId:id1,scope:on2});
+   l2.children.forEach(function(l3){nodes.push({id:uid(),code:l3.code,level:3,name:l3.name,disc:l3.disc,unit:l3.unit,roc:l3.roc,parentId:id2,scope:on2,
+    plannedStart:null,plannedFinish:null,baselineStart:null,baselineFinish:null,forecastStart:null,forecastFinish:null,actualStart:null,actualFinish:null,
+    weight:null,budget:null,manhours:null,pred:[],rocTemplate:(l3.roc||''),measure:(l3.unit||'LS'),plannedQty:null,installedQty:null,acceptedQty:null,pctSnaps:[]});});});});
+ return {templateId:tplId,templateName:tpl.name,ts:Date.now(),nodes:nodes};}
+function wbsScopeCount(w){var t=0,on=0;(w?w.nodes:[]).forEach(function(n){if(n.level===3){t++;if(n.scope)on++;}});return {total:t,on:on};}
+function wbsKids(w,pid){return w.nodes.filter(function(n){return n.parentId===pid;});}
+
+/* ===== P0.1 WBS view ===== */
+let wbsCollapse={};
+function migrateWBS(s){if(!s.schemaVersion)s.schemaVersion=2;(s.projects||[]).forEach(function(p){if(p.wbs&&p.wbsMode==null)p.wbsMode=true;});}
+function renderWbs(el){const p=proj();
+  if(!p.wbs){el.innerHTML=`<div class="pagehead"><div><h2>WBS — Work Breakdown Structure</h2><p>${esc(p.name)} · ยังไม่มี WBS สำหรับโปรเจกต์นี้</p></div></div>
+    <div class="card"><div class="body" style="text-align:center;padding:40px">
+    <p class="mini" style="max-width:560px;margin:0 auto 16px">สร้าง WBS จาก SEUS E&I Master (10 เฟส · 461 กิจกรรม) เลือก template แล้วปรับ scope ได้ — ไม่กระทบ CBS/L4 เดิม</p>
+    <button class="btn primary" onclick="app.wbsPickTemplate()">🏗️ สร้าง WBS จาก template</button></div></div>`;return;}
+  const w=p.wbs;const sc=wbsScopeCount(w);
+  let rows='';
+  wbsKids(w,null).forEach(function(l1){
+    const c1='l1_'+l1.id;const open1=wbsCollapse[c1]!==true;
+    const kids2=wbsKids(w,l1.id);
+    rows+=`<div style="display:flex;align-items:center;gap:8px;background:#1f2a44;color:#fff;padding:7px 10px;border-radius:7px;margin-top:8px">
+      <span style="cursor:pointer;font-weight:800" onclick="app.wbsTogC('${c1}')">${open1?'▾':'▸'} ${esc(l1.code)} ${esc(l1.name)}</span>
+      <span style="margin-left:auto;font-size:11px;opacity:.8">${WBS_PHASE_WEIGHT[l1.code]||''}</span>
+      <label style="font-size:11px;display:flex;align-items:center;gap:3px"><input type="checkbox" ${l1.scope?'checked':''} onchange="app.wbsToggleScope('${l1.id}')">ใช้</label></div>`;
+    if(!open1)return;
+    kids2.forEach(function(l2){
+      const c2='l2_'+l2.id;const open2=wbsCollapse[c2]===true;
+      const kids3=wbsKids(w,l2.id);const on3=kids3.filter(function(n){return n.scope;}).length;
+      rows+=`<div style="display:flex;align-items:center;gap:8px;background:#eef2ff;padding:5px 10px 5px 22px;border-bottom:1px solid var(--soft)">
+        <span style="cursor:pointer;font-weight:700;font-size:12.5px" onclick="app.wbsTogC('${c2}')">${open2?'▸':'▾'} ${esc(l2.code)} ${esc(l2.name)}</span>
+        <span style="margin-left:auto;font-size:10.5px;color:#64748b">${on3}/${kids3.length}</span>
+        <label style="font-size:11px;display:flex;align-items:center;gap:3px"><input type="checkbox" ${l2.scope?'checked':''} onchange="app.wbsToggleScope('${l2.id}')">ใช้</label></div>`;
+      if(open2)return;
+      kids3.forEach(function(l3){
+        rows+=`<div style="display:flex;align-items:center;gap:8px;padding:3px 10px 3px 40px;border-bottom:1px solid var(--soft);${l3.scope?'':'opacity:.4'}">
+          <input type="checkbox" ${l3.scope?'checked':''} onchange="app.wbsToggleScope('${l3.id}')">
+          <span style="color:#94a3b8;font-size:11px;min-width:46px">${esc(l3.code)}</span>
+          <input value="${esc(l3.name)}" onchange="app.wbsSetName('${l3.id}',this.value)" style="flex:1;border:1px solid transparent;border-radius:5px;font-size:12px;padding:2px 4px;background:transparent" onfocus="this.style.borderColor='var(--line)'" onblur="this.style.borderColor='transparent'">
+          <span style="font-size:10.5px;color:#7c8698;min-width:120px">${esc(l3.disc||'')}</span>
+          <span style="font-size:10px;background:#f1f5f9;border-radius:4px;padding:1px 6px;color:#475569">${esc(l3.unit||'LS')}</span>${(p.systems&&p.systems.length)?`<select onchange="app.wbsSetSystem('${l3.id}',this.value)" style="font-size:10px;border:1px solid var(--line);border-radius:5px;max-width:90px"><option value="">sys…</option>${p.systems.map(s=>`<option value="${s.id}" ${l3.systemId===s.id?'selected':''}>${esc(s.code||s.name)}</option>`).join('')}</select>`:''}</div>`;
+      });
+    });
+  });
+  el.innerHTML=`<div class="pagehead"><div><h2>WBS — Work Breakdown Structure <span style="font-weight:500;font-size:12px;color:var(--muted)">· ${esc(w.templateName||w.templateId)}</span></h2>
+     <p>${esc(p.name)} · ${sc.on}/${sc.total} กิจกรรมอยู่ใน scope · ปรับ scope/ชื่อได้ ไม่กระทบ master template</p></div>
+     <div style="display:flex;gap:8px"><button class="btn" onclick="app.wbsPickTemplate()">↻ เปลี่ยน template</button></div></div>
+   <div class="tbl-card" style="padding:8px 10px 14px">${rows}</div>`;
+}
+
+/* ===== P1/P2 EXTRAS: material AC, histogram ===== */
+function periodIndexOfDate(pl,ds){var d=new Date(ds+"T00:00:00");if(isNaN(d))return -1;var u=planUnit(pl);var s=planStartDate(pl);if(u==="month")return (d.getFullYear()-s.getFullYear())*12+(d.getMonth()-s.getMonth());var days=Math.floor((d-s)/86400000);return Math.floor(days/(u==="week"?7:1));}
+function wbsMatAcByAct(p){var out={};(p.procPkgs||[]).forEach(function(pk){if(pk.wbsId&&pk.ms&&(pk.ms.DEL||pk.ms.MIR))out[pk.wbsId]=(out[pk.wbsId]||0)+(+pk.poValue||0);});return out;}
+function wbsProcMatTotal(p){var s=0;(p.procPkgs||[]).forEach(function(pk){if(pk.ms&&(pk.ms.DEL||pk.ms.MIR))s+=(+pk.poValue||0);});return s;}
+function wbsActAC(p,wbsId){return (wbsLabourByAct(p)[wbsId]||0)+(wbsMatAcByAct(p)[wbsId]||0);}
+function wbsManpowerHist(p){var S=wbsSchedule(p);var pl=ensurePlan(p);var dur=S.dur;var plan=Array(dur).fill(0),act=Array(dur).fill(0);var byId={};(p.wbs?p.wbs.nodes:[]).forEach(function(n){byId[n.id]=n;});
+ (p.resPlan||[]).forEach(function(r){if(r.type==="eq")return;var a=byId[r.wbsId];if(!a||a.ms==null)return;for(var m=a.ms;m<=a.me&&m<dur;m++)plan[m]+=(+r.qty||0);});
+ var log=(p.mp&&p.mp.log)||{};for(var dstr in log){var idx=periodIndexOfDate(pl,dstr);if(idx<0||idx>=dur)continue;var day=log[dstr];for(var pid in day)act[idx]+=(+day[pid].c||0);}
+ return {labels:S.months,plan:plan,act:act,dur:dur};}
+/* ===== P2.4 WBS IMPORT/EXPORT ===== */
+function wbsExport(p){var wb=XLSX.utils.book_new();var pl=ensurePlan(p);var byId={};p.wbs.nodes.forEach(function(n){byId[n.id]=n;});
+  var aoa=[['L1 Code','L1 Phase','L2 Code','L2 Work Package','L3 Code','Activity','Discipline','Unit','ROC','Predecessor','Dur','Start','Finish','Budget','Pct','Method','System','Scope']];
+  p.wbs.nodes.filter(function(n){return n.level===3;}).forEach(function(a){var l2=byId[a.parentId],l1=l2?byId[l2.parentId]:null;var sys=(p.systems||[]).filter(function(s){return s.id===a.systemId;})[0];
+    aoa.push([l1?l1.code:'',l1?l1.name:'',l2?l2.code:'',l2?l2.name:'',a.code,a.name,a.disc||'',a.unit||'',wbsRocKeyOf(a),a.predText||'',a.dur||'',(a.ms!=null?periodLabel(pl,a.ms):''),(a.me!=null?periodLabel(pl,a.me):''),Math.round(wbsActBudget(p,a.id)),Math.round(+a.pct||0),wbsMethodOf(a),sys?(sys.code||sys.name):'',a.scope?'Y':'N']);});
+  var ws=XLSX.utils.aoa_to_sheet(aoa);ws['!cols']=[{wch:7},{wch:22},{wch:7},{wch:24},{wch:8},{wch:34},{wch:16},{wch:8},{wch:16},{wch:12},{wch:6},{wch:8},{wch:8},{wch:11},{wch:6},{wch:10},{wch:12},{wch:6}];
+  XLSX.utils.book_append_sheet(wb,ws,'WBS');XLSX.writeFile(wb,(p.code||'WBS')+'_WBS_export.xlsx');}
+function wbsImportRows(rows){var byCode={},codes={},errs=[],warn=[],upd=[];
+  rows.slice(1).forEach(function(r,i){var code=(''+((r[4]!=null?r[4]:''))).trim();if(!code)return;if(codes[code])errs.push('แถว '+(i+2)+': รหัสซ้ำ '+code);codes[code]=1;byCode[code]={code:code,name:(''+(r[5]||'')).trim(),pred:(''+(r[9]||'')).trim(),dur:parseFloat(r[10])||null,pct:parseFloat(r[14]),method:(''+(r[15]||'')).trim(),scope:(''+(r[17]||'Y')).trim().toUpperCase()!=='N',row:i+2};});
+  // predecessor references present?
+  Object.keys(byCode).forEach(function(c){var pr=byCode[c].pred;if(pr)pr.split(/[,;]+/).forEach(function(t){var m=t.trim().match(/^([0-9.]+)/);if(m&&!byCode[m[1]]&&!codes[m[1]])warn.push('รหัส '+c+': predecessor '+m[1]+' ไม่พบในไฟล์');});});
+  return {byCode:byCode,errs:errs,warn:warn};}
+
+/* ===== P1/P2 OPERATIONS & CONTROLS ===== */
+let opsTab='production';
+function wbsEnsureOps(p){if(!p.dailyProd)p.dailyProd=[];if(!p.resPlan)p.resPlan=[];if(!p.procPkgs)p.procPkgs=[];if(!p.qa)p.qa=[];if(!p.punch)p.punch=[];if(!p.systems)p.systems=[];if(!p.docs)p.docs=[];if(!p.changes)p.changes=[];return p;}
+function wbsActById(p,id){return (p.wbs?p.wbs.nodes:[]).filter(function(n){return n.id===id;})[0]||null;}
+function wbsActLabel(p,id){var a=wbsActById(p,id);return a?(a.code+' '+a.name):'—';}
+function wbsInstalledQty(p,wbsId){var q=0;(p.dailyProd||[]).forEach(function(x){if(x.wbsId===wbsId)q+=(+x.qty||0);});(p.qa||[]).forEach(function(x){if(x.wbsId===wbsId&&x.status==='Accepted')q+=(+x.acceptedQty||0);});return q;}
+function wbsRecalcAct(p,wbsId){var a=wbsActById(p,wbsId);if(!a)return;if(wbsMethodOf(a)==='qty'){a.mQtyDone=wbsInstalledQty(p,wbsId);a.pct=wbsProgress(a);wbsSnapshot(p,a);}}
+var PROC_MS=[['MR',10,'Material requisition'],['RFQ',0,'RFQ issued'],['TBE',0,'Tech bid eval'],['PO',10,'PO issued'],['VDR',20,'Vendor docs approved'],['FAT',15,'FAT / manufacturing'],['DEL',35,'Delivered to site'],['MIR',20,'MIR accepted']];
+function procProgress(pk){var s=0;PROC_MS.forEach(function(m){if(pk.ms&&pk.ms[m[0]])s+=m[1];});return Math.min(100,s);}
+function procSyncAct(p,pk){if(!pk.wbsId)return;var a=wbsActById(p,pk.wbsId);if(!a)return;a.mMethod='manual';a.pct=procProgress(pk);wbsSnapshot(p,a);}
+function docProgress(d){return d.status==='Approved'?100:(d.status==='Submitted'?60:(d.status==='Draft'?20:0));}
+function sysProgress(p,sysId){var acts=(p.wbs?p.wbs.nodes:[]).filter(function(n){return n.level===3&&n.systemId===sysId;});if(!acts.length)return 0;var s=0;acts.forEach(function(a){s+=(+a.pct||0);});return s/acts.length;}
+function punchBlockMC(p,sysId){return (p.punch||[]).filter(function(x){return x.systemId===sysId&&x.cat==='A'&&x.status!=='Closed';}).length;}
+
+function renderOps(el){const p=proj();wbsEnsureOps(p);
+  if(!p.wbs){el.innerHTML='<div class="pagehead"><div><h2>Ops & Controls</h2><p>โปรเจกต์นี้ยังไม่มี WBS — สร้าง WBS ก่อนที่เมนู WBS</p></div></div>';return;}
+  const tabs=[['production','Daily Production'],['resource','Manpower/Equip Plan'],['procurement','Procurement'],['qaqc','QA/QC & Punch'],['systems','Systems / Turnover'],['documents','Documents'],['changes','Change / VO'],['portfolio','Portfolio Health']];
+  const tabBar=`<div style="display:flex;gap:4px;flex-wrap:wrap;margin-bottom:12px;border-bottom:2px solid var(--line);padding-bottom:8px">${tabs.map(t=>`<button onclick="app.opsTab('${t[0]}')" style="border:none;border-radius:7px 7px 0 0;padding:6px 12px;font-size:12px;font-weight:${opsTab===t[0]?'800':'500'};cursor:pointer;background:${opsTab===t[0]?'#4f46e5':'#eef2ff'};color:${opsTab===t[0]?'#fff':'#4f46e5'}">${t[1]}</button>`).join('')}</div>`;
+  let body='';
+  if(opsTab==='production')body=opsProduction(p);
+  else if(opsTab==='resource')body=opsResource(p);
+  else if(opsTab==='procurement')body=opsProcurement(p);
+  else if(opsTab==='qaqc')body=opsQAQC(p);
+  else if(opsTab==='systems')body=opsSystems(p);
+  else if(opsTab==='documents')body=opsDocuments(p);
+  else if(opsTab==='changes')body=opsChanges(p);
+  else body=opsPortfolio(p);
+  el.innerHTML=`<div class="pagehead"><div><h2>Ops & Controls <span style="font-weight:500;font-size:12px;color:var(--muted)">· ${esc(p.name)}</span></h2><p>บันทึกงานจริงตาม WBS → อัปเดต progress · procurement · QA/QC · turnover · เอกสาร · VO · portfolio</p></div></div>${tabBar}${body}`;
+  if(opsTab==='portfolio'&&window.Chart){try{opsPortfolioChart(p);}catch(e){}}
+  if(opsTab==='resource'&&window.Chart){try{opsResourceChart(p);}catch(e){}}
+}
+function actSelect(p,sel,cb){var o='<option value="">— เลือกกิจกรรม WBS —</option>';(p.wbs?p.wbs.nodes:[]).forEach(function(n){if(n.level===3&&n.scope)o+='<option value="'+n.id+'" '+(n.id===sel?'selected':'')+'>'+esc((n.code+' '+n.name)).slice(0,55)+'</option>';});return '<select onchange="'+cb+'" style="font-size:11px;border:1px solid var(--line);border-radius:6px;padding:4px;min-width:220px">'+o+'</select>';}
+
+function opsProduction(p){const rows=(p.dailyProd||[]).slice().reverse().map(function(x){return `<tr style="border-bottom:1px solid var(--soft)"><td style="padding:4px 6px">${esc(x.date||'')}</td><td style="padding:4px 6px;font-size:11px">${esc(wbsActLabel(p,x.wbsId))}</td><td style="text-align:right;padding:4px 6px">${fmt(+x.qty||0)}</td><td style="text-align:right;padding:4px 6px">${fmt(+x.mh||0)}</td><td style="padding:4px 6px">${esc(x.area||'')}</td><td style="padding:4px 6px;font-size:11px;color:#64748b">${esc(x.note||'')}</td><td><button onclick="app.opsDel('dailyProd','${x.id}')" style="border:none;background:none;color:#ef4444;cursor:pointer">×</button></td></tr>`;}).join('');
+  return `<div class="card"><div class="body"><p class="mini">บันทึกปริมาณงานเสร็จรายวันตามกิจกรรม WBS — กิจกรรมที่วัดแบบ Quantity จะอัปเดต % อัตโนมัติ (installed/planned) + เก็บ snapshot</p>
+    <div style="display:flex;gap:6px;flex-wrap:wrap;align-items:end;margin:8px 0"><input type="date" id="pdDate" style="border:1px solid var(--line);border-radius:6px;padding:5px">${actSelect(p,'','app.opsField(\'pdWbs\',this.value)')}<input id="pdQty" type="number" placeholder="ปริมาณ" style="width:90px;border:1px solid var(--line);border-radius:6px;padding:5px"><input id="pdMh" type="number" placeholder="man-hours" style="width:100px;border:1px solid var(--line);border-radius:6px;padding:5px"><input id="pdArea" placeholder="area" style="width:90px;border:1px solid var(--line);border-radius:6px;padding:5px"><input id="pdNote" placeholder="หมายเหตุ" style="width:120px;border:1px solid var(--line);border-radius:6px;padding:5px"><button class="btn primary" onclick="app.opsAddProd()">+ บันทึก</button></div>
+    <table style="width:100%;border-collapse:collapse;font-size:12px"><thead><tr style="background:#f1f5f9"><th style="text-align:left;padding:5px 6px">วันที่</th><th style="text-align:left;padding:5px 6px">กิจกรรม</th><th style="text-align:right;padding:5px 6px">ปริมาณ</th><th style="text-align:right;padding:5px 6px">MH</th><th style="text-align:left;padding:5px 6px">Area</th><th style="text-align:left;padding:5px 6px">หมายเหตุ</th><th></th></tr></thead><tbody>${rows||'<tr><td colspan=7 style="padding:8px;color:#cbd5e1">ยังไม่มีบันทึก</td></tr>'}</tbody></table></div></div>`;}
+
+function opsResource(p){const rows=(p.resPlan||[]).map(function(x){return `<tr style="border-bottom:1px solid var(--soft)"><td style="padding:4px 6px;font-size:11px">${esc(wbsActLabel(p,x.wbsId))}</td><td style="padding:4px 6px">${x.type==='eq'?'🚜 Equipment':'👷 Manpower'}</td><td style="padding:4px 6px">${esc(x.role||'')}</td><td style="text-align:right;padding:4px 6px">${fmt(+x.qty||0)}</td><td style="text-align:right;padding:4px 6px">${fmt(+x.rate||0)}</td><td><button onclick="app.opsDel('resPlan','${x.id}')" style="border:none;background:none;color:#ef4444;cursor:pointer">×</button></td></tr>`;}).join('');
+  return `<div class="card"><div class="body"><p class="mini">วางแผนกำลังคน/เครื่องจักรตามกิจกรรม WBS — planned crew/qty × ระยะเวลา = planned man-hours (histogram แผน vs จริงจาก Timesheet)</p>
+    <div class="chart-wrap" style="height:220px;margin-bottom:8px"><canvas id="opsMH"></canvas></div>
+    <div style="display:flex;gap:6px;flex-wrap:wrap;align-items:end;margin:8px 0">${actSelect(p,'','app.opsField(\'rpWbs\',this.value)')}<select id="rpType" style="border:1px solid var(--line);border-radius:6px;padding:5px"><option value="man">Manpower</option><option value="eq">Equipment</option></select><input id="rpRole" placeholder="role/หน่วย" style="width:120px;border:1px solid var(--line);border-radius:6px;padding:5px"><input id="rpQty" type="number" placeholder="qty/crew" style="width:90px;border:1px solid var(--line);border-radius:6px;padding:5px"><input id="rpRate" type="number" placeholder="rate/day" style="width:90px;border:1px solid var(--line);border-radius:6px;padding:5px"><button class="btn primary" onclick="app.opsAddRes()">+ เพิ่ม</button></div>
+    <table style="width:100%;border-collapse:collapse;font-size:12px"><thead><tr style="background:#f1f5f9"><th style="text-align:left;padding:5px 6px">กิจกรรม</th><th style="text-align:left;padding:5px 6px">ชนิด</th><th style="text-align:left;padding:5px 6px">Role</th><th style="text-align:right;padding:5px 6px">Qty</th><th style="text-align:right;padding:5px 6px">Rate</th><th></th></tr></thead><tbody>${rows||'<tr><td colspan=6 style="padding:8px;color:#cbd5e1">ยังไม่มีแผน</td></tr>'}</tbody></table></div></div>`;}
+
+function opsProcurement(p){const rows=(p.procPkgs||[]).map(function(pk){const pr=procProgress(pk);const cells=PROC_MS.map(function(m){const on=pk.ms&&pk.ms[m[0]];return `<td style="text-align:center;padding:2px"><input type="checkbox" ${on?'checked':''} title="${esc(m[2])} (${m[1]}%)" onchange="app.opsProcMs('${pk.id}','${m[0]}',this.checked)"></td>`;}).join('');
+    return `<tr style="border-bottom:1px solid var(--soft)"><td style="padding:4px 6px"><input value="${esc(pk.code||'')}" onchange="app.opsSet('procPkgs','${pk.id}','code',this.value)" style="width:70px;border:1px solid transparent;font-size:11px"></td><td style="padding:4px 6px"><input value="${esc(pk.desc||'')}" onchange="app.opsSet('procPkgs','${pk.id}','desc',this.value)" style="width:150px;border:1px solid transparent;font-size:11px"></td><td style="padding:2px 4px">${actSelect(p,pk.wbsId,`app.opsSet('procPkgs','${pk.id}','wbsId',this.value);app.opsProcSync('${pk.id}')`)}</td><td style="padding:4px"><input type="date" value="${esc(pk.reqDate||'')}" onchange="app.opsSet('procPkgs','${pk.id}','reqDate',this.value)" style="font-size:11px;border:1px solid var(--line);border-radius:5px"></td><td style="padding:4px"><input type="number" value="${pk.poValue!=null?pk.poValue:''}" placeholder="cost" onchange="app.opsSet('procPkgs','${pk.id}','poValue',this.value)" style="width:90px;text-align:right;font-size:11px;border:1px solid var(--line);border-radius:5px"></td>${cells}<td style="text-align:right;padding:4px 6px;font-weight:700;color:${pr>=100?'#10b981':'#4f46e5'}">${pr}%</td><td><button onclick="app.opsDel('procPkgs','${pk.id}')" style="border:none;background:none;color:#ef4444;cursor:pointer">×</button></td></tr>`;}).join('');
+  return `<div class="card"><div class="body"><p class="mini">Procurement package milestones (ROC 10-20-15-35-20) ผูกกับกิจกรรม WBS + required-on-site date — ติ๊ก milestone → progress ป้อนเข้ากิจกรรม</p>
+    <button class="btn primary" onclick="app.opsAddProc()" style="margin:8px 0">+ เพิ่มแพ็กเกจ</button>
+    <div style="overflow:auto"><table style="width:100%;border-collapse:collapse;font-size:11.5px"><thead><tr style="background:#f1f5f9"><th style="padding:5px 6px">Code</th><th style="padding:5px 6px">Description</th><th style="padding:5px 6px">WBS</th><th style="padding:5px 6px">Req. date</th><th style="padding:5px 6px">PO value</th>${PROC_MS.map(m=>`<th style="padding:5px 2px;font-size:9px" title="${esc(m[2])}">${m[0]}<br>${m[1]}%</th>`).join('')}<th style="padding:5px 6px">%</th><th></th></tr></thead><tbody>${rows||'<tr><td colspan="15" style="padding:8px;color:#cbd5e1">ยังไม่มีแพ็กเกจ</td></tr>'}</tbody></table></div></div></div>`;}
+
+function opsQAQC(p){const qrows=(p.qa||[]).slice().reverse().map(function(x){return `<tr style="border-bottom:1px solid var(--soft)"><td style="padding:4px 6px">${esc(x.type||'')}</td><td style="padding:4px 6px">${esc(x.recordNo||'')}</td><td style="padding:4px 6px;font-size:11px">${esc(wbsActLabel(p,x.wbsId))}</td><td style="text-align:right;padding:4px 6px">${fmt(+x.acceptedQty||0)}</td><td style="padding:4px 6px"><select onchange="app.opsSet('qa','${x.id}','status',this.value);app.opsQARecalc('${x.id}')" style="font-size:11px"><option ${x.status==='Open'?'selected':''}>Open</option><option ${x.status==='Accepted'?'selected':''}>Accepted</option><option ${x.status==='Rejected'?'selected':''}>Rejected</option></select></td><td>${esc(x.date||'')}</td><td><button onclick="app.opsDel('qa','${x.id}')" style="border:none;background:none;color:#ef4444;cursor:pointer">×</button></td></tr>`;}).join('');
+  const prows=(p.punch||[]).map(function(x){return `<tr style="border-bottom:1px solid var(--soft)"><td style="padding:4px 6px"><span style="background:${x.cat==='A'?'#fee2e2':(x.cat==='B'?'#fef9c3':'#e0f2fe')};padding:1px 6px;border-radius:4px;font-weight:700">${esc(x.cat||'C')}</span></td><td style="padding:4px 6px;font-size:11px">${esc(x.desc||'')}</td><td style="padding:4px 6px;font-size:11px">${esc(wbsActLabel(p,x.wbsId))}</td><td style="padding:4px 6px">${esc(x.owner||'')}</td><td style="padding:4px 6px"><select onchange="app.opsSet('punch','${x.id}','status',this.value)" style="font-size:11px"><option ${x.status==='Open'?'selected':''}>Open</option><option ${x.status==='Closed'?'selected':''}>Closed</option></select></td><td><button onclick="app.opsDel('punch','${x.id}')" style="border:none;background:none;color:#ef4444;cursor:pointer">×</button></td></tr>`;}).join('');
+  return `<div class="card"><div class="body"><p class="mini">ITP/WIR/Test/NCR — สถานะ Accepted + accepted qty จะป้อนเข้า installed quantity ของกิจกรรม (วัดแบบ qty)</p>
+    <div style="display:flex;gap:6px;flex-wrap:wrap;align-items:end;margin:8px 0"><select id="qaType" style="border:1px solid var(--line);border-radius:6px;padding:5px"><option>WIR</option><option>ITP</option><option>TEST</option><option>NCR</option></select><input id="qaNo" placeholder="record no." style="width:100px;border:1px solid var(--line);border-radius:6px;padding:5px">${actSelect(p,'','app.opsField(\'qaWbs\',this.value)')}<input id="qaQty" type="number" placeholder="accepted qty" style="width:100px;border:1px solid var(--line);border-radius:6px;padding:5px"><input type="date" id="qaDate" style="border:1px solid var(--line);border-radius:6px;padding:5px"><button class="btn primary" onclick="app.opsAddQA()">+ บันทึก</button></div>
+    <table style="width:100%;border-collapse:collapse;font-size:12px"><thead><tr style="background:#f1f5f9"><th style="text-align:left;padding:5px 6px">Type</th><th style="text-align:left;padding:5px 6px">Record</th><th style="text-align:left;padding:5px 6px">กิจกรรม</th><th style="text-align:right;padding:5px 6px">Acc.Qty</th><th style="text-align:left;padding:5px 6px">Status</th><th style="text-align:left;padding:5px 6px">Date</th><th></th></tr></thead><tbody>${qrows||'<tr><td colspan=7 style="padding:8px;color:#cbd5e1">—</td></tr>'}</tbody></table>
+    <h4 style="margin:16px 0 6px">Punch list</h4><div style="display:flex;gap:6px;flex-wrap:wrap;align-items:end;margin:6px 0"><select id="puCat" style="border:1px solid var(--line);border-radius:6px;padding:5px"><option value="A">A (block MC)</option><option value="B">B</option><option value="C">C</option></select><input id="puDesc" placeholder="รายละเอียด" style="width:160px;border:1px solid var(--line);border-radius:6px;padding:5px">${actSelect(p,'','app.opsField(\'puWbs\',this.value)')}<input id="puOwner" placeholder="ผู้รับผิดชอบ" style="width:100px;border:1px solid var(--line);border-radius:6px;padding:5px"><button class="btn primary" onclick="app.opsAddPunch()">+ punch</button></div>
+    <table style="width:100%;border-collapse:collapse;font-size:12px"><thead><tr style="background:#f1f5f9"><th style="text-align:left;padding:5px 6px">Cat</th><th style="text-align:left;padding:5px 6px">รายละเอียด</th><th style="text-align:left;padding:5px 6px">กิจกรรม</th><th style="text-align:left;padding:5px 6px">Owner</th><th style="text-align:left;padding:5px 6px">Status</th><th></th></tr></thead><tbody>${prows||'<tr><td colspan=6 style="padding:8px;color:#cbd5e1">—</td></tr>'}</tbody></table></div></div>`;}
+
+function opsSystems(p){const rows=(p.systems||[]).map(function(s){const prog=Math.round(sysProgress(p,s.id));const blk=punchBlockMC(p,s.id);return `<tr style="border-bottom:1px solid var(--soft)"><td style="padding:4px 6px"><input value="${esc(s.code||'')}" onchange="app.opsSet('systems','${s.id}','code',this.value)" style="width:70px;border:1px solid transparent;font-size:11px"></td><td style="padding:4px 6px"><input value="${esc(s.name||'')}" onchange="app.opsSet('systems','${s.id}','name',this.value)" style="width:180px;border:1px solid transparent;font-size:11px"></td><td style="padding:4px 6px"><select onchange="app.opsSet('systems','${s.id}','type',this.value)" style="font-size:11px"><option ${s.type==='Area'?'selected':''}>Area</option><option ${s.type==='System'?'selected':''}>System</option><option ${s.type==='Subsystem'?'selected':''}>Subsystem</option></select></td><td style="text-align:right;padding:4px 6px;font-weight:700">${prog}%</td><td style="padding:4px 6px">${blk?`<span style="color:#ef4444;font-weight:700">⛔ ${blk} A-punch</span>`:(prog>=100?'<span style="color:#10b981;font-weight:700">✓ MC ready</span>':'—')}</td><td><button onclick="app.opsDel('systems','${s.id}')" style="border:none;background:none;color:#ef4444;cursor:pointer">×</button></td></tr>`;}).join('');
+  return `<div class="card"><div class="body"><p class="mini">Area &gt; System &gt; Subsystem — ผูกกิจกรรม WBS เข้า system (ในหน้า WBS) เพื่อคุม Mechanical Completion · A-punch เปิดค้าง = block MC</p>
+    <div style="display:flex;gap:6px;flex-wrap:wrap;align-items:end;margin:8px 0"><input id="syCode" placeholder="code" style="width:80px;border:1px solid var(--line);border-radius:6px;padding:5px"><input id="syName" placeholder="ชื่อ system" style="width:180px;border:1px solid var(--line);border-radius:6px;padding:5px"><select id="syType" style="border:1px solid var(--line);border-radius:6px;padding:5px"><option>Area</option><option>System</option><option>Subsystem</option></select><button class="btn primary" onclick="app.opsAddSys()">+ เพิ่ม</button></div>
+    <table style="width:100%;border-collapse:collapse;font-size:12px"><thead><tr style="background:#f1f5f9"><th style="text-align:left;padding:5px 6px">Code</th><th style="text-align:left;padding:5px 6px">Name</th><th style="text-align:left;padding:5px 6px">Type</th><th style="text-align:right;padding:5px 6px">Progress</th><th style="text-align:left;padding:5px 6px">MC status</th><th></th></tr></thead><tbody>${rows||'<tr><td colspan=6 style="padding:8px;color:#cbd5e1">—</td></tr>'}</tbody></table></div></div>`;}
+
+function opsDocuments(p){const rows=(p.docs||[]).map(function(d){return `<tr style="border-bottom:1px solid var(--soft)"><td style="padding:4px 6px"><input value="${esc(d.docNo||'')}" onchange="app.opsSet('docs','${d.id}','docNo',this.value)" style="width:100px;border:1px solid transparent;font-size:11px"></td><td style="padding:4px 6px"><input value="${esc(d.title||'')}" onchange="app.opsSet('docs','${d.id}','title',this.value)" style="width:180px;border:1px solid transparent;font-size:11px"></td><td style="padding:4px 6px"><input value="${esc(d.rev||'')}" onchange="app.opsSet('docs','${d.id}','rev',this.value)" style="width:40px;border:1px solid transparent;font-size:11px"></td><td style="padding:2px 4px">${actSelect(p,d.wbsId,`app.opsSet('docs','${d.id}','wbsId',this.value)`)}</td><td style="padding:4px 6px"><select onchange="app.opsSet('docs','${d.id}','status',this.value);app.opsDocSync('${d.id}')" style="font-size:11px"><option ${!d.status||d.status==='Planned'?'selected':''}>Planned</option><option ${d.status==='Draft'?'selected':''}>Draft</option><option ${d.status==='Submitted'?'selected':''}>Submitted</option><option ${d.status==='Approved'?'selected':''}>Approved</option></select></td><td style="text-align:right;padding:4px 6px;font-weight:700">${docProgress(d)}%</td><td><button onclick="app.opsDel('docs','${d.id}')" style="border:none;background:none;color:#ef4444;cursor:pointer">×</button></td></tr>`;}).join('');
+  return `<div class="card"><div class="body"><p class="mini">Document register (revision/status) — Draft 20 / Submitted 60 / Approved 100 ป้อนเข้ากิจกรรม engineering ที่ผูกไว้</p>
+    <button class="btn primary" onclick="app.opsAddDoc()" style="margin:8px 0">+ เพิ่มเอกสาร</button>
+    <table style="width:100%;border-collapse:collapse;font-size:12px"><thead><tr style="background:#f1f5f9"><th style="text-align:left;padding:5px 6px">Doc No.</th><th style="text-align:left;padding:5px 6px">Title</th><th style="padding:5px 6px">Rev</th><th style="text-align:left;padding:5px 6px">WBS</th><th style="text-align:left;padding:5px 6px">Status</th><th style="padding:5px 6px">%</th><th></th></tr></thead><tbody>${rows||'<tr><td colspan=7 style="padding:8px;color:#cbd5e1">—</td></tr>'}</tbody></table></div></div>`;}
+
+function opsChanges(p){const base=(p.changes||[]).reduce(function(a,c){return a+(+c.baselineCost||0);},0);const cur2=(p.changes||[]).reduce(function(a,c){return a+(+c.currentCost||0);},0);
+  const rows=(p.changes||[]).map(function(c){return `<tr style="border-bottom:1px solid var(--soft)"><td style="padding:4px 6px"><input value="${esc(c.changeNo||'')}" onchange="app.opsSet('changes','${c.id}','changeNo',this.value)" style="width:70px;border:1px solid transparent;font-size:11px"></td><td style="padding:4px 6px"><input value="${esc(c.desc||'')}" onchange="app.opsSet('changes','${c.id}','desc',this.value)" style="width:170px;border:1px solid transparent;font-size:11px"></td><td style="padding:4px 6px"><select onchange="app.opsSet('changes','${c.id}','type',this.value)" style="font-size:11px"><option ${c.type==='Original'?'selected':''}>Original</option><option ${c.type==='Approved VO'?'selected':''}>Approved VO</option><option ${c.type==='Pending VO'?'selected':''}>Pending VO</option><option ${c.type==='Rework'?'selected':''}>Rework</option></select></td><td style="padding:4px"><input type="number" value="${c.baselineCost!=null?c.baselineCost:''}" onchange="app.opsSet('changes','${c.id}','baselineCost',this.value)" style="width:90px;text-align:right;border:1px solid var(--line);border-radius:5px"></td><td style="padding:4px"><input type="number" value="${c.currentCost!=null?c.currentCost:''}" onchange="app.opsSet('changes','${c.id}','currentCost',this.value)" style="width:90px;text-align:right;border:1px solid var(--line);border-radius:5px"></td><td><button onclick="app.opsDel('changes','${c.id}')" style="border:none;background:none;color:#ef4444;cursor:pointer">×</button></td></tr>`;}).join('');
+  return `<div class="card"><div class="body"><p class="mini">Change / Variation — Original · Approved VO · Pending VO · Rework · baseline vs current budget</p>
+    <button class="btn primary" onclick="app.opsAddChange()" style="margin:8px 0">+ เพิ่มรายการ</button>
+    <table style="width:100%;border-collapse:collapse;font-size:12px"><thead><tr style="background:#f1f5f9"><th style="text-align:left;padding:5px 6px">No.</th><th style="text-align:left;padding:5px 6px">Description</th><th style="text-align:left;padding:5px 6px">Type</th><th style="text-align:right;padding:5px 6px">Baseline</th><th style="text-align:right;padding:5px 6px">Current</th><th></th></tr></thead><tbody>${rows||'<tr><td colspan=6 style="padding:8px;color:#cbd5e1">—</td></tr>'}</tbody></table>
+    <div style="margin-top:10px;text-align:right;font-weight:700">Baseline ${cur()} ${fmt(Math.round(base))} → Current ${cur()} ${fmt(Math.round(cur2))} · Δ <span style="color:${cur2-base>=0?'#ef4444':'#10b981'}">${cur()} ${fmt(Math.round(cur2-base))}</span></div></div></div>`;}
+
+function opsPortfolio(p){const wbsProjs=state.projects.filter(function(x){return x.wbs&&x.wbsMode;});
+  const rows=wbsProjs.map(function(pr){const E=wbsEVM(pr);const late=E.S.acts.filter(function(a){return a._crit&&(+a.pct||0)<100&&a.me<(pr.plan.dataDate||0);}).length;
+    return `<tr style="border-bottom:1px solid var(--soft)"><td style="padding:5px 6px;font-weight:600">${esc(pr.name)}</td><td style="text-align:right;padding:5px 6px">${cur()} ${fmtShort(E.BAC)}</td><td style="text-align:right;padding:5px 6px">${E.pct.toFixed(0)}%</td><td style="text-align:right;padding:5px 6px;color:${E.SPI>=1?'#10b981':'#ef4444'}">${E.SPI.toFixed(2)}</td><td style="text-align:right;padding:5px 6px;color:${E.CPI>=1?'#10b981':(E.CPI>0?'#ef4444':'#94a3b8')}">${E.CPI>0?E.CPI.toFixed(2):'—'}</td><td style="text-align:right;padding:5px 6px;color:${late?'#ef4444':'#64748b'}">${late}</td></tr>`;}).join('');
+  return `<div class="card"><div class="body"><p class="mini">Portfolio health — SPI/CPI/critical-late ต่อโปรเจกต์ (เฉพาะโปรเจกต์ WBS)</p>
+    <div class="chart-wrap" style="height:230px"><canvas id="opsPF"></canvas></div>
+    <table style="width:100%;border-collapse:collapse;font-size:12px;margin-top:10px"><thead><tr style="background:#f1f5f9"><th style="text-align:left;padding:5px 6px">Project</th><th style="text-align:right;padding:5px 6px">BAC</th><th style="text-align:right;padding:5px 6px">% Comp</th><th style="text-align:right;padding:5px 6px">SPI</th><th style="text-align:right;padding:5px 6px">CPI</th><th style="text-align:right;padding:5px 6px">Late-crit</th></tr></thead><tbody>${rows||'<tr><td colspan=6 style="padding:8px;color:#cbd5e1">ยังไม่มีโปรเจกต์ WBS</td></tr>'}</tbody></table></div></div>`;}
+function opsPortfolioChart(p){const wbsProjs=state.projects.filter(function(x){return x.wbs&&x.wbsMode;});const cv=document.getElementById('opsPF');if(!cv)return;
+  charts.opsPF=new Chart(cv,{type:'scatter',data:{datasets:wbsProjs.map(function(pr){const E=wbsEVM(pr);return {label:pr.name,data:[{x:E.SPI||0,y:E.CPI||0}],backgroundColor:(E.SPI>=1&&E.CPI>=1)?'#10b981':'#ef4444',pointRadius:7};})},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:true,labels:{font:{size:10},boxWidth:10}},tooltip:{callbacks:{label:c=>c.dataset.label+' SPI '+c.parsed.x.toFixed(2)+' / CPI '+c.parsed.y.toFixed(2)}}},scales:{x:{title:{display:true,text:'SPI'},min:0,suggestedMax:1.5,grid:{color:'#eef1f6'}},y:{title:{display:true,text:'CPI'},min:0,suggestedMax:1.5,grid:{color:'#eef1f6'}}}}});}
+
+/* ===== P1.1 TIMESHEET -> WBS ===== */
+function wbsLabourByAct(p){var pm={};((p.mp&&p.mp.positions)||[]).forEach(function(po){pm[po.id]=po;});var out={};
+ var log=(p.mp&&p.mp.log)||{};for(var d in log){var hol=new Date(d+"T00:00:00").getDay()===0;var day=log[d];for(var pid in day){var po=pm[pid];if(!po||!po.wbsId)continue;var e=day[pid];var wage=+po.wage||0;var c=+e.c||0,ot=+e.ot||0;var cost=(hol?c*wage*2:c*wage)+ot*(wage/8)*3;out[po.wbsId]=(out[po.wbsId]||0)+cost;}}return out;}
+function wbsActOpts(p,sel){if(!p.wbs)return "<option value=\"\">(no WBS)</option>";var o="<option value=\"\">— ไม่ระบุ —</option>";p.wbs.nodes.forEach(function(n){if(n.level===3&&n.scope)o+="<option value=\""+n.id+"\" "+(n.id===sel?"selected":"")+">"+esc((n.code+" "+n.name)).slice(0,60)+"</option>";});return o;}
+/* ===== P0.5 COST-LOADED EVM ===== */
+function wbsCostFactor(p){var pl=p.plan||{};if(pl.wbsCostFactor!=null)return +pl.wbsCostFactor;var mc=(pl.matCostPct!=null?pl.matCostPct:85),lc=(pl.labCostPct!=null?pl.labCostPct:85);return (mc+lc)/2/100;}
+function wbsActualCostToDate(p){var ac=0;try{ac+=(resMonthly(p).labor||[]).reduce(function(a,b){return a+(+b||0);},0);}catch(e){}
+  p.cats.forEach(function(c){c.items.forEach(function(it){if(!isMargin(it))ac+=(+it.actMat||0);});});ac+=wbsProcMatTotal(p);return ac;}
+function wbsEVM(p){var pl=ensurePlan(p);var S=wbsSchedule(p);var acts=S.acts;var dur=S.dur;var cf=wbsCostFactor(p);var dd=Math.min(pl.dataDate||0,dur-1);
+  var BAC=0;acts.forEach(function(a){a._bud=wbsActBudget(p,a.id);BAC+=a._bud;});
+  var pv=Array(dur).fill(0);acts.forEach(function(a){var n=Math.max(1,a.me-a.ms+1);var w=sCurveW(n);for(var m=a.ms;m<=a.me;m++)pv[m]+=a._bud*(w[m-a.ms]||0);});
+  var pvCum=[],s=0;pv.forEach(function(v){s+=v;pvCum.push(s);});
+  function pctAt(a,t){var d=_isoOf(periodDate(pl,t));var best=null;(a.pctSnaps||[]).forEach(function(sn){if(sn.d<=d&&(!best||sn.d>=best.d))best=sn;});return best?best.pct:null;}
+  var evCum=[];for(var t=0;t<dur;t++){if(t>dd){evCum.push(null);continue;}var e=0;acts.forEach(function(a){var pc=pctAt(a,t);if(pc==null&&t===dd)pc=(+a.pct||0);if(pc==null)pc=0;e+=a._bud*pc/100;});evCum.push(e);}
+  var EV=evCum[dd]||0,PV=pvCum[dd]||0,BACc=BAC*cf,EVc=EV*cf,AC=wbsActualCostToDate(p);
+  var SPI=PV>0?EV/PV:0,CPI=AC>0?EVc/AC:0;
+  var acCum=[];for(var u=0;u<dur;u++){if(u>dd){acCum.push(null);continue;}acCum.push(EV>0?AC*(evCum[u]/EV):(u===dd?AC:0));}
+  var EAC=(CPI>0?BACc/CPI:BACc);
+  return {S:S,dur:dur,months:S.months,dd:dd,BAC:BAC,PV:PV,EV:EV,AC:AC,BACc:BACc,EVc:EVc,cf:cf,SPI:SPI,CPI:CPI,SV:EV-PV,CV:EVc-AC,pct:(BAC>0?EV/BAC*100:0),pvCum:pvCum,evCum:evCum,acCum:acCum,EAC:EAC,VAC:BACc-EAC};}
+
+/* ===== P0.4 PROGRESS / RULES OF CREDIT ===== */
+function wbsDefaultMethod(a){var roc=(a.roc||'').toLowerCase(),unit=(a.unit||'').toLowerCase(),disc=(a.disc||'').toLowerCase(),nm=(a.name||'').toLowerCase();
+  if(unit==='document'||roc.indexOf('submission')>=0||roc.indexOf('approval')>=0)return {m:'roc',k:'Document 20-40-40'};
+  if(disc.indexOf('procurement')>=0&&(roc.indexOf('milestone')>=0||roc.indexOf('accepted')>=0))return {m:'roc',k:'Procurement 10-20-15-35-20'};
+  if(roc.indexOf('0/50/100')>=0)return {m:'milestone'};
+  if(roc.indexOf('quantity')>=0){
+    if(nm.indexOf('tray')>=0||nm.indexOf('ladder')>=0||nm.indexOf('support')>=0||nm.indexOf('conduit')>=0)return {m:'roc',k:'Tray 10-25-45-10-10'};
+    if(nm.indexOf('instrument')>=0||nm.indexOf('loop')>=0||nm.indexOf('hook')>=0)return {m:'roc',k:'Instrument 10-20-30-20-20'};
+    if(nm.indexOf('cable')>=0||nm.indexOf('pull')>=0||nm.indexOf('gland')>=0||nm.indexOf('termination')>=0)return {m:'roc',k:'Cable 5-60-10-15-10'};
+    return {m:'qty'};}
+  if(roc.indexOf('mechanical completion')>=0||nm.indexOf('mechanical completion')>=0)return {m:'roc',k:'MC 20-30-30-20'};
+  if(roc.indexOf('milestone')>=0)return {m:'milestone'};
+  return {m:'manual'};}
+function wbsMethodOf(a){return a.mMethod||wbsDefaultMethod(a).m;}
+function wbsRocKeyOf(a){return a.mRocKey||wbsDefaultMethod(a).k||'Cable 5-60-10-15-10';}
+function wbsProgress(a){var m=wbsMethodOf(a);
+  if(m==='milestone')return Math.max(0,Math.min(100,+a.mMile||0));
+  if(m==='qty'){var pl=+a.mQtyPlan||0;return pl>0?Math.max(0,Math.min(100,(+a.mQtyDone||0)/pl*100)):0;}
+  if(m==='roc'){var steps=WBS_ROC[wbsRocKeyOf(a)]||[];var st=a.mRocSteps||[];var s=0;steps.forEach(function(x,i){s+=(+x[1]||0)*(Math.max(0,Math.min(100,+st[i]||0))/100);});return Math.max(0,Math.min(100,s));}
+  return Math.max(0,Math.min(100,+a.pct||0));}
+function wbsSnapshot(p,a){var pl=ensurePlan(p);var d=periodDate(pl,Math.min(pl.dataDate||0,9999));var iso=_isoOf(d);var pct=Math.round(wbsProgress(a)*10)/10;
+  if(!a.pctSnaps)a.pctSnaps=[];var last=a.pctSnaps[a.pctSnaps.length-1];if(last&&last.d===iso){last.pct=pct;last.m=wbsMethodOf(a);}else a.pctSnaps.push({d:iso,pct:pct,m:wbsMethodOf(a)});}
+
+/* ===== P0.3 CBS <-> WBS MAPPING ===== */
+function wbsEnsureMap(p){if(!p.wbsMap)p.wbsMap=[];return p.wbsMap;}
+function cbsItemRef(p,id){for(var i=0;i<p.cats.length;i++){var c=p.cats[i];for(var j=0;j<c.items.length;j++)if(c.items[j].id===id)return {it:c.items[j],cat:c};}return null;}
+function cbsAllocPct(p,itemId){var s=0;(p.wbsMap||[]).forEach(function(m){if(m.cbsItemId===itemId)s+=(+m.pct||0);});return s;}
+function wbsActBudget(p,wbsId){var b=0;(p.wbsMap||[]).forEach(function(m){if(m.wbsId===wbsId){var r=cbsItemRef(p,m.cbsItemId);if(r)b+=(+r.it.budget||0)*(+m.pct||0)/100;}});return b;}
+function wbsActManhours(p,wbsId){var mh=0;(p.wbsMap||[]).forEach(function(m){if(m.wbsId===wbsId)mh+=(+m.manhours||0);});return mh;}
+function wbsMapValidate(p){var over=[],mapped=0,total=0;p.cats.forEach(function(c){c.items.forEach(function(it){if(isMargin(it)||!(+it.budget))return;total++;var pct=cbsAllocPct(p,it.id);if(pct>0)mapped++;if(pct>100.01)over.push({it:it,cat:c,pct:pct});});});return {over:over,mapped:mapped,total:total};}
+function wbsTotalMapped(p){var b=0;(p.wbsMap||[]).forEach(function(m){var r=cbsItemRef(p,m.cbsItemId);if(r)b+=(+r.it.budget||0)*(+m.pct||0)/100;});return b;}
+
+/* ===== P0.2 WBS SCHEDULE (CPM) ===== */
+function wbsParsePred(text){const out=[];(text||'').split(/[,;]+/).forEach(function(tok){tok=tok.trim();if(!tok)return;
+  var m=tok.match(/^([0-9.]+)\s*(FS|SS|FF|SF)?\s*([+\-]\s*[0-9.]+)?$/i);
+  if(m){out.push({code:m[1],type:(m[2]||'FS').toUpperCase(),lag:m[3]?parseFloat(m[3].replace(/\s/g,'')):0});}});return out;}
+function wbsActs(p){return (p.wbs?p.wbs.nodes:[]).filter(function(n){return n.level===3&&n.scope;});}
+function wbsSchedule(p){var pl=ensurePlan(p);var acts=wbsActs(p);var byCode={},byId={};
+  acts.forEach(function(a){byId[a.id]=a;byCode[a.code]=a;if(!(+a.dur>0))a.dur=(+a.dur||2);a.pred=wbsParsePred(a.predText);});
+  var ES={},EF={},vis={};
+  function calc(a){if(EF[a.id]!=null)return;if(vis[a.id])return;vis[a.id]=1;var es=0;
+    (a.pred||[]).forEach(function(pr){var pa=byCode[pr.code];if(!pa)return;calc(pa);var lag=+pr.lag||0;var cand;
+      if(pr.type==='SS')cand=ES[pa.id]+lag;else if(pr.type==='FF')cand=EF[pa.id]+lag-(a.dur-1);else if(pr.type==='SF')cand=ES[pa.id]+lag-(a.dur-1);else cand=EF[pa.id]+1+lag;
+      if(cand>es)es=cand;});
+    if(a.smin!=null&&a.smin!=='')es=Math.max(es,+a.smin);
+    ES[a.id]=Math.max(0,Math.round(es));EF[a.id]=ES[a.id]+Math.max(1,a.dur)-1;}
+  acts.forEach(calc);
+  var projEnd=0;acts.forEach(function(a){if(EF[a.id]>projEnd)projEnd=EF[a.id];});
+  var succ={};acts.forEach(function(a){(a.pred||[]).forEach(function(pr){var pa=byCode[pr.code];if(pa)(succ[pa.id]=succ[pa.id]||[]).push({id:a.id,type:pr.type,lag:+pr.lag||0});});});
+  var LF={},LS={},visL={};
+  function calcL(a){if(LS[a.id]!=null)return;if(visL[a.id])return;visL[a.id]=1;var ss=succ[a.id]||[];var lf;
+    if(!ss.length){lf=projEnd;}else{lf=Infinity;ss.forEach(function(s){var sa=byId[s.id];calcL(sa);var cand;
+      if(s.type==='SS')cand=LS[sa.id]-s.lag+(a.dur-1);else if(s.type==='FF')cand=LF[sa.id]-s.lag;else if(s.type==='SF')cand=LF[sa.id]-s.lag+(a.dur-1);else cand=LS[sa.id]-1-s.lag;
+      if(cand<lf)lf=cand;});}
+    LF[a.id]=lf;LS[a.id]=lf-Math.max(1,a.dur)+1;}
+  acts.slice().reverse().forEach(calcL);
+  acts.forEach(function(a){a._es=ES[a.id];a._ef=EF[a.id];a._ls=LS[a.id];a._lf=LF[a.id];a._tf=Math.round((LS[a.id]||0)-(ES[a.id]||0));a._crit=(a._tf<=0);a.ms=ES[a.id];a.me=EF[a.id];a.pct=wbsProgress(a);});
+  var n=Math.max(1,projEnd+1);var months=[];for(var i=0;i<n;i++)months.push(periodLabel(pl,i));
+  return {acts:acts,projEnd:projEnd,dur:n,months:months};}
+
+function renderWbsGantt(el){const p=proj();ensurePlan(p);const w=p.wbs;const S=wbsSchedule(p);const dur=S.dur;const months=S.months;const EVM=wbsEVM(p);
+  const pl=p.plan;const U={month:'เดือน',week:'สัปดาห์',day:'วัน'};
+  const crit=S.acts.filter(function(a){return a._crit;}).length;
+  const _V=wbsMapValidate(p);const _mapInfo="CBS map "+_V.mapped+"/"+_V.total+(_V.over.length?(" · <b style=\"color:#ef4444\">"+_V.over.length+" over-allocated ⚠</b>"):(" · "+cur()+" "+fmt(Math.round(wbsTotalMapped(p)))));
+  const CW=34,LW=494,RH=26,W=dur*CW;
+  const grid=`repeating-linear-gradient(90deg,transparent,transparent ${CW-1}px,#f0f2f5 ${CW-1}px,#f0f2f5 ${CW}px)`;
+  const msel=(cur,cb)=>`<select onchange="${cb}" style="border:1px solid var(--line);border-radius:4px;padding:1px;font-size:10px;width:58px">${months.map((m,i)=>`<option value="${i}" ${i===cur?'selected':''}>${m}</option>`).join('')}</select>`;
+  const bar=(a)=>{const left=a.ms*CW,wd=Math.max(5,(a.me-a.ms+1)*CW-2);const col=a._crit?'#ef4444':'#4f46e5';
+    let h='';
+    if(a.baseMs!=null){const bl=a.baseMs*CW,bw=Math.max(5,(a.baseDur||1)*CW-2);h+=`<div style="position:absolute;left:${bl}px;top:2px;width:${bw}px;height:4px;background:#cbd5e1;border-radius:2px" title="Baseline"></div>`;}
+    h+=`<div style="position:absolute;left:${left}px;top:8px;width:${wd}px;height:8px;background:${col}55;border-radius:3px"></div>`;
+    const pct=Math.max(0,Math.min(100,+a.pct||0));if(pct>0)h+=`<div style="position:absolute;left:${left}px;top:8px;width:${(wd*pct/100).toFixed(1)}px;height:8px;background:${col};border-radius:3px"></div>`;
+    return `<div style="position:relative;width:${W}px;flex:0 0 ${W}px;background:${grid}">${h}</div>`;};
+  let R='';
+  wbsKids(w,null).forEach(function(l1){const A1=S.acts.filter(function(a){return String(a.code).indexOf(l1.code.replace('.0',''))===0&&a.code.split('.')[0]===l1.code.split('.')[0];});
+    if(!A1.length)return;const c1='g1_'+l1.id;const open=wbsCollapse[c1]!==true;
+    const ms1=Math.min.apply(0,A1.map(a=>a.ms)),me1=Math.max.apply(0,A1.map(a=>a.me));
+    R+=`<div style="display:flex;height:${RH}px;border-bottom:1px solid var(--soft)"><div style="position:sticky;left:0;z-index:2;width:${LW}px;flex:0 0 ${LW}px;background:#1f2a44;color:#fff;display:flex;align-items:center;padding:0 8px"><span style="cursor:pointer;font-weight:800;font-size:12px" onclick="app.wbsTogC('${c1}')">${open?'▾':'▸'} ${esc(l1.code)} ${esc(l1.name)}</span></div>
+      <div style="position:relative;width:${W}px;flex:0 0 ${W}px;background:${grid}"><div style="position:absolute;left:${ms1*CW}px;top:9px;width:${Math.max(5,(me1-ms1+1)*CW-2)}px;height:6px;background:#94a3b8;border-radius:3px"></div></div></div>`;
+    if(!open)return;
+    wbsKids(w,l1.id).forEach(function(l2){const A2=S.acts.filter(function(a){return a.parentId===l2.id;});if(!A2.length)return;
+      const c2='g2_'+l2.id;const o2=wbsCollapse[c2]!==true;
+      const ms2=Math.min.apply(0,A2.map(a=>a.ms)),me2=Math.max.apply(0,A2.map(a=>a.me));
+      R+=`<div style="display:flex;height:${RH}px;border-bottom:1px solid var(--soft)"><div style="position:sticky;left:0;z-index:2;width:${LW}px;flex:0 0 ${LW}px;background:#eef2ff;display:flex;align-items:center;padding:0 8px 0 20px"><span style="cursor:pointer;font-weight:700;font-size:11.5px" onclick="app.wbsTogC('${c2}')">${o2?'▾':'▸'} ${esc(l2.code)} ${esc(l2.name)}</span></div>
+        <div style="position:relative;width:${W}px;flex:0 0 ${W}px;background:${grid}"><div style="position:absolute;left:${ms2*CW}px;top:9px;width:${Math.max(5,(me2-ms2+1)*CW-2)}px;height:6px;background:#a5b4fc;border-radius:3px"></div></div></div>`;
+      if(!o2)return;
+      A2.forEach(function(a){
+        const nm=`<span style="color:#94a3b8;font-size:10px;min-width:44px;display:inline-block">${esc(a.code)}</span><span style="font-size:12px">${esc(a.name)}</span>`;
+        const left=`<div style="position:sticky;left:0;z-index:2;width:${LW}px;flex:0 0 ${LW}px;background:#fff;border-right:1px solid var(--line);display:flex;align-items:center;${a._crit?'box-shadow:inset 3px 0 0 #ef4444':''}">
+          <div title="${esc(a.name)}" style="flex:1;padding-left:38px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;padding-right:4px">${nm}</div>
+          <button title="ความสัมพันธ์/predecessor" onclick="app.wbsPred('${a.id}')" style="border:none;background:${(a.predText||'').trim()?'#eef2ff':'transparent'};color:#4f46e5;border-radius:4px;cursor:pointer;font-size:11px;width:22px">🔗</button>
+          <button title="map CBS → budget" onclick="app.wbsMapPopup('${a.id}')" style="border:1px solid var(--line);background:${wbsActBudget(p,a.id)>0?'#ecfdf5':'#fff'};color:#0f766e;border-radius:4px;cursor:pointer;font-size:10px;width:62px;overflow:hidden;white-space:nowrap">${wbsActBudget(p,a.id)>0?fmtShort(wbsActBudget(p,a.id)):'฿ map'}</button>
+          <div style="width:34px;text-align:center"><input value="${a.dur}" onchange="app.wbsSetF('${a.id}','dur',this.value)" style="width:28px;text-align:center;border:1px solid var(--line);border-radius:4px;font-size:11px"></div>
+          <div style="width:60px;text-align:center">${msel(a.ms,`app.wbsSetF('${a.id}','smin',this.value)`)}</div>
+          <div style="width:38px;text-align:center;font-size:10.5px;color:${a._crit?'#ef4444':'#64748b'}" title="Total float">${a._tf}</div>
+          <div style="width:44px;text-align:right;padding-right:4px"><button title="วัดความคืบหน้า (${wbsMethodOf(a)})" onclick="app.wbsMeasure('${a.id}')" style="width:40px;text-align:right;border:1px solid #c7d2fe;background:#eef2ff;color:#4f46e5;border-radius:4px;font-size:11px;font-weight:700;cursor:pointer;padding:2px 3px">${Math.round(+a.pct||0)}%</button></div></div>`;
+        R+=`<div style="display:flex;height:${RH}px;border-bottom:1px solid var(--soft)">${left}${bar(a)}</div>`;});
+    });
+  });
+  const head=`<div style="display:flex;position:sticky;top:0;z-index:5;background:var(--card);border-bottom:1px solid var(--line)">
+     <div style="position:sticky;left:0;z-index:6;width:${LW}px;flex:0 0 ${LW}px;background:var(--card);border-right:1px solid var(--line);display:flex;font-size:10px;font-weight:700;color:#64748b;text-transform:uppercase">
+       <div style="flex:1;padding:6px 10px">WBS Activity</div><div style="width:22px"></div><div style="width:62px;padding:6px 0;text-align:center">Budget</div><div style="width:34px;padding:6px 0;text-align:center">Dur</div><div style="width:60px;padding:6px 0;text-align:center">Start</div><div style="width:38px;padding:6px 0;text-align:center">Float</div><div style="width:44px;padding:6px 2px;text-align:right">%</div></div>
+     <div style="display:flex;width:${W}px">${months.map(m=>`<div style="width:${CW}px;flex:0 0 ${CW}px;text-align:center;font-size:8.5px;color:#94a3b8;padding:6px 0;border-left:1px solid #f0f2f5">${m}</div>`).join('')}</div></div>`;
+  el.innerHTML=`<div class="pagehead"><div><h2>L4 Schedule / Gantt <span style="font-weight:500;font-size:12px;color:var(--muted)">· WBS · CPM</span></h2>
+     <p>${esc(p.name)} · ${S.acts.length} กิจกรรมใน scope · Finish ${months[S.projEnd]||'-'} · <b style="color:#ef4444">${crit} critical</b> · หน่วย ${U[planUnit(pl)]} · ${_mapInfo}</p></div>
+     <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">หน่วย:<select onchange="app.setUnit(this.value)" style="border:1px solid var(--line);border-radius:8px;padding:6px 8px"><option value="month" ${planUnit(pl)==='month'?'selected':''}>เดือน</option><option value="week" ${planUnit(pl)==='week'?'selected':''}>สัปดาห์</option><option value="day" ${planUnit(pl)==='day'?'selected':''}>วัน</option></select>
+       <button class="btn" onclick="app.wbsSetStart()">📅 วันเริ่มโครงการ</button><button class="btn" onclick="app.wbsBaseline()">📌 Baseline</button><button class="btn" onclick="app.wbsExportXlsx()">⬇ Excel</button><button class="btn" onclick="app.wbsImportXlsx()">⬆ Import</button></div></div>
+   <div style="display:flex;gap:14px;margin:0 0 10px;font-size:11px;flex-wrap:wrap;align-items:center"><span style="color:#cbd5e1;font-weight:700">▬ Baseline</span><span style="color:#4f46e5;font-weight:700">▬ Forecast/Actual</span><span style="color:#ef4444;font-weight:700">▬ Critical (float≤0)</span> · แก้ Dur/Start/% ได้ · 🔗 กำหนด predecessor (เช่น 7.2.1FS+2)</div>
+   ${(function(){const card=(t,v,s,c)=>`<div style="flex:1;min-width:112px;background:#f8fafc;border-radius:10px;padding:9px 11px"><div style="font-size:10px;color:#64748b;text-transform:uppercase;font-weight:700">${t}</div><div style="font-size:16px;font-weight:800;color:${c||'#0f172a'}">${v}</div><div style="font-size:10px;color:#94a3b8">${s||''}</div></div>`;return `<div class="card" style="margin-bottom:14px"><div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px"><h3 style="margin:0">Earned Value — PV · EV · AC</h3><div style="font-size:12px">Cost factor <input type="number" min="0" max="100" value="${(EVM.cf*100).toFixed(0)}" onchange="app.wbsSetCostFactor(this.value)" style="width:54px;text-align:right;border:1px solid var(--line);border-radius:6px;padding:3px">% (งบ→ต้นทุน)</div></div><div class="kpis" style="margin-top:10px;display:flex;gap:8px;flex-wrap:wrap">${card("BAC",cur()+" "+fmtShort(EVM.BAC),"งบรวม (mapped)")}${card("PV",fmtShort(EVM.PV),"แผน ณ วันนี้")}${card("EV",fmtShort(EVM.EV),EVM.pct.toFixed(0)+"% complete","#10b981")}${card("AC",fmtShort(EVM.AC),"ต้นทุนจริง","#ef4444")}${card("SPI",EVM.SPI.toFixed(2),"SV "+fmtShort(EVM.SV),EVM.SPI>=1?"#10b981":"#ef4444")}${card("CPI",EVM.CPI>0?EVM.CPI.toFixed(2):"—","EAC "+fmtShort(EVM.EAC),EVM.CPI>=1?"#10b981":(EVM.CPI>0?"#ef4444":"#94a3b8"))}</div><div style="display:flex;gap:10px;align-items:center;margin:10px 0 4px"><span style="font-size:12px;font-weight:700;white-space:nowrap">📍 Data date</span><input type="range" min="0" max="${dur-1}" value="${EVM.dd}" onchange="app.setDataDate(this.value)" style="flex:1;accent-color:#4f46e5"><span style="font-weight:800;background:#4f46e5;color:#fff;border-radius:8px;padding:4px 10px;font-size:12px">${months[EVM.dd]||''}</span></div><div class="chart-wrap" style="height:240px"><canvas id="wbsSC"></canvas></div></div>`;})()}
+   <div class="tbl-card" id="wbsGanttWrap" style="overflow:auto;max-height:74vh;position:relative">${head}<div style="position:relative">${R}</div></div>`;
+  if(window.Chart&&document.getElementById("wbsSC")){try{charts.wbsSC=new Chart(document.getElementById("wbsSC"),{type:"line",data:{labels:months,datasets:[{label:"PV",data:EVM.pvCum,borderColor:"#94a3b8",borderDash:[5,4],fill:false,tension:.3,pointRadius:0,borderWidth:2},{label:"EV",data:EVM.evCum,borderColor:"#10b981",backgroundColor:"rgba(16,185,129,.10)",fill:true,tension:.3,pointRadius:0,borderWidth:2.5,spanGaps:false},{label:"AC",data:EVM.acCum,borderColor:"#ef4444",fill:false,tension:.3,pointRadius:0,borderWidth:2,spanGaps:false}]},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:true,labels:{font:{size:10},boxWidth:12}},tooltip:{callbacks:{label:c=>c.dataset.label+": "+(c.raw==null?"-":fmtShort(c.raw))}}},scales:{x:{ticks:{font:{size:8},maxRotation:90,minRotation:90},grid:{display:false}},y:{ticks:{callback:v=>fmtShort(v),font:{size:9}}}}}});}catch(e){}}
+}
+
+function opsResourceChart(p){var H=wbsManpowerHist(p);var cv=document.getElementById('opsMH');if(!cv)return;
+ charts.opsMH=new Chart(cv,{type:'bar',data:{labels:H.labels,datasets:[{label:'Planned crew',data:H.plan,backgroundColor:'rgba(148,163,184,.55)'},{label:'Actual crew',data:H.act,backgroundColor:'rgba(79,70,229,.75)'}]},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:true,labels:{font:{size:10},boxWidth:12}}},scales:{x:{ticks:{font:{size:8},maxRotation:90,minRotation:90},grid:{display:false}},y:{title:{display:true,text:'จำนวนคน'},ticks:{font:{size:9}},grid:{color:'#eef1f6'}}}}});}
+
 let storageOK=true;
-let state=load();attachRefSchedules(state);
+let state=load();attachRefSchedules(state);migrateWBS(state);
 function nextProjectCode(){const d=new Date();const yy=String(d.getFullYear()%100).padStart(2,'0');const mm=String(d.getMonth()+1).padStart(2,'0');const pre='PJ'+yy+mm;let n=0;(state.projects||[]).forEach(p=>{if(p&&p.code&&p.code.indexOf(pre)===0){const s=parseInt(p.code.slice(pre.length))||0;if(s>n)n=s;}});return pre+String(n+1).padStart(3,'0');}
 function mkProject(seed){return {id:uid(),name:seed.name,code:seed.code,client:seed.client,currency:seed.currency||'THB',
   cats:seed.cats.map(c=>({id:uid(),grp:c.grp,no:c.no,name:c.name,type:c.type,
@@ -310,14 +1088,14 @@ function renderManpower(el){const p=proj();ensureMP(p);const rm=resMonthly(p);
     const posRows=p.mp.positions.length?p.mp.positions.map(po=>`<tr><td class="l"><input value="${esc(po.role||'')}" placeholder="e.g. Electrician" style="width:200px" onchange="app.setPos('${po.id}','role',this.value)"></td>
       <td style="text-align:center"><select onchange="app.setPos('${po.id}','catNo',this.value)" style="font-size:11px;border:1px solid var(--line);border-radius:6px;padding:3px">${catOpts(po.catNo)}</select></td>
       <td class="pin"><input value="${po.wage!=null?po.wage:''}" placeholder="0" style="width:80px;text-align:right" onchange="app.setPos('${po.id}','wage',this.value)"> ฿/day</td>
-      <td class="act"><button onclick="app.delPos('${po.id}')">×</button></td></tr>`).join(''):`<tr><td colspan="4" style="text-align:center;color:var(--muted);padding:14px">No positions yet — add roles &amp; daily wages, or seed from payroll roster.</td></tr>`;
+      <td style="text-align:center"><select onchange="app.setPos('${po.id}','wbsId',this.value)" style="font-size:10.5px;border:1px solid var(--line);border-radius:6px;padding:3px;max-width:180px">${wbsActOpts(p,po.wbsId)}</select></td><td class="act"><button onclick="app.delPos('${po.id}')">×</button></td></tr>`).join(''):`<tr><td colspan="5" style="text-align:center;color:var(--muted);padding:14px">No positions yet — add roles &amp; daily wages, or seed from payroll roster.</td></tr>`;
     const unitRows=p.eqp.units.length?p.eqp.units.map(u=>`<tr><td class="l"><input value="${esc(u.name||'')}" placeholder="e.g. Mobile Crane 25T" style="width:200px" onchange="app.setUnit('${u.id}','name',this.value)"></td>
       <td style="text-align:center"><select onchange="app.setUnit('${u.id}','type',this.value)" style="font-size:11px;border:1px solid var(--line);border-radius:6px;padding:3px"><option ${u.type!=='Subcontract'?'selected':''}>Rental</option><option ${u.type==='Subcontract'?'selected':''}>Subcontract</option></select></td>
       <td class="pin"><input value="${u.rate!=null?u.rate:''}" placeholder="0" style="width:80px;text-align:right" onchange="app.setUnit('${u.id}','rate',this.value)"> ฿/day</td>
       <td class="act"><button onclick="app.delUnit('${u.id}')">×</button></td></tr>`).join(''):`<tr><td colspan="4" style="text-align:center;color:var(--muted);padding:14px">No equipment yet — add units &amp; daily rental rates.</td></tr>`;
     body=`<div class="grid g2">
       <div class="tbl-card"><div style="padding:10px 14px;font-weight:700;font-size:13px;border-bottom:1px solid var(--line)">👷 Positions master <span style="font-weight:400;color:var(--muted);font-size:11px">· role &amp; daily wage</span></div>
-        <table class="ct"><thead><tr><th class="l">Role / Position</th><th>CBS</th><th>Wage/day</th><th></th></tr></thead><tbody>${posRows}</tbody></table>
+        <table class="ct"><thead><tr><th class="l">Role / Position</th><th>CBS</th><th>Wage/day</th><th>WBS activity</th><th></th></tr></thead><tbody>${posRows}</tbody></table>
         <div class="addrow" style="display:flex;gap:8px"><button onclick="app.addPos()">＋ Add position</button><button onclick="app.seedPositions()" style="background:none;border:none;color:#4f46e5;cursor:pointer;font-weight:600">↺ Seed from roster</button></div></div>
       <div class="tbl-card"><div style="padding:10px 14px;font-weight:700;font-size:13px;border-bottom:1px solid var(--line)">🏗️ Equipment master <span style="font-weight:400;color:var(--muted);font-size:11px">· unit &amp; daily rate</span></div>
         <table class="ct"><thead><tr><th class="l">Equipment / Subcontract</th><th>Type</th><th>Rate/day</th><th></th></tr></thead><tbody>${unitRows}</tbody></table>
@@ -690,6 +1468,8 @@ function render(){
   else if(current==='cost')renderCost(el);
   else if(current==='cashflow')renderCashflow(el);
   else if(current==='schedule')renderSchedule(el);
+  else if(current==='wbs')renderWbs(el);
+  else if(current==='ops')renderOps(el);
   else if(current==='manpower')renderManpower(el);
   else if(current==='timesheet')renderTimesheet(el);
   else if(current==='report')renderReport(el);
@@ -756,11 +1536,12 @@ const iF='<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-widt
 let expanded={};
 function renderCost(el){
   const p=proj();if(p.l4&&p.l4.gen)l4SyncClaims(p);
+  const _wv=(p.wbs?wbsMapValidate(p):null);
   let pM=0,pL=0,aM=0,aL=0,rc=0,cl=0;
   p.cats.forEach(c=>c.items.forEach(it=>{pM+=budMat(it);pL+=budLab(it);aM+=actMatOf(it,c.no);aL+=actLabOf(it,c.no);rc+=readyToClaim(it);cl+=itemClaimAmt(it);}));
   const selBar=(function(){const ids=Object.keys(cbsSel).filter(k=>cbsSel[k]);if(!ids.length)return '';const bs='border:none;background:rgba(255,255,255,.22);color:#fff;border-radius:6px;padding:4px 10px;cursor:pointer;font-weight:600';return `<div style="position:sticky;top:0;z-index:6;background:#4f46e5;color:#fff;border-radius:10px;padding:9px 14px;margin-bottom:8px;display:flex;align-items:center;gap:10px;flex-wrap:wrap"><b>เลือก ${ids.length} รายการ</b><button style="${bs}" onclick="app.moveSelUp()">▲ ขึ้น</button><button style="${bs}" onclick="app.moveSelDown()">▼ ลง</button><span style="font-size:12px">ย้ายไปหมวด:</span><select onchange="app.moveSelTo(this.value)" style="color:#111;border-radius:6px;padding:4px 6px;border:none"><option value="">— เลือก —</option>${p.cats.map(c=>`<option value="${c.no}">${c.no} · ${esc(c.name)}</option>`).join('')}</select><button style="${bs};margin-left:auto" onclick="app.clearSel()">ล้าง</button></div>`;})();
   const bg1='background:#f8fafc',bg2='background:#f0f9ff';
-  el.innerHTML=`<div class="pagehead"><div><h2>CBS Cost — BOQ (ค่าของ/ค่าแรง · Plan · Actual · Claim)</h2><p>Plan ${cur()} ${fmt(pM+pL)} (ของ ${fmt(pM)} · แรง ${fmt(pL)}) · Actual ${cur()} ${fmt(aM+aL)} · Rdy to Claim ${cur()} ${fmt(rc)} · ราคา/หน่วย × จำนวน = รวม</p></div>
+  el.innerHTML=`<div class="pagehead"><div><h2>CBS Cost — BOQ (ค่าของ/ค่าแรง · Plan · Actual · Claim)</h2><p>Plan ${cur()} ${fmt(pM+pL)} (ของ ${fmt(pM)} · แรง ${fmt(pL)}) · Actual ${cur()} ${fmt(aM+aL)} · Rdy to Claim ${cur()} ${fmt(rc)} · ราคา/หน่วย × จำนวน = รวม${_wv?(' · <b style="color:#0f766e">WBS map '+_wv.mapped+'/'+_wv.total+'</b>'+(_wv.over.length?(' · <b style="color:#ef4444">'+_wv.over.length+' over-allocated ⚠</b>'):'')):''}</p></div>
      <div style="display:flex;gap:8px"><button class="btn" onclick="app.expandAll(true)">Expand all</button><button class="btn" onclick="app.expandAll(false)">Collapse</button><button class="btn primary" onclick="app.importExcel()">⬆ Upload CBS</button></div></div>
    ${selBar}
    <div class="tbl-card scroll"><table class="ct" style="font-size:12px">
@@ -853,12 +1634,13 @@ function findItem(id){const p=proj();for(const c of p.cats){const it=c.items.fin
 function _l4lc(s){return (s||'').toString().toLowerCase();}
 function pkgOf(name){var d=_l4lc(name);var H=function(){for(var i=0;i<arguments.length;i++){if(d.indexOf(arguments[i])>=0)return true;}return false;};
  if(H('gland','แกลนด์'))return 'Cable Gland & Accessories';
- if(H('tray','ราง','ladder','wireway'))return 'Cable Tray & Accessories';
- if(H('conduit','ท่อร้อย','emt','imc',' rsc','flexible','flex ','rigid pipe'))return 'Conduit & Accessories';
- if(H('junction','pull box','local box','terminal box','โลคอล',' jb'))return 'Junction Boxes & Accessories';
- if(H('support','c-channel','channel','unistrut','strut','bracket','hanger','เหล็ก','steel','ซัพพอร์ท'))return 'Steel Support & Hanger';
- if(H('instrument cable','signal cable','control cable','สายสัญญาณ','rtd cable','thermocouple cable','compensating','coaxial','fo cable','fiber'))return 'Instrument Cable';
- if(H('power cable','cv-','xlpe','mv cable','lv cable','nyy','vct','cv ','0.6/1','24kv','22kv','33kv','11kv','สายไฟ','สายเมน'))return 'Power Cable';
+ if(H('termination kit','splicing kit','sealing','heat shrink','shrink','lug','ferrule','marker','identification','consumable','accessories of installation'))return 'Consumables & Accessories';
+ if(H('tray','ราง','ladder','wireway','trunking')||((H('elbow','tee','reducer','reduce','bend','cross','riser','cover','horizontal','vertical')&&!H('cable','wire'))))return 'Cable Tray & Accessories';
+ if(H('conduit','ท่อร้อย','emt','imc',' rsc','flexible','flex ','gi pipe','rigid pipe'))return 'Conduit & Accessories';
+ if(H('junction','pull box','local box','terminal box','marshalling','โลคอล',' jb'))return 'Junction Boxes & Accessories';
+ if(H('support','c-channel','channel','unistrut','strut','bracket','hanger','เหล็ก',' steel','ซัพพอร์ท','j-bolt','bolt & nut','fitting material','anchor','clamp'))return 'Steel Support & Hanger';
+ if(H('instrument cable','signal cable','control cable','สายสัญญาณ','rtd cable','thermocouple cable','compensating','coaxial','fo cable','fiber','pair','triad','prox cable'))return 'Instrument Cable';
+ if(/(^|[^a-z])\d+c[-x\/ ]|1cx|sq\.?\s?mm|[0-9]+\s?kv|nyy|cv[- ]|xlpe|vct|0\.6\/1/.test(d)||H('power cable','mv cable','lv cable','สายไฟ','สายเมน'))return 'Power Cable';
  if(H('transmitter','gauge','switch','detector','sensor','rtd','thermocouple','valve','flow','level','pressure','temperature','analyzer','positioner','solenoid','instrument'))return 'Field Instruments';
  if(H('light','luminaire','โคมไฟ','lamp','fixture','flood'))return 'Lighting & Small Power';
  if(H('ground','earth','สายดิน','bonding','lightning'))return 'Grounding Material';
@@ -871,7 +1653,7 @@ function genL4(p){var pl=ensurePlan(p);var end=Math.max(1,planEnd(pl))-1;
  var W=function(k,def){var w=pl.phases[k]||def||{s:0,dur:2};return {s:cl(w.s),e:cl(w.s+Math.max(1,w.dur)-1)};};
  var ew=W('eng'),pw=W('proc'),iw=W('inst'),cw=W('comm');
  var IND={TCF:1,TOL:1,RNT:1,TRN:1,UTL:1,OHC:1};
- var stageOfPkg={'Steel Support & Hanger':'sup','Cable Tray & Accessories':'tray','Conduit & Accessories':'cond','Field Instruments':'fi','Junction Boxes & Accessories':'fi','Power Cable':'pullP','Instrument Cable':'pullI','Cable Gland & Accessories':'termP','Lighting & Small Power':'light','Grounding Material':'gnd','Panel / MCC / Equipment':'panel','Other Materials':'gen'};
+ var stageOfPkg={'Steel Support & Hanger':'sup','Cable Tray & Accessories':'tray','Conduit & Accessories':'cond','Field Instruments':'fi','Junction Boxes & Accessories':'fi','Power Cable':'pullP','Instrument Cable':'pullI','Cable Gland & Accessories':'termP','Consumables & Accessories':'termP','Lighting & Small Power':'light','Grounding Material':'gnd','Panel / MCC / Equipment':'panel','Other Materials':'gen'};
  var engPool=0,docPool=0,commPool=0,procPool=0,instPool=0;var procMembers={},stageMembers={};
  p.cats.forEach(function(c){c.items.forEach(function(it){if(isMargin(it))return;var m=Math.max(0,budMat(it)),l=Math.max(0,budLab(it));if(m<=0&&l<=0)return;var nm=it.name||c.name;
    if(c.no==='ENG'){engPool+=m+l;return;} if(c.no==='DOC'){docPool+=m+l;return;} if(c.no==='SUB'){commPool+=l;return;} if(IND[c.no])return;
@@ -885,7 +1667,7 @@ function genL4(p){var pl=ensurePlan(p);var end=Math.max(1,planEnd(pl))-1;
  var eng=[['Material approval & Specification (all)',0.18],['Location / Layout plan',0.10],['Single line diagram (SLD)',0.12],['Schematic & Wiring / Connection diagram',0.16],['Cable schedule & routing',0.12],['Loop diagram (instrument)',0.12],['Termination / Hook-up drawing',0.12],['As-built drawing',0.08]];
  var eL=laySeq(eng.length,ew.s,ew.e,0.4);eng.forEach(function(x,i){push('eng','Engineering Deliverables',x[0],engPool*x[1],eL[i][0],eL[i][1]);});
 
- var pOrder=['Panel / MCC / Equipment','Power Cable','Instrument Cable','Field Instruments','Steel Support & Hanger','Cable Tray & Accessories','Conduit & Accessories','Cable Gland & Accessories','Junction Boxes & Accessories','Lighting & Small Power','Grounding Material','Other Materials'];
+ var pOrder=['Panel / MCC / Equipment','Power Cable','Instrument Cable','Field Instruments','Steel Support & Hanger','Cable Tray & Accessories','Conduit & Accessories','Cable Gland & Accessories','Junction Boxes & Accessories','Consumables & Accessories','Lighting & Small Power','Grounding Material','Other Materials'];
  var longLead={'Panel / MCC / Equipment':1,'Power Cable':1,'Instrument Cable':1,'Field Instruments':1};
  var pspan=Math.max(1,pw.e-pw.s+1);
  pOrder.forEach(function(g){var mem=procMembers[g];if(!mem||!mem.length)return;var v=mem.reduce(function(a,m){return a+m.val;},0);var ll=longLead[g];var ms=ll?pw.s:Math.min(pw.e,pw.s+Math.floor(pspan*0.25));var me=Math.min(pw.e,ms+Math.max(1,Math.round(pspan*(ll?0.85:0.6)))-1);push('proc','Procurement Packages',g,v,ms,me,mem,'mat');});
@@ -1092,7 +1874,7 @@ function schedStats(p){const sc=buildSchedule(p);const pl=p.plan;const dur=sc.du
   const actCum=[];for(let m=0;m<dur;m++){if(m>dd){actCum.push(null);continue;}const sh=planCum[dd]?planCum[m]/planCum[dd]:0;actCum.push(Math.min(100,earned*sh));}
   return {sc,dur,totW,planCum,actCum,dd,earned,planToDate:planCum[dd]||0,planPct:Math.min(100,planCum[dd]||0),actPct:Math.min(100,earned)};}
 let expandedS={};
-function renderSchedule(el){const p=proj();ensurePlan(p);const k=schedStats(p);const sc=k.sc;
+function renderSchedule(el){const p=proj();if(p.wbs&&p.wbsMode)return renderWbsGantt(el);ensurePlan(p);const k=schedStats(p);const sc=k.sc;
   if(!sc.acts.length){el.innerHTML=`<div class="pagehead"><div><h2>L4 Schedule / Gantt</h2><p>L4 activities are generated from your CBS items (weighted by value).</p></div></div>
      <div class="card"><div class="body" style="text-align:center;padding:40px"><p class="mini" style="max-width:520px;margin:0 auto 16px">No CBS items with budget yet. Create a project from a quotation (CBS Cost), then set phase durations here.</p>
      <button class="btn primary" onclick="app.scheduleWizard()">🗓️ Set phase durations</button></div></div>`;return;}
@@ -1404,6 +2186,98 @@ const app={
   setItemDone(id,dim,actId,v){const p=proj();const it=findItem(id);if(!it)return;const val=Math.max(0,Math.min(100,parseNum(v)));if(dim==='mat')it.matDone=val;else it.labDone=val;l4SyncClaims(p);save();app.l4ItemPopup(actId);},
   setActAllDone(actId,val){const p=proj();const a=((p.l4&&p.l4.acts)||[]).find(x=>x.id===actId);if(!a||!a.items)return;a.items.forEach(m=>{const it=findItem(m.id);if(it){if(a.dim==='mat')it.matDone=val;else it.labDone=val;}});l4SyncClaims(p);save();app.l4ItemPopup(actId);},
   l4PopupDone(){app.closeModal();renderSchedule(document.getElementById('content'));},
+  wbsPickTemplate(){const p=proj();modal(`<h4>สร้าง WBS จาก SEUS E&I Master</h4><div class="mbody">
+    <p class="mini">เลือก template — ระบบคัดลอกกิจกรรมมาเป็นของโปรเจกต์นี้ (แก้ไข scope/ชื่อได้ ไม่กระทบ master)</p>
+    ${WBS_TEMPLATES.map((t,i)=>`<label style="display:flex;gap:8px;align-items:flex-start;padding:8px 10px;border:1px solid var(--line);border-radius:8px;margin-bottom:6px;cursor:pointer"><input type="radio" name="wtpl" value="${t.id}" ${i===0?'checked':''} style="margin-top:3px"><div><div style="font-weight:700;font-size:13px">${esc(t.name)}</div><div class="mini" style="color:#64748b">${esc(t.desc)}</div></div></label>`).join('')}
+    ${p.wbs?`<p class="mini" style="color:#ef4444">⚠ โปรเจกต์นี้มี WBS อยู่แล้ว — สร้างใหม่จะแทนที่ (scope/ชื่อที่แก้ไว้จะหาย)</p>`:``}
+    </div><div class="mfoot"><button class="btn" onclick="app.closeModal()">ยกเลิก</button><button class="btn primary" onclick="app.wbsCreate()">สร้าง WBS</button></div>`);},
+  wbsCreate(){const p=proj();const sel=document.querySelector('input[name=wtpl]:checked');const tid=sel?sel.value:'full';p.wbs=wbsInstantiate(tid);p.wbsMode=true;if(!state.schemaVersion)state.schemaVersion=2;save();app.closeModal();nav('wbs');toast('สร้าง WBS ('+p.wbs.templateName+') แล้ว');},
+  wbsTogC(k){wbsCollapse[k]=!wbsCollapse[k];renderWbs(document.getElementById('content'));},
+  wbsSetName(id,v){const p=proj();if(!p.wbs)return;const n=p.wbs.nodes.filter(x=>x.id===id)[0];if(n)n.name=v;save();},
+  wbsSchedRerender(){renderWbsGantt(document.getElementById('content'));},
+  wbsSetF(id,f,v){const p=proj();if(!p.wbs)return;const n=p.wbs.nodes.filter(x=>x.id===id)[0];if(!n)return;
+    if(f==='dur')n.dur=Math.max(1,parseFloat(v)||1);else if(f==='smin')n.smin=Math.max(0,parseInt(v)||0);else if(f==='pct')n.pct=Math.max(0,Math.min(100,parseNum(v)));save();renderWbsGantt(document.getElementById('content'));},
+  wbsPred(id){const p=proj();const n=p.wbs.nodes.filter(x=>x.id===id)[0];if(!n)return;const acts=wbsActs(p).filter(x=>x.id!==id);
+    const list=acts.map(a=>`<div style="padding:2px 6px;cursor:pointer;font-size:11px;border-bottom:1px solid var(--soft)" onclick="var i=document.getElementById('predTxt');i.value=(i.value.trim()?i.value.trim()+',':'')+'${a.code}';">${esc(a.code)} · ${esc(a.name)}</div>`).join('');
+    modal(`<h4>Predecessor — ${esc(n.code)} ${esc(n.name)}</h4><div class="mbody"><p class="mini">พิมพ์รหัสกิจกรรมก่อนหน้า คั่นด้วย , — ใส่ความสัมพันธ์/lag ได้ เช่น <b>7.2.1</b>, <b>7.1.3FS+2</b>, <b>3.2.5SS-1</b> (FS/SS/FF/SF · +/- lag เป็นจำนวนหน่วยเวลา)</p>
+      <input id="predTxt" value="${esc(n.predText||'')}" style="width:100%;padding:6px;border:1px solid var(--line);border-radius:6px;font-size:13px">
+      <div class="mini" style="margin:8px 0 4px;color:#64748b">คลิกเพื่อเพิ่มรหัส:</div><div style="max-height:34vh;overflow:auto;border:1px solid var(--line);border-radius:6px">${list}</div>
+      </div><div class="mfoot"><button class="btn" onclick="app.closeModal()">ยกเลิก</button><button class="btn primary" onclick="app.wbsPredSave('${id}')">บันทึก</button></div>`);},
+  wbsPredSave(id){const p=proj();const n=p.wbs.nodes.filter(x=>x.id===id)[0];if(n)n.predText=document.getElementById('predTxt').value;save();app.closeModal();renderWbsGantt(document.getElementById('content'));},
+  wbsSetStart(){const p=proj();const pl=ensurePlan(p);const U=planUnit(pl);modal(`<h4>วันเริ่มโครงการ / หน่วยเวลา</h4><div class="mbody wz">
+      <div class="field row" style="margin:0"><div><label>หน่วยเวลา</label><select id="wsU"><option value="month" ${U==='month'?'selected':''}>เดือน</option><option value="week" ${U==='week'?'selected':''}>สัปดาห์</option><option value="day" ${U==='day'?'selected':''}>วัน</option></select></div><div><label>วันเริ่ม</label><input id="wsD" type="date" value="${_isoOf(planStartDate(pl))}"></div></div>
+      </div><div class="mfoot"><button class="btn" onclick="app.closeModal()">ยกเลิก</button><button class="btn primary" onclick="app.wbsSetStartApply()">ตกลง</button></div>`);},
+  wbsSetStartApply(){const p=proj();const pl=ensurePlan(p);pl.unit=document.getElementById('wsU').value;const sd=document.getElementById('wsD').value;if(sd){const d=new Date(sd);if(!isNaN(d)){pl.startISO=_isoOf(d);pl.startY=d.getFullYear();pl.startM=d.getMonth();}}save();app.closeModal();renderWbsGantt(document.getElementById('content'));},
+  wbsBaseline(){const p=proj();const S=wbsSchedule(p);let n=0;S.acts.forEach(a=>{a.baseMs=a.ms;a.baseDur=(a.me-a.ms+1);n++;});save();renderWbsGantt(document.getElementById('content'));toast('ตั้ง Baseline '+n+' กิจกรรมแล้ว');},
+  wbsMapPopup(wbsId){const p=proj();wbsEnsureMap(p);const n=p.wbs.nodes.filter(x=>x.id===wbsId)[0];if(!n)return;
+    const rows=p.wbsMap.filter(m=>m.wbsId===wbsId).map(function(m){const r=cbsItemRef(p,m.cbsItemId);const nm=r?(r.cat.no+' · '+r.it.name):'(ลบแล้ว)';const bud=r?(+r.it.budget||0):0;const tp=cbsAllocPct(p,m.cbsItemId);
+      return `<tr style="border-bottom:1px solid var(--soft)"><td style="padding:3px 6px;font-size:11.5px">${esc(nm)}</td><td style="text-align:right;padding:3px 6px;color:#64748b">${cur()} ${fmt(Math.round(bud))}</td><td style="text-align:right;padding:3px 6px"><input type="number" min="0" max="100" value="${m.pct}" onchange="app.wbsMapSet('${m.id}',this.value)" style="width:52px;text-align:right;border:1px solid ${tp>100.01?'#ef4444':'var(--line)'};border-radius:5px">%</td><td style="text-align:right;padding:3px 6px;font-size:11px">${cur()} ${fmt(Math.round(bud*(+m.pct||0)/100))}</td><td><button onclick="app.wbsMapDel('${m.id}')" style="border:none;background:none;color:#ef4444;cursor:pointer">×</button></td></tr>`;}).join('');
+    const opt=p.cats.map(c=>`<optgroup label="${esc(c.no)} ${esc(c.name)}">${c.items.filter(it=>!isMargin(it)&&(+it.budget)).map(it=>`<option value="${it.id}">${esc(it.name)} (alloc ${cbsAllocPct(p,it.id).toFixed(0)}%)</option>`).join('')}</optgroup>`).join('');
+    const tot=wbsActBudget(p,wbsId);
+    modal(`<h4>Map CBS → ${esc(n.code)} ${esc(n.name)}</h4><div class="mbody" style="max-height:62vh;overflow:auto">
+      <p class="mini">จัดสรร % ของงบรายการ CBS เข้ากิจกรรมนี้ — 1 รายการ CBS แบ่งเข้าหลายกิจกรรมได้ (รวมทุกกิจกรรมต่อรายการต้องไม่เกิน 100%)</p>
+      <table style="width:100%;border-collapse:collapse;font-size:12px"><thead><tr style="background:#f1f5f9"><th style="text-align:left;padding:4px 6px">CBS item</th><th style="text-align:right;padding:4px 6px">Budget</th><th style="text-align:right;padding:4px 6px">%</th><th style="text-align:right;padding:4px 6px">Allocated</th><th></th></tr></thead><tbody>${rows||'<tr><td colspan=5 style="padding:8px;color:#cbd5e1">ยังไม่ได้ map</td></tr>'}</tbody></table>
+      <div style="display:flex;gap:6px;margin-top:10px;align-items:center"><select id="wmItem" style="flex:1;border:1px solid var(--line);border-radius:6px;padding:5px;font-size:11.5px"><option value="">— เลือกรายการ CBS —</option>${opt}</select><input id="wmPct" type="number" min="0" max="100" value="100" style="width:60px;text-align:right;border:1px solid var(--line);border-radius:6px;padding:5px">%<button class="btn primary" onclick="app.wbsMapAdd('${wbsId}')">+ เพิ่ม</button></div>
+      <div style="margin-top:10px;font-weight:700;text-align:right">งบกิจกรรมนี้: ${cur()} ${fmt(Math.round(tot))}</div>
+      ${(function(){var lab=(wbsLabourByAct(p)[wbsId]||0);var mat=(wbsMatAcByAct(p)[wbsId]||0);var ac=lab+mat;var cpi=ac>0?(wbsActBudget(p,wbsId)*wbsCostFactor(p)*((wbsActById(p,wbsId)&&+wbsActById(p,wbsId).pct||0)/100)/ac):0;return `<div style="margin-top:4px;text-align:right;font-size:12px;color:#ef4444">ต้นทุนจริง: ค่าแรง ${fmt(Math.round(lab))} + ค่าของ ${fmt(Math.round(mat))} = ${cur()} ${fmt(Math.round(ac))}${cpi>0?(' · CPI '+cpi.toFixed(2)):''}</div>`;})()}
+      </div><div class="mfoot"><button class="btn primary" onclick="app.wbsMapDone()">เสร็จ</button></div>`);},
+  wbsMapAdd(wbsId){const p=proj();const iid=document.getElementById('wmItem').value;if(!iid){toast('เลือกรายการก่อน');return;}const pct=Math.max(0,Math.min(100,parseNum(document.getElementById('wmPct').value)));wbsEnsureMap(p).push({id:uid(),wbsId:wbsId,cbsItemId:iid,pct:pct});save();app.wbsMapPopup(wbsId);},
+  wbsMapSet(mid,v){const p=proj();const m=(p.wbsMap||[]).filter(x=>x.id===mid)[0];if(m){m.pct=Math.max(0,Math.min(100,parseNum(v)));save();app.wbsMapPopup(m.wbsId);}},
+  wbsMapDel(mid){const p=proj();const m=(p.wbsMap||[]).filter(x=>x.id===mid)[0];const wid=m?m.wbsId:null;p.wbsMap=(p.wbsMap||[]).filter(x=>x.id!==mid);save();if(wid)app.wbsMapPopup(wid);},
+  wbsMapDone(){app.closeModal();renderWbsGantt(document.getElementById('content'));},
+  wbsMeasure(id){const p=proj();const a=p.wbs.nodes.filter(x=>x.id===id)[0];if(!a)return;const m=wbsMethodOf(a);const live=Math.round(wbsProgress(a)*10)/10;
+    const opt=(v,t)=>`<option value="${v}" ${m===v?'selected':''}>${t}</option>`;
+    let body='';
+    if(m==='manual'){body=`<div class="field"><label>% ความคืบหน้า (กรอกเอง)</label><input id="msVal" type="number" min="0" max="100" value="${+a.pct||0}" onchange="app.wbsMeasSet('${id}','pct',this.value)"></div>`;}
+    else if(m==='milestone'){const mv=+a.mMile||0;body=`<div class="field"><label>Milestone</label><div style="display:flex;gap:6px">${[0,50,100].map(v=>`<button class="btn ${mv===v?'primary':''}" onclick="app.wbsMeasSet('${id}','mMile',${v})">${v}%</button>`).join('')}</div></div>`;}
+    else if(m==='qty'){body=`<div class="field row" style="margin:0"><div><label>ปริมาณตามแผน (${esc(a.unit||'unit')})</label><input id="msP" type="number" value="${a.mQtyPlan!=null?a.mQtyPlan:''}" onchange="app.wbsMeasSet('${id}','mQtyPlan',this.value)"></div><div><label>ติดตั้งแล้ว</label><input id="msD" type="number" value="${a.mQtyDone!=null?a.mQtyDone:''}" onchange="app.wbsMeasSet('${id}','mQtyDone',this.value)"></div></div>`;}
+    else{const key=wbsRocKeyOf(a);const steps=WBS_ROC[key]||[];const st=a.mRocSteps||[];
+      body=`<div class="field"><label>Rules of Credit template</label><select onchange="app.wbsMeasSet('${id}','mRocKey',this.value)">${Object.keys(WBS_ROC).map(k=>`<option value="${k}" ${k===key?'selected':''}>${k}</option>`).join('')}</select></div>
+        <table style="width:100%;border-collapse:collapse;font-size:12px;margin-top:6px"><thead><tr style="background:#f1f5f9"><th style="text-align:left;padding:4px 6px">ขั้นตอน</th><th style="padding:4px">น้ำหนัก</th><th style="padding:4px">% เสร็จ</th></tr></thead><tbody>${steps.map((x,i)=>`<tr style="border-bottom:1px solid var(--soft)"><td style="padding:3px 6px">${esc(x[0])}<div style="font-size:10px;color:#94a3b8">${esc(x[2]||'')}</div></td><td style="text-align:center;color:#64748b">${x[1]}%</td><td style="text-align:right;padding:3px 6px"><input type="number" min="0" max="100" value="${+st[i]||0}" onchange="app.wbsMeasStep('${id}',${i},this.value)" style="width:52px;text-align:right;border:1px solid var(--line);border-radius:5px"></td></tr>`).join('')}</tbody></table>`;}
+    modal(`<h4>วัดความคืบหน้า — ${esc(a.code)} ${esc(a.name)}</h4><div class="mbody" style="max-height:64vh;overflow:auto">
+      <div class="field"><label>วิธีวัด (Measurement method)</label><select onchange="app.wbsMeasMethod('${id}',this.value)">${opt('manual','Manual % (กรอกเอง)')}${opt('milestone','Milestone 0/50/100')}${opt('qty','Quantity-based (ติดตั้ง/แผน)')}${opt('roc','Rules of Credit (ขั้นตอนถ่วงน้ำหนัก)')}</select></div>
+      ${body}
+      <div style="margin-top:12px;padding:8px;background:#ecfdf5;border-radius:8px;text-align:center;font-weight:800;color:#0f766e">ความคืบหน้าปัจจุบัน: ${live}%</div>
+      <p class="mini" style="margin-top:6px;color:#64748b">กด "บันทึก snapshot" เพื่อเก็บค่านี้ ณ Data date (ไม่ทับประวัติเดิม)${a.pctSnaps&&a.pctSnaps.length?(' · มีประวัติ '+a.pctSnaps.length+' ครั้ง'):''}</p>
+      </div><div class="mfoot"><button class="btn" onclick="app.wbsMeasDone()">ปิด</button><button class="btn primary" onclick="app.wbsMeasSnap('${id}')">บันทึก snapshot</button></div>`);},
+  wbsMeasMethod(id,v){const p=proj();const a=p.wbs.nodes.filter(x=>x.id===id)[0];if(a){a.mMethod=v;a.pct=wbsProgress(a);}save();app.wbsMeasure(id);},
+  wbsMeasSet(id,f,v){const p=proj();const a=p.wbs.nodes.filter(x=>x.id===id)[0];if(!a)return;if(f==='mQtyPlan'||f==='mQtyDone')a[f]=Math.max(0,parseNum(v));else if(f==='mMile')a.mMile=+v;else if(f==='mRocKey'){a.mRocKey=v;a.mRocSteps=[];}else a[f]=Math.max(0,Math.min(100,parseNum(v)));a.pct=wbsProgress(a);save();app.wbsMeasure(id);},
+  wbsMeasStep(id,i,v){const p=proj();const a=p.wbs.nodes.filter(x=>x.id===id)[0];if(!a)return;if(!a.mRocSteps)a.mRocSteps=[];a.mRocSteps[i]=Math.max(0,Math.min(100,parseNum(v)));a.pct=wbsProgress(a);save();app.wbsMeasure(id);},
+  wbsMeasSnap(id){const p=proj();const a=p.wbs.nodes.filter(x=>x.id===id)[0];if(!a)return;a.pct=wbsProgress(a);wbsSnapshot(p,a);save();app.closeModal();renderWbsGantt(document.getElementById('content'));toast('บันทึกความคืบหน้า '+Math.round(a.pct)+'% แล้ว');},
+  wbsMeasDone(){app.closeModal();renderWbsGantt(document.getElementById('content'));},
+  wbsSetCostFactor(v){const p=proj();ensurePlan(p).wbsCostFactor=Math.max(0,Math.min(1.5,(parseNum(v)||85)/100));save();renderWbsGantt(document.getElementById('content'));},
+  wbsSetSystem(id,v){const p=proj();const n=p.wbs.nodes.filter(x=>x.id===id)[0];if(n)n.systemId=v;save();renderWbs(document.getElementById('content'));},
+  wbsExportXlsx(){const p=proj();if(!p.wbs)return;wbsExport(p);toast('ดาวน์โหลด WBS Excel แล้ว');},
+  wbsImportXlsx(){const inp=document.createElement('input');inp.type='file';inp.accept='.xlsx,.xls';inp.onchange=function(e){const f=e.target.files[0];if(!f)return;const rd=new FileReader();rd.onload=function(ev){try{const wb=XLSX.read(new Uint8Array(ev.target.result),{type:'array'});const ws=wb.Sheets[wb.SheetNames[0]];const rows=XLSX.utils.sheet_to_json(ws,{header:1});app.wbsImportPreview(rows);}catch(err){toast('อ่านไฟล์ไม่ได้');}};rd.readAsArrayBuffer(f);};inp.click();},
+  wbsImportPreview(rows){const p=proj();const R=wbsImportRows(rows);window._wbsImp=R.byCode;const matched=Object.keys(R.byCode).filter(c=>p.wbs.nodes.some(n=>n.code===c)).length;
+    modal(`<h4>นำเข้า WBS — ตรวจสอบก่อนยืนยัน</h4><div class="mbody" style="max-height:60vh;overflow:auto">
+      <p class="mini">พบ ${Object.keys(R.byCode).length} รหัสในไฟล์ · ตรงกับโปรเจกต์ ${matched} · จะอัปเดต ชื่อ/Dur/Predecessor/%/scope ตามรหัส (ไม่ลบกิจกรรมเดิม)</p>
+      ${R.errs.length?`<div style="background:#fee2e2;border-radius:8px;padding:8px;margin:6px 0"><b style="color:#ef4444">Error ${R.errs.length}</b><div style="font-size:11px">${R.errs.slice(0,8).map(esc).join('<br>')}</div></div>`:'<div style="color:#10b981;font-weight:700">✓ ไม่พบรหัสซ้ำ</div>'}
+      ${R.warn.length?`<div style="background:#fef9c3;border-radius:8px;padding:8px;margin:6px 0"><b style="color:#a16207">Warning ${R.warn.length}</b><div style="font-size:11px">${R.warn.slice(0,8).map(esc).join('<br>')}</div></div>`:''}
+      </div><div class="mfoot"><button class="btn" onclick="app.closeModal()">ยกเลิก</button><button class="btn primary" ${R.errs.length?'disabled style=opacity:.5':''} onclick="app.wbsImportApply()">ยืนยันนำเข้า</button></div>`);},
+  wbsImportApply(){const p=proj();const B=window._wbsImp||{};let n=0;p.wbs.nodes.forEach(function(nd){if(nd.level!==3)return;const r=B[nd.code];if(!r)return;if(r.name)nd.name=r.name;if(r.dur)nd.dur=r.dur;nd.predText=r.pred;if(!isNaN(r.pct)){nd.mMethod='manual';nd.pct=r.pct;}nd.scope=r.scope;n++;});save();app.closeModal();renderWbsGantt(document.getElementById('content'));toast('นำเข้า/อัปเดต '+n+' กิจกรรมแล้ว');},
+  opsTab(t){opsTab=t;renderOps(document.getElementById('content'));},
+  opsField(k,v){this['_'+k]=v;},
+  opsRerender(){renderOps(document.getElementById('content'));},
+  opsDel(coll,id){const p=proj();p[coll]=(p[coll]||[]).filter(x=>x.id!==id);save();renderOps(document.getElementById('content'));},
+  opsSet(coll,id,f,v){const p=proj();const o=(p[coll]||[]).filter(x=>x.id===id)[0];if(!o)return;if(f==='baselineCost'||f==='currentCost'||f==='poValue')o[f]=parseNum(v);else o[f]=v;save();},
+  opsAddProd(){const p=proj();wbsEnsureOps(p);const wbsId=this._pdWbs||'';const date=document.getElementById('pdDate').value||_isoOf(new Date());const qty=parseNum(document.getElementById('pdQty').value);if(!wbsId){toast('เลือกกิจกรรมก่อน');return;}p.dailyProd.push({id:uid(),date:date,wbsId:wbsId,qty:qty,mh:parseNum(document.getElementById('pdMh').value),area:document.getElementById('pdArea').value||'',note:document.getElementById('pdNote').value||''});wbsRecalcAct(p,wbsId);save();renderOps(document.getElementById('content'));toast('บันทึกผลงาน +อัปเดต progress');},
+  opsAddRes(){const p=proj();wbsEnsureOps(p);const wbsId=this._rpWbs||'';if(!wbsId){toast('เลือกกิจกรรมก่อน');return;}p.resPlan.push({id:uid(),wbsId:wbsId,type:document.getElementById('rpType').value,role:document.getElementById('rpRole').value||'',qty:parseNum(document.getElementById('rpQty').value),rate:parseNum(document.getElementById('rpRate').value)});save();renderOps(document.getElementById('content'));},
+  opsAddProc(){const p=proj();wbsEnsureOps(p);p.procPkgs.push({id:uid(),code:'PKG-'+((p.procPkgs.length||0)+1),desc:'',wbsId:'',reqDate:'',ms:{}});save();renderOps(document.getElementById('content'));},
+  opsProcMs(id,ms,on){const p=proj();const pk=(p.procPkgs||[]).filter(x=>x.id===id)[0];if(!pk)return;if(!pk.ms)pk.ms={};pk.ms[ms]=!!on;procSyncAct(p,pk);save();renderOps(document.getElementById('content'));},
+  opsProcSync(id){const p=proj();const pk=(p.procPkgs||[]).filter(x=>x.id===id)[0];if(pk)procSyncAct(p,pk);save();renderOps(document.getElementById('content'));},
+  opsAddQA(){const p=proj();wbsEnsureOps(p);const wbsId=this._qaWbs||'';p.qa.push({id:uid(),type:document.getElementById('qaType').value,recordNo:document.getElementById('qaNo').value||'',wbsId:wbsId,acceptedQty:parseNum(document.getElementById('qaQty').value),status:'Open',date:document.getElementById('qaDate').value||_isoOf(new Date())});save();renderOps(document.getElementById('content'));},
+  opsQARecalc(id){const p=proj();const x=(p.qa||[]).filter(y=>y.id===id)[0];if(x&&x.wbsId)wbsRecalcAct(p,x.wbsId);save();renderOps(document.getElementById('content'));},
+  opsAddPunch(){const p=proj();wbsEnsureOps(p);p.punch.push({id:uid(),cat:document.getElementById('puCat').value,desc:document.getElementById('puDesc').value||'',wbsId:this._puWbs||'',owner:document.getElementById('puOwner').value||'',status:'Open'});save();renderOps(document.getElementById('content'));},
+  opsAddSys(){const p=proj();wbsEnsureOps(p);p.systems.push({id:uid(),code:document.getElementById('syCode').value||'',name:document.getElementById('syName').value||'',type:document.getElementById('syType').value});save();renderOps(document.getElementById('content'));},
+  opsAddDoc(){const p=proj();wbsEnsureOps(p);p.docs.push({id:uid(),docNo:'',title:'',rev:'0',wbsId:'',status:'Planned'});save();renderOps(document.getElementById('content'));},
+  opsDocSync(id){const p=proj();const d=(p.docs||[]).filter(x=>x.id===id)[0];if(d&&d.wbsId){const a=wbsActById(p,d.wbsId);if(a){a.mMethod='manual';a.pct=docProgress(d);wbsSnapshot(p,a);}}save();renderOps(document.getElementById('content'));},
+  opsAddChange(){const p=proj();wbsEnsureOps(p);p.changes.push({id:uid(),changeNo:'',desc:'',type:'Pending VO',baselineCost:0,currentCost:0});save();renderOps(document.getElementById('content'));},
+
+  wbsToggleScope(id){const p=proj();if(!p.wbs)return;const n=p.wbs.nodes.filter(x=>x.id===id)[0];if(!n)return;const nv=!n.scope;n.scope=nv;
+    if(n.level<3){const kids=p.wbs.nodes.filter(x=>x.parentId===id);kids.forEach(function(k){k.scope=nv;if(k.level===2){p.wbs.nodes.filter(y=>y.parentId===k.id).forEach(function(g){g.scope=nv;});}});}
+    if(nv){let par=p.wbs.nodes.filter(x=>x.id===n.parentId)[0];while(par){par.scope=true;par=p.wbs.nodes.filter(x=>x.id===par.parentId)[0];}}
+    save();renderWbs(document.getElementById('content'));},
   costPctDialog(){const p=proj();const pl=ensurePlan(p);modal(`<h4>ตั้งค่าต้นทุน (% ของ Budget)</h4><div class="mbody wz"><p class="mini">ต้นทุนจริงคิดเป็น % ของราคา Budget เมื่ออัปเดตความคืบหน้า — ค่าของคิดตาม % ที่ซื้อ/รับของ · ค่าแรงคิดตาม % ที่ติดตั้ง</p>
     <div class="field row" style="margin:0"><div><label>ต้นทุนค่าของ (Material %)</label><input id="cp_m" type="number" min="0" max="100" step="any" value="${pl.matCostPct!=null?pl.matCostPct:85}"></div><div><label>ต้นทุนค่าแรง (Labour %)</label><input id="cp_l" type="number" min="0" max="100" step="any" value="${pl.labCostPct!=null?pl.labCostPct:85}"></div></div>
     </div><div class="mfoot"><button class="btn" onclick="app.closeModal()">ยกเลิก</button><button class="btn primary" onclick="app.costPctApply()">บันทึก</button></div>`);},
@@ -1482,10 +2356,12 @@ const app={
   newProjectModal(){modal(`<h4>New Project</h4><div class="mbody">
       <div class="field"><label>Project name</label><input id="npName" placeholder="e.g. Rayong Substation E&I"></div>
       <div class="field row"><div><label>Code (อัตโนมัติ)</label><input id="npCode" value="${nextProjectCode()}" readonly title="PJ + ปีค.ศ.2หลัก + เดือน2หลัก + ลำดับ3หลัก" style="background:#f4f6fb;color:#475569;font-weight:700"></div><div><label>Currency</label><input id="npCur" value="THB"></div></div>
-      <div class="field"><label>Start with</label><select id="npTpl" onchange="var e=document.getElementById('npQhint');if(e)e.style.display=this.value==='quote'?'block':'none';">
+      <div class="field"><label>Start with</label><select id="npTpl" onchange="var e=document.getElementById('npQhint');if(e)e.style.display=this.value==='quote'?'block':'none';var w=document.getElementById('npWbsRow');if(w)w.style.display=this.value==='wbs'?'block':'none';">
         <option value="quote">📄 Upload Quotation → auto-generate CBS (recommended)</option>
         <option value="cbs">Blank CBS (15 categories, zero)</option>
+        <option value="wbs">🏗️ E&I WBS template + Blank CBS</option>
         <option value="map2">Copy MAP2 (sample)</option><option value="gmtp">Copy GMTP (sample)</option></select>
+        <div id="npWbsRow" style="display:none;margin-top:8px"><label>WBS template</label><select id="npWbsTpl">${WBS_TEMPLATES.map(t=>`<option value="${t.id}">${esc(t.name)}</option>`).join('')}</select><div class="mini" style="color:#64748b;margin-top:4px">คัดลอก Master WBS (10 เฟส·461 กิจกรรม) มาเป็นของโปรเจกต์ — ปรับ scope ได้ที่หน้า WBS</div></div>
         <div id="npQhint" class="mini" style="margin-top:8px;color:#64748b;line-height:1.5">After you click Create, choose your quotation Excel — the app auto-maps every priced line into the CBS and fills the budget. You can review &amp; edit any mapping afterward.</div></div>
      </div><div class="mfoot"><button class="btn" onclick="app.closeModal()">Cancel</button><button class="btn primary" onclick="app.createProject()">Create</button></div>`);},
   createProject(){const name=(document.getElementById('npName').value||'').trim();const tpl=document.getElementById('npTpl').value;
@@ -1493,9 +2369,10 @@ const app={
     const nm=name||'Untitled';let p;
     if(tpl==='map2')p=mkProject(SEEDS.projects[0]);
     else if(tpl==='gmtp')p=mkProject(SEEDS.projects[1]);
-    else{p={id:uid(),name:nm,code:'',client:'',currency:'THB',cats:CBS.map(c=>({id:uid(),grp:c[0],no:c[1],name:c[2],type:c[3],items:[]})),cashflow:null};}
+    else{p={id:uid(),name:nm,code:'',client:'',currency:'THB',cats:CBS.map(c=>({id:uid(),grp:c[0],no:c[1],name:c[2],type:c[3],items:[]})),cashflow:null};
+      if(tpl==='wbs'){const wt=document.getElementById('npWbsTpl');p.wbs=wbsInstantiate(wt?wt.value:'full');p.wbsMode=true;if(!state.schemaVersion)state.schemaVersion=2;}}
     p.name=nm;p.code=document.getElementById('npCode').value;p.currency=document.getElementById('npCur').value||'THB';
-    state.projects.push(p);state.activeId=p.id;save();app.closeModal();nav('cost');toast('Project created');},
+    state.projects.push(p);state.activeId=p.id;save();app.closeModal();nav(p.wbs?'wbs':'cost');toast('Project created'+(p.wbs?' · WBS '+p.wbs.templateName:''));},
   closeModal(){document.getElementById('overlay').classList.remove('open');},
   setLag(v){ensurePlan(proj()).payLag=Math.max(0,Math.min(6,parseInt(v)||0));save();renderCashflow(document.getElementById('content'));},
   setCfMode(m){cfMode=m;renderCashflow(document.getElementById('content'));},
@@ -1508,7 +2385,7 @@ const app={
   mpNav(delta){const d=new Date((mpDate||new Date().toISOString().slice(0,10))+'T00:00:00');d.setDate(d.getDate()+delta);mpDate=d.toISOString().slice(0,10);renderManpower(document.getElementById('content'));},
   addPos(){const p=proj();ensureMP(p);p.mp.positions.push({id:tid_(),role:'',catNo:(p.cats.find(c=>c.no==='STF')?'STF':((p.cats[0]&&p.cats[0].no)||'STF')),wage:0});save();renderManpower(document.getElementById('content'));},
   delPos(id){const p=proj();ensureMP(p);p.mp.positions=p.mp.positions.filter(x=>x.id!==id);save();renderManpower(document.getElementById('content'));},
-  setPos(id,f,v){const p=proj();ensureMP(p);const o=p.mp.positions.find(x=>x.id===id);if(!o)return;if(f==='role'||f==='catNo')o[f]=v;else o[f]=Math.max(0,parseNum(v));save();renderManpower(document.getElementById('content'));},
+  setPos(id,f,v){const p=proj();ensureMP(p);const o=p.mp.positions.find(x=>x.id===id);if(!o)return;if(f==='role'||f==='catNo'||f==='wbsId')o[f]=v;else o[f]=Math.max(0,parseNum(v));save();renderManpower(document.getElementById('content'));},
   addUnit(){const p=proj();ensureMP(p);p.eqp.units.push({id:tid_(),name:'',type:'Rental',rate:0});save();renderManpower(document.getElementById('content'));},
   delUnit(id){const p=proj();ensureMP(p);p.eqp.units=p.eqp.units.filter(x=>x.id!==id);save();renderManpower(document.getElementById('content'));},
   setUnit(id,f,v){const p=proj();ensureMP(p);const o=p.eqp.units.find(x=>x.id===id);if(!o)return;if(f==='name'||f==='type')o[f]=v;else o[f]=Math.max(0,parseNum(v));save();renderManpower(document.getElementById('content'));},
